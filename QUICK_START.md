@@ -57,9 +57,13 @@ FLUSH PRIVILEGES;
 EOF
 ```
 
-#### 导入数据库结构
+#### 导入数据库结构（SQL 文件位于 backend/database/）
 
 ```bash
+# 从项目根目录执行
+mysql -u root -p < backend/database/schema.sql
+
+# 或进入 backend 后执行
 cd backend
 mysql -u life_record_user -p life_record_db < database/schema.sql
 ```

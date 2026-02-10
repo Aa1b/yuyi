@@ -36,7 +36,7 @@
 │   ├── controllers/        # 控制器
 │   ├── routes/            # 路由
 │   ├── middleware/        # 中间件
-│   ├── database/          # 数据库脚本
+│   ├── database/          # 数据库脚本（schema.sql 等，所有 SQL 均在此目录）
 │   └── services/          # 服务层
 ├── components/            # 小程序组件
 ├── pages/                # 小程序页面
@@ -78,8 +78,9 @@ npm install
 cp .env.example .env
 # 编辑 .env 文件配置数据库等信息
 
-# 初始化数据库
-mysql -u root -p < database/schema.sql
+# 初始化数据库（所有 SQL 在 backend/database/，从项目根目录执行）
+mysql -u root -p < backend/database/schema.sql
+# 或先 cd backend，再：mysql -u root -p < database/schema.sql
 
 # 启动服务
 npm run dev

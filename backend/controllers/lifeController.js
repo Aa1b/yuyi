@@ -81,8 +81,8 @@ exports.getList = async (req, res, next) => {
     } = req.query;
 
     const currentUserId = req.user?.id || null;
-    const limit = parseInt(pageSize);
-    const offset = (parseInt(page) - 1) * limit;
+    const limit = Math.max(1, Math.min(100, parseInt(pageSize, 10) || 10));
+    const offset = Math.max(0, ((parseInt(page, 10) || 1) - 1) * limit);
 
     // 构建查询条件
     let whereConditions = ['r.status = 1'];
@@ -90,7 +90,8 @@ exports.getList = async (req, res, next) => {
 
     // 隐私筛选
     if (privacy === 'public') {
-      whereConditions.push('r.privacy = "public"');
+      whereConditions.push('r.privacy = ?');
+      queryParams.push('public');
     } else if (privacy === 'all' && userId) {
       // 查看指定用户的所有记录（如果是自己或已关注）
       if (parseInt(userId) === currentUserId) {
@@ -118,7 +119,8 @@ exports.getList = async (req, res, next) => {
       whereConditions.push('r.publish_status = ?');
       queryParams.push(publishStatus);
     } else if (!isMyList) {
-      whereConditions.push('r.publish_status = "published"');
+      whereConditions.push('r.publish_status = ?');
+      queryParams.push('published');
     }
 
     // 分类筛选
@@ -134,37 +136,34 @@ exports.getList = async (req, res, next) => {
     }
 
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
-
-    // 查询记录列表
-    const [records] = await pool.execute(
-      `SELECT 
-        r.id,
-        r.user_id as userId,
-        u.nickname as userName,
-        u.avatar,
-        r.content,
-        r.type,
-        r.privacy,
-        r.category,
-        r.location,
-        r.like_count as likeCount,
-        r.comment_count as commentCount,
-        r.created_at as createdAt,
-        r.publish_status as publishStatus
-      FROM life_records r
-      LEFT JOIN users u ON r.user_id = u.id
-      ${whereClause}
-      ORDER BY r.created_at DESC
-      LIMIT ? OFFSET ?`,
-      [...queryParams, limit, offset]
-    );
-
-    // 查询总数
-    const [countResult] = await pool.execute(
-      `SELECT COUNT(*) as total FROM life_records r ${whereClause}`,
-      queryParams
-    );
-    const total = countResult[0].total;
+    const listParams = [...queryParams, limit, offset];
+    let records;
+    let total;
+    try {
+      const [rows] = await pool.execute(
+        `SELECT r.id, r.user_id as userId, u.nickname as userName, u.avatar, r.content, r.type, r.privacy, r.category, r.location, r.like_count as likeCount, r.comment_count as commentCount, r.created_at as createdAt, r.publish_status as publishStatus FROM life_records r LEFT JOIN users u ON r.user_id = u.id ${whereClause} ORDER BY r.created_at DESC LIMIT ? OFFSET ?`,
+        listParams
+      );
+      records = rows;
+      const [countResult] = await pool.execute(`SELECT COUNT(*) as total FROM life_records r ${whereClause}`, queryParams);
+      total = countResult[0].total;
+    } catch (listErr) {
+      const errMsg = String(listErr?.message || listErr?.sqlMessage || '');
+      if (errMsg.includes('publish_status')) {
+        const whereNoPub = whereConditions.filter(c => !c.includes('publish_status'));
+        const whereFallback = whereNoPub.length ? `WHERE ${whereNoPub.join(' AND ')}` : '';
+        const paramsFallback = queryParams.filter((_, idx) => !whereConditions[idx].includes('publish_status'));
+        const [rows] = await pool.execute(
+          `SELECT r.id, r.user_id as userId, u.nickname as userName, u.avatar, r.content, r.type, r.privacy, r.category, r.location, r.like_count as likeCount, r.comment_count as commentCount, r.created_at as createdAt FROM life_records r LEFT JOIN users u ON r.user_id = u.id ${whereFallback} ORDER BY r.created_at DESC LIMIT ? OFFSET ?`,
+          [...paramsFallback, limit, offset]
+        );
+        records = rows.map(r => ({ ...r, publishStatus: 'published' }));
+        const [cr] = await pool.execute(`SELECT COUNT(*) as total FROM life_records r ${whereFallback}`, paramsFallback);
+        total = cr[0].total;
+      } else {
+        throw listErr;
+      }
+    }
 
     // 查询媒体文件
     const recordIds = records.map(r => r.id);
@@ -936,8 +935,8 @@ exports.search = async (req, res, next) => {
     } = req.query;
 
     const currentUserId = req.user?.id || null;
-    const limit = parseInt(pageSize);
-    const offset = (parseInt(page) - 1) * limit;
+    const limit = Math.max(1, Math.min(100, parseInt(pageSize, 10) || 10));
+    const offset = Math.max(0, ((parseInt(page, 10) || 1) - 1) * limit);
 
     if (!keyword.trim()) {
       return res.status(400).json({
@@ -946,9 +945,9 @@ exports.search = async (req, res, next) => {
       });
     }
 
-    // 构建查询条件（搜索只展示已发布）
-    let whereConditions = ['r.status = 1', 'r.privacy = "public"', 'r.publish_status = "published"'];
-    const queryParams = [];
+    // 构建查询条件（搜索只展示已发布，使用参数避免占位符数量错误）
+    let whereConditions = ['r.status = 1', 'r.privacy = ?', 'r.publish_status = ?'];
+    const queryParams = ['public', 'published'];
 
     // 关键词搜索（内容、标签）
     if (keyword) {

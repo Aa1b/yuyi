@@ -14,25 +14,25 @@ Page({
         name: '全部发布',
         icon: 'root-list',
         type: 'all',
-        url: '',
+        url: '/pages/my-life-records/index?publishStatus=all',
       },
       {
         name: '审核中',
         icon: 'search',
         type: 'progress',
-        url: '',
+        url: '/pages/my-life-records/index?publishStatus=pending',
       },
       {
         name: '已发布',
         icon: 'upload',
         type: 'published',
-        url: '',
+        url: '/pages/my-life-records/index?publishStatus=published',
       },
       {
         name: '草稿箱',
         icon: 'file-copy',
         type: 'draft',
-        url: '',
+        url: '/pages/my-life-records/index?publishStatus=draft',
       },
     ],
 
@@ -96,8 +96,12 @@ Page({
   },
 
   onEleClick(e) {
-    const { name, url } = e.currentTarget.dataset.data;
-    if (url) return;
-    this.onShowToast('#t-toast', name);
+    const item = e.currentTarget.dataset.data || {};
+    const { url } = item;
+    if (url) {
+      wx.navigateTo({ url });
+      return;
+    }
+    this.onShowToast('#t-toast', item.name || '');
   },
 });

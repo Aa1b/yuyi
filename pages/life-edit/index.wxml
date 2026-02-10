@@ -108,9 +108,17 @@
     <view class="btngroup box">
       <t-button
         t-class="btn-class"
+        theme="light"
+        icon="file-copy"
+        content="保存为草稿"
+        size="large"
+        bindtap="updateRecordAsDraft"
+      />
+      <t-button
+        t-class="btn-class"
         theme="primary"
         icon="check"
-        content="保存"
+        content="保存并发布"
         size="large"
         bindtap="updateRecord"
       />

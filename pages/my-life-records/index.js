@@ -11,9 +11,17 @@ Page({
     hasMore: true,
     page: 1,
     pageSize: 10,
+    publishStatus: 'all', // all | draft | pending | published
+    pageTitle: '我的记录',
   },
   
-  onLoad() {
+  onLoad(options) {
+    const publishStatus = options.publishStatus || 'all';
+    const titles = { all: '全部发布', draft: '草稿箱', pending: '审核中', published: '已发布' };
+    this.setData({
+      publishStatus,
+      pageTitle: titles[publishStatus] || '我的记录',
+    });
     this.loadCategories();
     this.loadMyRecords(true);
   },
@@ -37,12 +45,13 @@ Page({
     try {
       this.setData({ loading: true });
       
-      const { selectedCategory, page, pageSize } = this.data;
+      const { selectedCategory, page, pageSize, publishStatus } = this.data;
       const params = {
         page: refresh ? 1 : page,
         pageSize,
-        privacy: 'all', // 我的记录显示所有隐私级别
+        privacy: 'all',
         category: selectedCategory || '',
+        publishStatus: publishStatus || 'all',
       };
       
       const queryString = Object.keys(params)

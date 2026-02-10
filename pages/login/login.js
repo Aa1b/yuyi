@@ -68,6 +68,36 @@ Page({
     wx.navigateTo({ url: '/pages/login/register' });
   },
 
+  /** 微信一键登录：wx.login 取 code，调用后端 /auth/login 换 openid 并拿到 token */
+  async onWechatLogin() {
+    if (!this.data.isCheck) {
+      wx.showToast({ title: '请先同意《协议条款》', icon: 'none' });
+      return;
+    }
+    try {
+      const { code } = await new Promise((resolve, reject) => {
+        wx.login({
+          success: (res) => (res.code ? resolve(res) : reject(new Error('获取 code 失败'))),
+          fail: reject,
+        });
+      });
+      const res = await request('/auth/login', 'POST', { code });
+      if (res.code === 200 && res.data && res.data.token) {
+        wx.setStorageSync('access_token', res.data.token);
+        if (res.data.user) {
+          wx.setStorageSync('user_info', res.data.user);
+        }
+        wx.showToast({ title: '登录成功', icon: 'success' });
+        wx.switchTab({ url: '/pages/my/index' });
+      } else {
+        wx.showToast({ title: res.message || '微信登录失败', icon: 'none' });
+      }
+    } catch (err) {
+      const msg = (err && err.message) || (err && err.code === 503 && '微信登录未配置') || '网络错误，请重试';
+      wx.showToast({ title: msg, icon: 'none' });
+    }
+  },
+
   async login() {
     const { passwordInfo, isPasswordLogin } = this.data;
     if (isPasswordLogin) {

@@ -6,7 +6,7 @@ const cache = require('../utils/cache');
  */
 const checkRecordPermission = async (recordId, userId = null) => {
   const [records] = await pool.execute(
-    'SELECT user_id, privacy FROM life_records WHERE id = ? AND status = 1',
+    'SELECT user_id, privacy, publish_status FROM life_records WHERE id = ? AND status = 1',
     [recordId]
   );
 
@@ -15,6 +15,15 @@ const checkRecordPermission = async (recordId, userId = null) => {
   }
 
   const record = records[0];
+  const pubStatus = record.publish_status;
+
+  // 草稿或审核中：仅作者本人可查看
+  if (pubStatus === 'draft' || pubStatus === 'pending') {
+    if (!userId || record.user_id !== userId) {
+      return { allowed: false, record };
+    }
+    return { allowed: true, record };
+  }
 
   // 公开记录，所有人都可以查看
   if (record.privacy === 'public') {
@@ -68,6 +77,7 @@ exports.getList = async (req, res, next) => {
       privacy = 'public',
       type = 'all',
       userId = null, // 可选：获取指定用户的记录
+      publishStatus = 'all', // 我的记录筛选：all | draft | pending | published
     } = req.query;
 
     const currentUserId = req.user?.id || null;
@@ -102,6 +112,15 @@ exports.getList = async (req, res, next) => {
       queryParams.push(userId);
     }
 
+    // 发布状态筛选（仅在自己的记录列表时生效）
+    const isMyList = (privacy === 'all' && !userId && currentUserId) || (userId && parseInt(userId) === currentUserId);
+    if (isMyList && publishStatus && publishStatus !== 'all') {
+      whereConditions.push('r.publish_status = ?');
+      queryParams.push(publishStatus);
+    } else if (!isMyList) {
+      whereConditions.push('r.publish_status = "published"');
+    }
+
     // 分类筛选
     if (category) {
       whereConditions.push('r.category = ?');
@@ -130,7 +149,8 @@ exports.getList = async (req, res, next) => {
         r.location,
         r.like_count as likeCount,
         r.comment_count as commentCount,
-        r.created_at as createdAt
+        r.created_at as createdAt,
+        r.publish_status as publishStatus
       FROM life_records r
       LEFT JOIN users u ON r.user_id = u.id
       ${whereClause}
@@ -245,7 +265,8 @@ exports.getDetail = async (req, res, next) => {
         r.location,
         r.like_count as likeCount,
         r.comment_count as commentCount,
-        r.created_at as createdAt
+        r.created_at as createdAt,
+        r.publish_status as publishStatus
       FROM life_records r
       LEFT JOIN users u ON r.user_id = u.id
       WHERE r.id = ? AND r.status = 1`,
@@ -332,7 +353,7 @@ exports.getDetail = async (req, res, next) => {
 exports.createRecord = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { content, type, privacy, category, tags, location, images, video } = req.body;
+    const { content, type, privacy, category, tags, location, images, video, publishStatus } = req.body;
 
     if (!content || !type) {
       return res.status(400).json({
@@ -357,11 +378,13 @@ exports.createRecord = async (req, res, next) => {
       });
     }
 
+    const pubStatus = ['draft', 'pending', 'published'].includes(publishStatus) ? publishStatus : 'published';
+
     // 创建记录
     const [result] = await pool.execute(
       `INSERT INTO life_records 
-       (user_id, content, type, privacy, category, location) 
-       VALUES (?, ?, ?, ?, ?, ?)`,
+       (user_id, content, type, privacy, category, location, publish_status) 
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
         userId,
         content,
@@ -369,6 +392,7 @@ exports.createRecord = async (req, res, next) => {
         privacy || 'public',
         category || null,
         location || null,
+        pubStatus,
       ]
     );
 
@@ -443,7 +467,7 @@ exports.createRecord = async (req, res, next) => {
 exports.updateRecord = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { id, content, privacy, category, tags, location } = req.body;
+    const { id, content, privacy, category, tags, location, publishStatus } = req.body;
 
     if (!id) {
       return res.status(400).json({
@@ -491,6 +515,10 @@ exports.updateRecord = async (req, res, next) => {
     if (location !== undefined) {
       updateFields.push('location = ?');
       updateValues.push(location || null);
+    }
+    if (publishStatus !== undefined && ['draft', 'pending', 'published'].includes(publishStatus)) {
+      updateFields.push('publish_status = ?');
+      updateValues.push(publishStatus);
     }
 
     if (updateFields.length > 0) {
@@ -918,8 +946,8 @@ exports.search = async (req, res, next) => {
       });
     }
 
-    // 构建查询条件
-    let whereConditions = ['r.status = 1', 'r.privacy = "public"'];
+    // 构建查询条件（搜索只展示已发布）
+    let whereConditions = ['r.status = 1', 'r.privacy = "public"', 'r.publish_status = "published"'];
     const queryParams = [];
 
     // 关键词搜索（内容、标签）
@@ -959,7 +987,8 @@ exports.search = async (req, res, next) => {
         r.location,
         r.like_count as likeCount,
         r.comment_count as commentCount,
-        r.created_at as createdAt
+        r.created_at as createdAt,
+        r.publish_status as publishStatus
       FROM life_records r
       LEFT JOIN users u ON r.user_id = u.id
       ${whereClause}

@@ -65,6 +65,7 @@
         size="medium"
         icon="logo-wechat-stroke"
         shape="circle"
+        bindtap="onWechatLogin"
       ></t-button>
       <t-button class="button" variant="outline" theme="default" size="medium" icon="logo-qq" shape="circle"></t-button>
       <t-button

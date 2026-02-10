@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS life_records (
   like_count INT DEFAULT 0 COMMENT '点赞数',
   comment_count INT DEFAULT 0 COMMENT '评论数',
   status TINYINT DEFAULT 1 COMMENT '状态：0删除，1正常',
+  publish_status VARCHAR(20) NOT NULL DEFAULT 'published' COMMENT '发布状态：draft草稿，pending审核中，published已发布',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -42,6 +43,7 @@ CREATE TABLE IF NOT EXISTS life_records (
   INDEX idx_privacy (privacy),
   INDEX idx_category (category),
   INDEX idx_status (status),
+  INDEX idx_publish_status (publish_status),
   INDEX idx_created_at (created_at),
   INDEX idx_user_privacy (user_id, privacy),
   INDEX idx_category_privacy (category, privacy)

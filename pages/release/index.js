@@ -270,28 +270,48 @@ Page({
     return true;
   },
   
-  // 保存草稿
-  saveDraft() {
-    // 保存到本地存储
-    const draft = {
-      content: this.data.content,
-      imageFiles: this.data.imageFiles,
-      videoFile: this.data.videoFile,
-      mediaType: this.data.mediaType,
-      privacy: this.data.privacy,
-      category: this.data.category,
-      selectedTags: this.data.selectedTags,
-      location: this.data.location,
+  // 保存草稿（提交到服务器，出现在草稿箱）
+  async saveDraft() {
+    const { content, mediaType, imageFiles, videoFile, privacy, category, selectedTags, location } = this.data;
+    const hasContent = (content && content.trim()) || (mediaType === 'image' && imageFiles.length > 0) || (mediaType === 'video' && videoFile);
+    if (!hasContent) {
+      Message.warning({
+        context: this,
+        offset: [120, 32],
+        duration: 2000,
+        content: '请至少填写内容或添加一张图片/视频',
+      });
+      return;
+    }
+    const recordData = {
+      content: (content || '').trim(),
+      type: mediaType,
+      images: mediaType === 'image' ? imageFiles.map(f => f.url) : [],
+      video: mediaType === 'video' && videoFile ? { url: videoFile.url, cover: videoFile.thumb || videoFile.url, duration: videoFile.duration || 0 } : null,
+      privacy: privacy || 'public',
+      category: category || null,
+      tags: selectedTags || [],
+      location: location || null,
+      publishStatus: 'draft',
     };
-    
-    wx.setStorageSync('life_record_draft', draft);
-    
-    Message.success({
-      context: this,
-      offset: [120, 32],
-      duration: 2000,
-      content: '草稿已保存',
-    });
+    try {
+      wx.showLoading({ title: '保存中...', mask: true });
+      if (mediaType === 'image' && imageFiles.length > 0) {
+        recordData.images = await this.uploadImages(imageFiles);
+      } else if (mediaType === 'video' && videoFile) {
+        recordData.video = await this.uploadVideo(videoFile);
+      }
+      await request('/life/record', 'POST', recordData);
+      wx.hideLoading();
+      wx.removeStorageSync('life_record_draft');
+      Message.success({ context: this, offset: [120, 32], duration: 2000, content: '草稿已保存' });
+      setTimeout(() => {
+        wx.navigateTo({ url: '/pages/my-life-records/index?publishStatus=draft' });
+      }, 800);
+    } catch (e) {
+      wx.hideLoading();
+      Message.error({ context: this, offset: [120, 32], duration: 2000, content: '保存草稿失败，请重试' });
+    }
   },
   
   // 发布
@@ -302,7 +322,7 @@ Page({
     
     const { content, mediaType, imageFiles, videoFile, privacy, category, selectedTags, location } = this.data;
     
-    // 准备数据
+    // 准备数据（发布为已发布）
     const recordData = {
       content: content.trim(),
       type: mediaType,
@@ -316,6 +336,7 @@ Page({
       category,
       tags: selectedTags,
       location: location || null,
+      publishStatus: 'published',
     };
     
     try {

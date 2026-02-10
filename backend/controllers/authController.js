@@ -1,6 +1,7 @@
 const pool = require('../config/database');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const https = require('https');
 
 /**
  * 生成 JWT Token
@@ -14,7 +15,36 @@ const generateToken = (userId) => {
 };
 
 /**
+ * 调用微信 code2session 获取 openid
+ * @see https://developers.weixin.qq.com/miniprogram/dev/OpenApiDoc/user-login/code2Session.html
+ */
+function wechatCode2Session(code) {
+  const appId = process.env.WECHAT_APPID;
+  const secret = process.env.WECHAT_SECRET;
+  if (!appId || !secret) {
+    return Promise.resolve(null);
+  }
+  const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${appId}&secret=${secret}&js_code=${code}&grant_type=authorization_code`;
+  return new Promise((resolve) => {
+    https.get(url, (res) => {
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          if (json.openid) resolve({ openid: json.openid, session_key: json.session_key });
+          else resolve(null);
+        } catch (e) {
+          resolve(null);
+        }
+      });
+    }).on('error', () => resolve(null));
+  });
+}
+
+/**
  * 用户登录（微信小程序登录）
+ * 前端通过 wx.login() 获取 code，调用此接口；后端用 code 换 openid 并生成 token
  */
 exports.login = async (req, res, next) => {
   try {
@@ -27,10 +57,23 @@ exports.login = async (req, res, next) => {
       });
     }
 
-    // TODO: 调用微信API获取openid和session_key
-    // 这里使用模拟数据
-    const openid = `mock_openid_${Date.now()}`;
-    const sessionKey = `mock_session_key_${Date.now()}`;
+    let openid = null;
+    const wechatRes = await wechatCode2Session(code);
+    if (wechatRes) {
+      openid = wechatRes.openid;
+    }
+    if (!openid) {
+      if (!process.env.WECHAT_APPID || !process.env.WECHAT_SECRET) {
+        return res.status(503).json({
+          code: 503,
+          message: '微信登录未配置：请在服务器 .env 中配置 WECHAT_APPID 和 WECHAT_SECRET',
+        });
+      }
+      return res.status(400).json({
+        code: 400,
+        message: '微信 code 无效或已过期，请重新点击微信登录',
+      });
+    }
 
     // 查询或创建用户
     let [users] = await pool.execute(

@@ -1,4 +1,4 @@
-<t-navbar title="我的记录" left-arrow />
+<t-navbar title="{{pageTitle}}" left-arrow />
 <view class="my-life-records-container">
   <!-- 分类筛选 -->
   <view class="my-life-records-filter">

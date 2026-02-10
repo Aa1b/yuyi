@@ -298,12 +298,19 @@ Page({
     return true;
   },
   
-  // 更新记录
+  // 保存为草稿（不发布）
+  async updateRecordAsDraft() {
+    if (!this.validateForm()) return;
+    await this.submitUpdate('draft');
+  },
+
+  // 更新记录（保存并发布）
   async updateRecord() {
-    if (!this.validateForm()) {
-      return;
-    }
-    
+    if (!this.validateForm()) return;
+    await this.submitUpdate('published');
+  },
+
+  async submitUpdate(publishStatus) {
     const { recordId, content, mediaType, imageFiles, videoFile, privacy, category, selectedTags, location } = this.data;
     
     const recordData = {
@@ -313,10 +320,11 @@ Page({
       category,
       tags: selectedTags,
       location: location || null,
+      publishStatus,
     };
     
     try {
-      wx.showLoading({ title: '更新中...', mask: true });
+      wx.showLoading({ title: publishStatus === 'draft' ? '保存草稿中...' : '更新中...', mask: true });
       
       // 如果有新上传的媒体文件需要上传
       if (mediaType === 'image' && imageFiles.some(f => f.tempFilePath || !f.url)) {
@@ -327,7 +335,6 @@ Page({
         recordData.video = uploadedVideo;
       }
       
-      // 提交到服务器
       await request('/life/record', 'PUT', recordData);
       
       wx.hideLoading();
@@ -336,7 +343,7 @@ Page({
         context: this,
         offset: [120, 32],
         duration: 2000,
-        content: '更新成功',
+        content: publishStatus === 'draft' ? '草稿已保存' : '更新成功',
       });
       
       setTimeout(() => {

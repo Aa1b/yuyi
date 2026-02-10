@@ -52,10 +52,21 @@ App({
 
   /** 获取未读消息数量 */
   getUnreadNum() {
-    fetchUnreadNum().then(({ data }) => {
-      this.globalData.unreadNum = data;
-      this.eventBus.emit('unread-num-change', data);
-    });
+    // 优先从通知接口获取
+    const request = require('./api/request').default;
+    request('/notification/unread-count')
+      .then((res) => {
+        const count = res.data?.count || 0;
+        this.globalData.unreadNum = count;
+        this.eventBus.emit('unread-num-change', count);
+      })
+      .catch(() => {
+        // 如果通知接口失败，使用原来的方法
+        fetchUnreadNum().then(({ data }) => {
+          this.globalData.unreadNum = data;
+          this.eventBus.emit('unread-num-change', data);
+        });
+      });
   },
 
   /** 设置未读消息数量 */

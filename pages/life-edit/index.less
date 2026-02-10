@@ -1,0 +1,151 @@
+@import '/variable.less';
+
+.life-edit-container {
+  min-height: 100vh;
+  background: @bg-color;
+  padding-bottom: 120rpx;
+}
+
+.life-edit-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 200rpx 0;
+}
+
+.life-edit-content {
+  padding: 32rpx;
+}
+
+.box {
+  width: 100%;
+  margin-bottom: 24rpx;
+  background: @bg-color-white;
+  border-radius: 16rpx;
+  overflow: hidden;
+}
+
+.desc {
+  padding: 32rpx;
+
+  .desc-label {
+    font-size: 28rpx;
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 16rpx;
+  }
+
+  .desc-class {
+    width: 100%;
+  }
+}
+
+.upload {
+  padding: 32rpx;
+
+  .image-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16rpx;
+  }
+
+  .image-item {
+    position: relative;
+    width: 200rpx;
+    height: 200rpx;
+    border-radius: 8rpx;
+    overflow: hidden;
+
+    .image-preview {
+      width: 100%;
+      height: 100%;
+    }
+
+    .image-remove {
+      position: absolute;
+      top: 8rpx;
+      right: 8rpx;
+      width: 48rpx;
+      height: 48rpx;
+      background: rgba(0, 0, 0, 0.6);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  }
+
+  .video-preview {
+    position: relative;
+    width: 100%;
+    height: 400rpx;
+    border-radius: 8rpx;
+    overflow: hidden;
+
+    .video-player {
+      width: 100%;
+      height: 100%;
+      background: #000;
+    }
+
+    .video-remove {
+      position: absolute;
+      top: 16rpx;
+      right: 16rpx;
+      width: 48rpx;
+      height: 48rpx;
+      background: rgba(0, 0, 0, 0.6);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  }
+
+  .upload-tip {
+    margin-top: 16rpx;
+    font-size: 24rpx;
+    color: @text-color-placeholder;
+    text-align: center;
+  }
+}
+
+.privacy,
+.category,
+.location {
+  background: @bg-color-white;
+  border-radius: 16rpx;
+  overflow: hidden;
+}
+
+.taggroup {
+  padding: 24rpx 32rpx;
+
+  .tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16rpx;
+    margin-top: 16rpx;
+  }
+
+  .tag-class {
+    margin: 0;
+  }
+}
+
+.btngroup {
+  display: flex;
+  justify-content: center;
+  padding: 32rpx;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: @bg-color-white;
+  box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.08);
+
+  .btn-class {
+    width: 100%;
+    margin: 0;
+  }
+}

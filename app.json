@@ -22,7 +22,7 @@
     {
       "root": "pages/login",
       "name": "login",
-      "pages": ["login"]
+      "pages": ["login", "register"]
     },
     {
       "root": "pages/loginCode",
@@ -42,6 +42,36 @@
     {
       "root": "pages/release",
       "name": "release",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/life-detail",
+      "name": "lifeDetail",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/my-life-records",
+      "name": "myLifeRecords",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/life-edit",
+      "name": "lifeEdit",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/user-profile",
+      "name": "userProfile",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/following",
+      "name": "following",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/search-result",
+      "name": "searchResult",
       "pages": ["index"]
     }
   ],

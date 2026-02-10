@@ -1,39 +1,83 @@
 <nav nav-type="search" />
 <view class="home-container">
   <view class="home-content">
-    <t-tabs defaultValue="recommend">
+    <t-tabs value="{{activeTab}}" bind:change="onTabChange">
       <t-tab-panel label="推荐" value="recommend">
         <t-pull-down-refresh
           value="{{enable}}"
           bind:refresh="onRefresh"
           loadingTexts="{{['下拉刷新', '松手刷新', '正在刷新', '刷新完成']}}"
         >
-          <view class="home-card-list">
-            <t-swiper
-              list="{{swiperList}}"
-              navigation="{{ { type: 'dots-bar' } }}"
-              height="488rpx"
-              style="width: 340rpx"
-            />
-            <card
-              wx:for="{{cardInfo}}"
-              wx:key="index"
-              desc="{{item.desc}}"
-              url="{{item.url}}"
-              tags="{{item.tags}}"
-            />
+          <view class="home-content-wrapper">
+            <!-- 轮播图 -->
+            <view wx:if="{{swiperList.length > 0}}" class="home-swiper">
+              <t-swiper
+                list="{{swiperList}}"
+                navigation="{{ { type: 'dots-bar' } }}"
+                height="360rpx"
+                autoplay
+                interval="3000"
+              />
+            </view>
+            
+            <!-- 分类筛选 -->
+            <view class="home-category-filter">
+              <t-check-tag
+                checked="{{selectedCategory === ''}}"
+                size="medium"
+                variant="{{selectedCategory === '' ? 'dark' : 'light'}}"
+                content="全部"
+                data-value="all"
+                bind:change="onCategoryChange"
+              />
+              <t-check-tag
+                wx:for="{{categories}}"
+                wx:key="index"
+                wx:for-item="category"
+                checked="{{selectedCategory === category}}"
+                size="medium"
+                variant="{{selectedCategory === category ? 'dark' : 'light'}}"
+                content="{{category}}"
+                data-value="{{category}}"
+                bind:change="onCategoryChange"
+              />
+            </view>
+            
+            <!-- 生活记录列表 -->
+            <view class="home-life-records">
+              <life-record-card
+                wx:for="{{lifeRecords}}"
+                wx:key="id"
+                record="{{item}}"
+              />
+            </view>
+            
+            <!-- 加载更多提示 -->
+            <view wx:if="{{loading}}" class="home-loading">
+              <t-loading theme="circular" size="32rpx" text="加载中..." />
+            </view>
+            <view wx:if="{{!hasMore && lifeRecords.length > 0}}" class="home-no-more">
+              <text>没有更多了</text>
+            </view>
+            <view wx:if="{{!loading && lifeRecords.length === 0}}" class="home-empty">
+              <text>暂无内容，快来发布第一条生活记录吧~</text>
+            </view>
           </view>
         </t-pull-down-refresh>
       </t-tab-panel>
+      
       <t-tab-panel label="我的关注" value="follow">
-        <view class="home-card-list">
-          <card
-            wx:for="{{focusCardInfo}}"
-            wx:key="index"
-            desc="{{item.desc}}"
-            url="{{item.url}}"
-            tags="{{item.tags}}"
-          />
+        <view class="home-content-wrapper">
+          <view class="home-life-records">
+            <life-record-card
+              wx:for="{{focusRecords}}"
+              wx:key="id"
+              record="{{item}}"
+            />
+          </view>
+          <view wx:if="{{focusRecords.length === 0}}" class="home-empty">
+            <text>还没有关注任何人，快去发现精彩内容吧~</text>
+          </view>
         </view>
       </t-tab-panel>
     </t-tabs>

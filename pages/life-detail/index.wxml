@@ -1,0 +1,144 @@
+<t-navbar title="生活记录详情" left-arrow />
+<view class="life-detail-container">
+  <view wx:if="{{loading}}" class="life-detail-loading">
+    <t-loading theme="circular" size="40rpx" text="加载中..." />
+  </view>
+
+  <view wx:else class="life-detail-content">
+    <!-- 用户信息和内容 -->
+    <view class="life-detail-record">
+      <!-- 用户信息 -->
+      <view class="life-detail-header">
+        <t-avatar image="{{record.avatar}}" size="medium" />
+        <view class="life-detail-user-info">
+          <text class="life-detail-username">{{record.userName}}</text>
+          <text class="life-detail-time">{{record.createdAt}}</text>
+        </view>
+        <view class="life-detail-privacy">
+          <t-icon
+            name="{{record.privacy === 'public' ? 'globe' : record.privacy === 'friends' ? 'user' : 'lock-on'}}"
+            size="32rpx"
+            color="#999"
+          />
+        </view>
+      </view>
+
+      <!-- 内容 -->
+      <view class="life-detail-body">
+        <text class="life-detail-text">{{record.content}}</text>
+
+        <!-- 图片展示 -->
+        <view wx:if="{{record.type === 'image' && record.images && record.images.length > 0}}" class="life-detail-media">
+          <view class="life-detail-images">
+            <t-image
+              wx:for="{{record.images}}"
+              wx:key="index"
+              wx:for-item="img"
+              data-index="{{index}}"
+              src="{{img}}"
+              mode="aspectFill"
+              class="life-detail-image {{record.images.length === 1 ? 'life-detail-image--single' : ''}}"
+              bindtap="previewImage"
+            />
+          </view>
+        </view>
+
+        <!-- 视频展示 -->
+        <view wx:if="{{record.type === 'video' && record.video}}" class="life-detail-media">
+          <video
+            id="life-detail-video"
+            src="{{record.video.url}}"
+            poster="{{record.video.cover}}"
+            controls
+            class="life-detail-video"
+            bindplay="handleVideoPlay"
+          />
+        </view>
+
+        <!-- 位置信息 -->
+        <view wx:if="{{record.location}}" class="life-detail-location">
+          <t-icon name="location" size="32rpx" color="#999" />
+          <text>{{record.location}}</text>
+        </view>
+
+        <!-- 分类和标签 -->
+        <view class="life-detail-meta">
+          <t-tag wx:if="{{record.category}}" size="small" variant="light" theme="primary">{{record.category}}</t-tag>
+          <t-tag
+            wx:for="{{record.tags}}"
+            wx:key="index"
+            wx:for-item="tag"
+            size="small"
+            variant="light"
+            theme="success"
+            class="life-detail-tag"
+          >
+            #{{tag}}
+          </t-tag>
+        </view>
+      </view>
+
+      <!-- 互动统计 -->
+      <view class="life-detail-stats">
+        <text>{{record.likeCount || 0}} 个赞</text>
+        <text>{{record.commentCount || 0}} 条评论</text>
+      </view>
+    </view>
+
+    <!-- 评论列表 -->
+    <view class="life-detail-comments">
+      <view class="life-detail-comments-title">评论 ({{comments.length}})</view>
+      <view wx:if="{{comments.length === 0}}" class="life-detail-comments-empty">
+        <text>暂无评论，快来发表第一条评论吧~</text>
+      </view>
+      <view wx:else class="life-detail-comments-list">
+        <view wx:for="{{comments}}" wx:key="id" wx:for-item="comment" class="life-detail-comment">
+          <t-avatar image="{{comment.avatar}}" size="small" />
+          <view class="life-detail-comment-content">
+            <view class="life-detail-comment-header">
+              <text class="life-detail-comment-username">{{comment.userName}}</text>
+              <text class="life-detail-comment-time">{{comment.createdAt}}</text>
+            </view>
+            <text class="life-detail-comment-text">{{comment.content}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 底部操作栏 -->
+  <view class="life-detail-actions">
+    <view class="life-detail-action-item" bindtap="handleLike">
+      <t-icon
+        name="{{record.isLiked ? 'heart-filled' : 'heart'}}"
+        size="48rpx"
+        color="{{record.isLiked ? '#ff4d4f' : '#666'}}"
+      />
+      <text class="{{record.isLiked ? 'life-detail-action-text--active' : ''}}">点赞</text>
+    </view>
+    <view class="life-detail-action-item" bindtap="showCommentInput">
+      <t-icon name="chat" size="48rpx" color="#666" />
+      <text>评论</text>
+    </view>
+  </view>
+</view>
+
+<!-- 评论输入框 -->
+<t-popup visible="{{showCommentInput}}" placement="bottom" bind:visible-change="hideCommentInput">
+  <view class="life-detail-comment-input">
+    <t-textarea
+      placeholder="输入评论..."
+      maxlength="200"
+      value="{{commentContent}}"
+      bind:input="onCommentInput"
+      indicator
+      autofocus
+    />
+    <view class="life-detail-comment-buttons">
+      <t-button theme="light" size="small" bindtap="hideCommentInput">取消</t-button>
+      <t-button theme="primary" size="small" bindtap="submitComment">发送</t-button>
+    </view>
+  </view>
+</t-popup>
+
+<t-message id="t-message" />

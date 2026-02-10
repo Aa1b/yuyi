@@ -1,26 +1,132 @@
-<t-navbar title="发布动态" left-arrow />
+<t-navbar title="发布生活记录" left-arrow />
 <view class="page">
   <view class="release-container">
-    <view class="upload box">
-      <t-upload t-class="upload-class" media-type="{{['image']}}" files="{{originFiles}}" gridConfig="{{gridConfig}}" bind:success="handleSuccess" bind:remove="handleRemove" max="4" />
-    </view>
-    <view class="desc box">
-      <view class="desc-label">添加描述</view>
-      <t-textarea t-class="desc-class" t-class-textarea="placeholder-class" placeholder="分享你此刻的想法" maxlength="500" disableDefaultPadding="{{true}}" indicator />
-    </view>
-    <view class="taggroup box">
-      <t-cell t-class-title="cell-title-class" t-class-note="cell-note-class" title="添加标签">
-        <block wx:for="{{tags}}" wx:key="index">
-          <t-check-tag t-class="tag-class" size="medium" default-checked="{{index===0}}" variant="dark" content="#{{item}}" slot="note" />
-        </block>
+    <!-- 媒体类型选择 -->
+    <view class="media-type box">
+      <t-cell title="内容类型">
+        <t-radio-group value="{{mediaType}}" bind:change="onMediaTypeChange" slot="note">
+          <t-radio value="image" label="图文" />
+          <t-radio value="video" label="视频" />
+        </t-radio-group>
       </t-cell>
     </view>
-    <view class="location box">
-      <t-cell title="所在位置" hover arrow leftIcon="location" bindtap="gotoMap" />
+
+    <!-- 图片上传 -->
+    <view class="upload box" wx:if="{{mediaType === 'image'}}">
+      <t-upload
+        t-class="upload-class"
+        media-type="{{['image']}}"
+        files="{{imageFiles}}"
+        gridConfig="{{imageGridConfig}}"
+        bind:success="handleImageSuccess"
+        bind:remove="handleImageRemove"
+        max="{{imageConfig.count}}"
+      />
     </view>
+
+    <!-- 视频上传 -->
+    <view class="upload box" wx:if="{{mediaType === 'video'}}">
+      <t-upload
+        t-class="upload-class"
+        media-type="{{['video']}}"
+        files="{{videoFile ? [videoFile] : []}}"
+        bind:success="handleVideoSuccess"
+        bind:remove="handleVideoRemove"
+        max="1"
+      />
+    </view>
+
+    <!-- 内容描述 -->
+    <view class="desc box">
+      <view class="desc-label">添加描述</view>
+      <t-textarea
+        t-class="desc-class"
+        t-class-textarea="placeholder-class"
+        placeholder="分享你此刻的想法..."
+        maxlength="500"
+        value="{{content}}"
+        bind:input="onContentInput"
+        disableDefaultPadding="{{true}}"
+        indicator
+      />
+    </view>
+
+    <!-- 隐私设置 -->
+    <view class="privacy box">
+      <t-cell title="隐私设置">
+        <t-radio-group value="{{privacy}}" bind:change="onPrivacyChange" slot="note">
+          <t-radio wx:for="{{privacyOptions}}" wx:key="value" value="{{item.value}}" label="{{item.label}}" />
+        </t-radio-group>
+      </t-cell>
+    </view>
+
+    <!-- 分类选择 -->
+    <view class="category box">
+      <t-cell title="分类" arrow value="{{category || '请选择分类'}}" bindtap="showCategoryPicker" />
+      <t-picker
+        title="选择分类"
+        value="{{categoryIndex}}"
+        visible="{{categoryVisible}}"
+        bind:change="onCategoryChange"
+        bind:cancel="hideCategoryPicker"
+        bind:close="hideCategoryPicker"
+      >
+        <t-picker-item options="{{categories}}" />
+      </t-picker>
+    </view>
+
+    <!-- 标签选择 -->
+    <view class="taggroup box">
+      <t-cell title="添加标签">
+        <view class="tag-list" slot="note">
+          <t-check-tag
+            wx:for="{{allTags}}"
+            wx:key="index"
+            wx:for-item="tag"
+            wx:for-index="tagIndex"
+            data-tag="{{tag}}"
+            t-class="tag-class"
+            size="medium"
+            checked="{{selectedTags.indexOf(tag) > -1}}"
+            variant="{{selectedTags.indexOf(tag) > -1 ? 'dark' : 'light'}}"
+            content="#{{tag}}"
+            bind:change="onTagToggle"
+          />
+        </view>
+      </t-cell>
+    </view>
+
+    <!-- 位置信息 -->
+    <view class="location box">
+      <t-cell
+        title="所在位置"
+        hover
+        arrow
+        leftIcon="location"
+        value="{{location || '添加位置（可选）'}}"
+        bindtap="gotoMap"
+      />
+    </view>
+
+    <!-- 操作按钮 -->
     <view class="btngroup box">
-      <t-button t-class="btn-class" theme="light" icon="file-copy" content="存草稿" size="large" bindtap="saveDraft"></t-button>
-      <t-button t-class="btn-class" theme="primary" icon="upload" content="发布" size="large" bindtap="release"></t-button>
+      <t-button
+        t-class="btn-class"
+        theme="light"
+        icon="file-copy"
+        content="存草稿"
+        size="large"
+        bindtap="saveDraft"
+      />
+      <t-button
+        t-class="btn-class"
+        theme="primary"
+        icon="upload"
+        content="发布"
+        size="large"
+        bindtap="release"
+      />
     </view>
   </view>
 </view>
+<t-message id="t-message" />

@@ -6,6 +6,7 @@ Page({
 
   data: {
     isLoad: false,
+    isLoggedIn: false,
     service: [],
     personalInfo: {},
     gridList: [
@@ -36,7 +37,7 @@ Page({
     ],
 
     settingList: [
-      { name: '联系客服', icon: 'service', type: 'service' },
+      { name: '联系客服', icon: 'service', type: 'service', url: '' },
       { name: '设置', icon: 'setting', type: 'setting', url: '/pages/setting/index' },
     ],
   },
@@ -46,27 +47,42 @@ Page({
   },
 
   async onShow() {
-    const Token = wx.getStorageSync('access_token');
-    const personalInfo = await this.getPersonalInfo();
-
-    if (Token) {
-      this.setData({
-        isLoad: true,
-        personalInfo,
-      });
+    const token = wx.getStorageSync('access_token');
+    if (!token) {
+      this.setData({ isLoad: true, personalInfo: {}, isLoggedIn: false });
+      return;
     }
+    const personalInfo = await this.getPersonalInfo();
+    this.setData({
+      isLoad: true,
+      personalInfo: personalInfo || {},
+      isLoggedIn: !!(personalInfo && personalInfo.name),
+    });
   },
 
   getServiceList() {
     request('/api/getServiceList').then((res) => {
-      const { service } = res.data.data;
+      const raw = res?.data ?? [];
+      const list = Array.isArray(raw) ? raw : (raw.service ?? []);
+      const service = list.map(item => ({ ...item, url: item.url != null ? String(item.url) : '' }));
       this.setData({ service });
-    });
+    }).catch(() => {});
   },
 
   async getPersonalInfo() {
-    const info = await request('/api/genPersonalInfo').then((res) => res.data.data);
-    return info;
+    try {
+      const res = await request('/auth/profile');
+      const p = res?.data;
+      if (!p) return null;
+      return {
+        name: p.nickname || '用户',
+        image: p.avatar || '',
+        star: p.star || '',
+        city: p.city || '',
+      };
+    } catch (e) {
+      return null;
+    }
   },
 
   onLogin(e) {

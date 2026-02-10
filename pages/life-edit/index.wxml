@@ -1,0 +1,121 @@
+<t-navbar title="编辑生活记录" left-arrow />
+<view class="life-edit-container">
+  <view wx:if="{{loading}}" class="life-edit-loading">
+    <t-loading theme="circular" size="40rpx" text="加载中..." />
+  </view>
+
+  <view wx:else class="life-edit-content">
+    <!-- 内容描述 -->
+    <view class="desc box">
+      <view class="desc-label">添加描述</view>
+      <t-textarea
+        t-class="desc-class"
+        placeholder="分享你此刻的想法..."
+        maxlength="500"
+        value="{{content}}"
+        bind:input="onContentInput"
+        disableDefaultPadding="{{true}}"
+        indicator
+      />
+    </view>
+
+    <!-- 图片展示（只读） -->
+    <view wx:if="{{mediaType === 'image' && imageFiles.length > 0}}" class="upload box">
+      <view class="image-list">
+        <view wx:for="{{imageFiles}}" wx:key="index" class="image-item">
+          <t-image src="{{item.url}}" mode="aspectFill" class="image-preview" />
+          <view class="image-remove" data-index="{{index}}" bindtap="handleImageRemove">
+            <t-icon name="close" size="32rpx" color="#fff" />
+          </view>
+        </view>
+      </view>
+      <view class="upload-tip">编辑模式下可删除图片，暂不支持新增</view>
+    </view>
+
+    <!-- 视频展示（只读） -->
+    <view wx:if="{{mediaType === 'video' && videoFile}}" class="upload box">
+      <view class="video-preview">
+        <video
+          src="{{videoFile.url}}"
+          poster="{{videoFile.cover}}"
+          controls
+          class="video-player"
+        />
+        <view class="video-remove" bindtap="handleVideoRemove">
+          <t-icon name="close" size="32rpx" color="#fff" />
+        </view>
+      </view>
+      <view class="upload-tip">编辑模式下暂不支持更换视频</view>
+    </view>
+
+    <!-- 隐私设置 -->
+    <view class="privacy box">
+      <t-cell title="隐私设置">
+        <t-radio-group value="{{privacy}}" bind:change="onPrivacyChange" slot="note">
+          <t-radio wx:for="{{privacyOptions}}" wx:key="value" value="{{item.value}}" label="{{item.label}}" />
+        </t-radio-group>
+      </t-cell>
+    </view>
+
+    <!-- 分类选择 -->
+    <view class="category box">
+      <t-cell title="分类" arrow value="{{category || '请选择分类'}}" bindtap="showCategoryPicker" />
+      <t-picker
+        title="选择分类"
+        value="{{categoryIndex}}"
+        visible="{{categoryVisible}}"
+        bind:change="onCategoryChange"
+        bind:cancel="hideCategoryPicker"
+        bind:close="hideCategoryPicker"
+      >
+        <t-picker-item options="{{categories}}" />
+      </t-picker>
+    </view>
+
+    <!-- 标签选择 -->
+    <view class="taggroup box">
+      <t-cell title="添加标签">
+        <view class="tag-list" slot="note">
+          <t-check-tag
+            wx:for="{{allTags}}"
+            wx:key="index"
+            wx:for-item="tag"
+            data-tag="{{tag}}"
+            t-class="tag-class"
+            size="medium"
+            checked="{{selectedTags.indexOf(tag) > -1}}"
+            variant="{{selectedTags.indexOf(tag) > -1 ? 'dark' : 'light'}}"
+            content="#{{tag}}"
+            bind:change="onTagToggle"
+          />
+        </view>
+      </t-cell>
+    </view>
+
+    <!-- 位置信息 -->
+    <view class="location box">
+      <t-cell
+        title="所在位置"
+        hover
+        arrow
+        leftIcon="location"
+        value="{{location || '添加位置（可选）'}}"
+        bindtap="gotoMap"
+      />
+    </view>
+
+    <!-- 操作按钮 -->
+    <view class="btngroup box">
+      <t-button
+        t-class="btn-class"
+        theme="primary"
+        icon="check"
+        content="保存"
+        size="large"
+        bindtap="updateRecord"
+      />
+    </view>
+  </view>
+</view>
+
+<t-message id="t-message" />

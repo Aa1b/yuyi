@@ -1,32 +1,129 @@
-/* pages/message/message.wxss */
-page {
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-  height: 100vh;
-  padding-bottom: calc(env(safe-area-inset-bottom) + 112rpx);
+@import '/variable.less';
+
+.message-container {
+  min-height: 100vh;
+  background: @bg-color;
+  padding-bottom: 32rpx;
 }
 
-.nav-bar {
-  border-bottom: 1rpx solid #e7e7e7;
+.message-filters {
+  background: @bg-color-white;
+  margin-bottom: 16rpx;
+}
+
+.message-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 16rpx 32rpx;
+  background: @bg-color-white;
+  margin-bottom: 16rpx;
 }
 
 .message-list {
-  height: 0;
-  flex-grow: 1;
+  padding: 0 24rpx;
 }
 
-.avatar {
-  border-radius: 50% !important;
+.message-empty {
+  padding: 120rpx 32rpx;
 }
 
-.content > view {
-  width: 560rpx;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.notification-list {
+  display: flex;
+  flex-direction: column;
 }
 
-.content.unread > view {
-  width: 510rpx;
+.notification-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 24rpx;
+  margin-bottom: 16rpx;
+  background: @bg-color-white;
+  border-radius: 16rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+  position: relative;
+
+  &--unread {
+    background: #f0f7ff;
+    border-left: 4rpx solid @brand7-normal;
+  }
+}
+
+.notification-content {
+  display: flex;
+  flex: 1;
+  align-items: flex-start;
+}
+
+.notification-info {
+  flex: 1;
+  margin-left: 16rpx;
+  display: flex;
+  flex-direction: column;
+}
+
+.notification-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8rpx;
+}
+
+.notification-user {
+  font-size: @font-size-small;
+  font-weight: 500;
+  color: @text-color-primary;
+  margin-right: 8rpx;
+}
+
+.notification-type {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+  font-size: @font-size-small;
+  color: @text-color-secondary;
+}
+
+.notification-text {
+  font-size: @font-size-small;
+  color: @text-color-primary;
+  line-height: 1.6;
+  margin-bottom: 8rpx;
+  word-break: break-all;
+}
+
+.notification-time {
+  font-size: @font-size-mini;
+  color: @text-color-placeholder;
+}
+
+.notification-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  margin-left: 16rpx;
+}
+
+.notification-mark-read,
+.notification-delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  background: #f5f5f5;
+}
+
+.message-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40rpx 0;
+}
+
+.message-no-more {
+  text-align: center;
+  padding: 40rpx 0;
+  color: @text-color-placeholder;
+  font-size: @font-size-small;
 }

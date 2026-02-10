@@ -158,14 +158,17 @@ Page({
 
   /**
    * 提交搜索框内容
-   * 后期需要增加跳转和后端请求接口
-   * @returns {Promise<void>}
    */
-  handleSubmit(e) {
+  async handleSubmit(e) {
     const { value } = e.detail;
     if (value.length === 0) return;
 
     this.setHistoryWords(value);
+    
+    // 跳转到搜索结果页面
+    wx.navigateTo({
+      url: `/pages/search-result/index?keyword=${encodeURIComponent(value)}`,
+    });
   },
 
   /**

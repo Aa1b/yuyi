@@ -1,0 +1,39 @@
+<t-navbar title="注册" left-arrow bind:go-back="onGoBack" />
+<view class="page register">
+  <view class="register__form">
+    <t-input
+      label="手机号"
+      placeholder="请输入手机号"
+      type="number"
+      value="{{phone}}"
+      bindchange="onPhoneInput"
+    />
+    <t-input
+      label="密码"
+      placeholder="至少6位密码"
+      type="password"
+      value="{{password}}"
+      bindchange="onPasswordInput"
+    />
+    <t-input
+      label="确认密码"
+      placeholder="再次输入密码"
+      type="password"
+      value="{{confirmPassword}}"
+      bindchange="onConfirmPasswordInput"
+    />
+    <t-input
+      label="昵称"
+      placeholder="选填"
+      value="{{nickname}}"
+      bindchange="onNicknameInput"
+    />
+    <t-button theme="primary" size="large" block disabled="{{!canSubmit}}" bindtap="submit">
+      注册
+    </t-button>
+    <view class="register__link">
+      <text>已有账号？</text>
+      <t-link theme="primary" size="small" bindtap="onGoBack">去登录</t-link>
+    </view>
+  </view>
+</view>

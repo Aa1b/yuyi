@@ -8,7 +8,12 @@
     "t-pull-down-refresh": "tdesign-miniprogram/pull-down-refresh/pull-down-refresh",
     "t-message": "tdesign-miniprogram/message/message",
     "t-button": "tdesign-miniprogram/button/button",
+    "t-check-tag": "tdesign-miniprogram/check-tag/check-tag",
+    "t-loading": "tdesign-miniprogram/loading/loading",
     "nav": "/components/nav",
-    "card": "/components/card"
-  }
+    "card": "/components/card",
+    "life-record-card": "/components/life-record-card"
+  },
+  "enablePullDownRefresh": false,
+  "onReachBottomDistance": 50
 }

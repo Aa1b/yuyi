@@ -14,12 +14,18 @@ const formatTime = (date) => {
   return `${[year, month, day].map(formatNumber).join('/')} ${[hour, minute, second].map(formatNumber).join(':')}`;
 };
 
-// 复制到本地临时路径，方便预览
+// 小程序环境：静态资源直接返回路径，不复制（避免 copyFileSync 在部分环境报错）
 const getLocalUrl = (path, name) => {
-  const fs = wx.getFileSystemManager();
-  const tempFileName = `${wx.env.USER_DATA_PATH}/${name}`;
-  fs.copyFileSync(path, tempFileName);
-  return tempFileName;
+  if (typeof wx === 'undefined') return path;
+  if (!path || path.startsWith('/static') || path.startsWith('http')) return path;
+  try {
+    const fs = wx.getFileSystemManager();
+    const tempFileName = `${wx.env.USER_DATA_PATH}/${name || 'temp'}`;
+    fs.copyFileSync(path, tempFileName);
+    return tempFileName;
+  } catch (e) {
+    return path;
+  }
 };
 
 module.exports = {

@@ -1,5 +1,3 @@
-import { getLocalUrl } from '~/utils/util.js';
-
 export default {
   path: '/api/genPersonalInfo',
   data: {
@@ -14,16 +12,8 @@ export default {
       address: ['440000', '440300'],
       brief: '在你身边，为你设计',
       photos: [
-        {
-          url: getLocalUrl('/static/img_td.png', 'uploaded1.png'),
-          name: 'uploaded1.png',
-          type: 'image',
-        },
-        {
-          url: getLocalUrl('/static/img_td.png', 'uploaded2.png'),
-          name: 'uploaded2.png',
-          type: 'image',
-        },
+        { url: '/static/img_td.png', name: 'uploaded1.png', type: 'image' },
+        { url: '/static/img_td.png', name: 'uploaded2.png', type: 'image' },
       ],
     },
   },

@@ -6,6 +6,11 @@
     "t-textarea": "tdesign-miniprogram/textarea/textarea",
     "t-cell": "tdesign-miniprogram/cell/cell",
     "t-check-tag": "tdesign-miniprogram/check-tag/check-tag",
-    "t-button": "tdesign-miniprogram/button/button"
+    "t-button": "tdesign-miniprogram/button/button",
+    "t-radio": "tdesign-miniprogram/radio/radio",
+    "t-radio-group": "tdesign-miniprogram/radio-group/radio-group",
+    "t-picker": "tdesign-miniprogram/picker/picker",
+    "t-picker-item": "tdesign-miniprogram/picker-item/picker-item",
+    "t-message": "tdesign-miniprogram/message/message"
   }
 }

@@ -64,22 +64,36 @@ Page({
     this.setData({ isPasswordLogin: !this.data.isPasswordLogin, isSubmit: false });
   },
 
+  goRegister() {
+    wx.navigateTo({ url: '/pages/login/register' });
+  },
+
   async login() {
-    if (this.data.isPasswordLogin) {
-      const res = await request('/login/postPasswordLogin', 'post', { data: this.data.passwordInfo });
-      if (res.success) {
-        await wx.setStorageSync('access_token', res.data.token);
-        wx.switchTab({
-          url: `/pages/my/index`,
+    const { passwordInfo, isPasswordLogin } = this.data;
+    if (isPasswordLogin) {
+      // 调用后端账号密码登录
+      try {
+        const res = await request('/auth/password-login', 'POST', {
+          account: (passwordInfo.account || '').trim(),
+          password: passwordInfo.password || '',
         });
+        if (res.code === 200 && res.data && res.data.token) {
+          wx.setStorageSync('access_token', res.data.token);
+          if (res.data.user) {
+            wx.setStorageSync('user_info', res.data.user);
+          }
+          wx.showToast({ title: '登录成功', icon: 'success' });
+          wx.switchTab({ url: '/pages/my/index' });
+        } else {
+          wx.showToast({ title: res.message || '登录失败', icon: 'none' });
+        }
+      } catch (err) {
+        const msg = (err && err.message) || (err && err.code === 401 && '账号或密码错误') || '网络错误，请重试';
+        wx.showToast({ title: msg, icon: 'none' });
       }
-    } else {
-      const res = await request('/login/getSendMessage', 'get');
-      if (res.success) {
-        wx.navigateTo({
-          url: `/pages/loginCode/loginCode?phoneNumber=${this.data.phoneNumber}`,
-        });
-      }
+      return;
     }
+    // 验证码登录：暂引导使用密码登录
+    wx.showToast({ title: '请使用密码登录', icon: 'none' });
   },
 });

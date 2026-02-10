@@ -49,15 +49,17 @@ Page({
 
   getPersonalInfo() {
     request('/api/genPersonalInfo').then((res) => {
+      const personInfo = res?.data ?? null;
+      if (!personInfo) return;
       this.setData(
-        {
-          personInfo: res.data.data,
-        },
+        { personInfo },
         () => {
-          const { personInfo } = this.data;
-          this.setData({
-            addressText: `${areaList.provinces[personInfo.address[0]]} ${areaList.cities[personInfo.address[1]]}`,
-          });
+          const { personInfo: p } = this.data;
+          if (p && Array.isArray(p.address) && p.address.length >= 2) {
+            this.setData({
+              addressText: `${areaList.provinces[p.address[0]] || ''} ${areaList.cities[p.address[1]] || ''}`,
+            });
+          }
         },
       );
     });

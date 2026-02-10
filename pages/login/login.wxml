@@ -47,8 +47,8 @@
     </view>
 
     <view class="login__password--forget" wx:if="{{isPasswordLogin}}">
-      <text>忘记密码？</text>
-      <t-link theme="primary" size="small">找回密码</t-link>
+      <text>没有账号？</text>
+      <t-link theme="primary" size="small" bindtap="goRegister">去注册</t-link>
     </view>
   </view>
 

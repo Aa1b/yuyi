@@ -5,7 +5,7 @@
   <nav title-text="我的" />
   <view class="my-info">
     <t-cell-group>
-      <t-cell wx:if="{{isLoad}}" bordered="{{false}}">
+      <t-cell wx:if="{{isLoad && isLoggedIn}}" bordered="{{false}}">
         <t-avatar image="{{personalInfo.image}}" slot="left-icon" size="large" />
         <view class="my-info__person" slot="description">
           <view class="name">{{personalInfo.name}}</view>
@@ -17,7 +17,7 @@
         <t-icon slot="right-icon" name="edit" size="40rpx" color="#000000e6" bindtap="onNavigateTo" />
       </t-cell>
       <t-cell
-        wx:if="{{!isLoad}}"
+        wx:if="{{isLoad && !isLoggedIn}}"
         title="请先登录/注册"
         bordered="{{false}}"
         t-class-title="cell-class-title"
@@ -51,7 +51,7 @@
         wx:key="item"
         text="{{item.name}}"
         image="{{item.image}}"
-        url="{{item.url}}"
+        url="{{item.url || ''}}"
         data-data="{{item}}"
         bindclick="onEleClick"
       />
@@ -64,7 +64,7 @@
       wx:for-item="item"
       wx:key="type"
       title="{{item.name}}"
-      url="{{item.url}}"
+      url="{{item.url || ''}}"
       leftIcon="{{item.icon}}"
       hover
       arrow

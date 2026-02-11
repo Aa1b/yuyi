@@ -109,8 +109,8 @@ exports.getFollowing = async (req, res, next) => {
     const userId = req.user.id;
     const { page = 1, pageSize = 20 } = req.query;
 
-    const limit = parseInt(pageSize);
-    const offset = (parseInt(page) - 1) * limit;
+    const limit = Math.max(1, Math.min(100, parseInt(pageSize, 10) || 20));
+    const offset = Math.max(0, ((parseInt(page, 10) || 1) - 1) * limit);
 
     const [follows] = await pool.execute(
       `SELECT 
@@ -154,8 +154,8 @@ exports.getFollowers = async (req, res, next) => {
     const userId = req.user.id;
     const { page = 1, pageSize = 20 } = req.query;
 
-    const limit = parseInt(pageSize);
-    const offset = (parseInt(page) - 1) * limit;
+    const limit = Math.max(1, Math.min(100, parseInt(pageSize, 10) || 20));
+    const offset = Math.max(0, ((parseInt(page, 10) || 1) - 1) * limit);
 
     const [followers] = await pool.execute(
       `SELECT 

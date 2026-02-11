@@ -8,8 +8,8 @@ exports.getNotifications = async (req, res, next) => {
     const userId = req.user.id;
     const { page = 1, pageSize = 20, type = 'all' } = req.query;
 
-    const limit = parseInt(pageSize);
-    const offset = (parseInt(page) - 1) * limit;
+    const limit = Math.max(1, Math.min(100, parseInt(pageSize, 10) || 20));
+    const offset = Math.max(0, ((parseInt(page, 10) || 1) - 1) * limit);
 
     let whereCondition = 'n.user_id = ?';
     const queryParams = [userId];

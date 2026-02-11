@@ -749,8 +749,8 @@ exports.getComments = async (req, res, next) => {
       });
     }
 
-    const limit = parseInt(pageSize);
-    const offset = (parseInt(page) - 1) * limit;
+    const limit = Math.max(1, Math.min(100, parseInt(pageSize, 10) || 10));
+    const offset = Math.max(0, ((parseInt(page, 10) || 1) - 1) * limit);
 
     const [comments] = await pool.execute(
       `SELECT 
@@ -890,7 +890,8 @@ exports.getCategories = async (req, res, next) => {
 exports.getTags = async (req, res, next) => {
   try {
     const { limit = 10 } = req.query;
-    const cacheKey = `life_tags_${limit}`;
+    const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 10));
+    const cacheKey = `life_tags_${limitNum}`;
     
     // 尝试从缓存获取
     let tagList = cache.get(cacheKey);
@@ -899,7 +900,7 @@ exports.getTags = async (req, res, next) => {
       // 从数据库查询
       const [tags] = await pool.execute(
         'SELECT name, count FROM life_tags WHERE count > 0 ORDER BY count DESC, name ASC LIMIT ?',
-        [parseInt(limit)]
+        [limitNum]
       );
 
       tagList = tags.map(t => ({

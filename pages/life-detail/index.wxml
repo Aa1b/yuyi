@@ -5,6 +5,9 @@
   </view>
 
   <view wx:else class="life-detail-content">
+    <view wx:if="{{record.publishStatus === 'rejected' && record.rejectedReason}}" class="life-detail-rejected-tip">
+      <text class="life-detail-rejected-label">已驳回：</text><text class="life-detail-rejected-text">{{record.rejectedReason}}</text>
+    </view>
     <!-- 用户信息和内容 -->
     <view class="life-detail-record">
       <!-- 用户信息 -->

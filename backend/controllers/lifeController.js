@@ -17,8 +17,8 @@ const checkRecordPermission = async (recordId, userId = null) => {
   const record = records[0];
   const pubStatus = record.publish_status;
 
-  // 草稿或审核中：仅作者本人可查看
-  if (pubStatus === 'draft' || pubStatus === 'pending') {
+  // 草稿、审核中、已驳回：仅作者本人可查看
+  if (pubStatus === 'draft' || pubStatus === 'pending' || pubStatus === 'rejected') {
     if (!userId || record.user_id !== userId) {
       return { allowed: false, record };
     }
@@ -141,7 +141,7 @@ exports.getList = async (req, res, next) => {
     let total;
     try {
       const [rows] = await pool.execute(
-        `SELECT r.id, r.user_id as userId, u.nickname as userName, u.avatar, r.content, r.type, r.privacy, r.category, r.location, r.like_count as likeCount, r.comment_count as commentCount, r.created_at as createdAt, r.publish_status as publishStatus FROM life_records r LEFT JOIN users u ON r.user_id = u.id ${whereClause} ORDER BY r.created_at DESC LIMIT ? OFFSET ?`,
+        `SELECT r.id, r.user_id as userId, u.nickname as userName, u.avatar, r.content, r.type, r.privacy, r.category, r.location, r.like_count as likeCount, r.comment_count as commentCount, r.created_at as createdAt, r.publish_status as publishStatus, r.rejected_reason as rejectedReason FROM life_records r LEFT JOIN users u ON r.user_id = u.id ${whereClause} ORDER BY r.created_at DESC LIMIT ? OFFSET ?`,
         listParams
       );
       records = rows;
@@ -149,7 +149,7 @@ exports.getList = async (req, res, next) => {
       total = countResult[0].total;
     } catch (listErr) {
       const errMsg = String(listErr?.message || listErr?.sqlMessage || '');
-      if (errMsg.includes('publish_status')) {
+      if (errMsg.includes('publish_status') || errMsg.includes('rejected_reason')) {
         const whereNoPub = whereConditions.filter(c => !c.includes('publish_status'));
         const whereFallback = whereNoPub.length ? `WHERE ${whereNoPub.join(' AND ')}` : '';
         const paramsFallback = queryParams.filter((_, idx) => !whereConditions[idx].includes('publish_status'));
@@ -157,7 +157,7 @@ exports.getList = async (req, res, next) => {
           `SELECT r.id, r.user_id as userId, u.nickname as userName, u.avatar, r.content, r.type, r.privacy, r.category, r.location, r.like_count as likeCount, r.comment_count as commentCount, r.created_at as createdAt FROM life_records r LEFT JOIN users u ON r.user_id = u.id ${whereFallback} ORDER BY r.created_at DESC LIMIT ? OFFSET ?`,
           [...paramsFallback, limit, offset]
         );
-        records = rows.map(r => ({ ...r, publishStatus: 'published' }));
+        records = rows.map(r => ({ ...r, publishStatus: 'published', rejectedReason: null }));
         const [cr] = await pool.execute(`SELECT COUNT(*) as total FROM life_records r ${whereFallback}`, paramsFallback);
         total = cr[0].total;
       } else {
@@ -265,7 +265,8 @@ exports.getDetail = async (req, res, next) => {
         r.like_count as likeCount,
         r.comment_count as commentCount,
         r.created_at as createdAt,
-        r.publish_status as publishStatus
+        r.publish_status as publishStatus,
+        r.rejected_reason as rejectedReason
       FROM life_records r
       LEFT JOIN users u ON r.user_id = u.id
       WHERE r.id = ? AND r.status = 1`,
@@ -377,7 +378,10 @@ exports.createRecord = async (req, res, next) => {
       });
     }
 
-    const pubStatus = ['draft', 'pending', 'published'].includes(publishStatus) ? publishStatus : 'published';
+    let pubStatus = ['draft', 'pending', 'published'].includes(publishStatus) ? publishStatus : 'pending';
+    if (pubStatus === 'published' && !req.user.is_admin) {
+      pubStatus = 'pending';
+    }
 
     // 创建记录
     const [result] = await pool.execute(
@@ -516,8 +520,10 @@ exports.updateRecord = async (req, res, next) => {
       updateValues.push(location || null);
     }
     if (publishStatus !== undefined && ['draft', 'pending', 'published'].includes(publishStatus)) {
+      let ps = publishStatus;
+      if (ps === 'published' && !req.user.is_admin) ps = 'pending';
       updateFields.push('publish_status = ?');
-      updateValues.push(publishStatus);
+      updateValues.push(ps);
     }
 
     if (updateFields.length > 0) {

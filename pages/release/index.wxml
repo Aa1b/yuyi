@@ -126,6 +126,15 @@
         size="large"
         bindtap="release"
       />
+      <t-button
+        wx:if="{{isAdmin}}"
+        t-class="btn-class"
+        theme="success"
+        icon="check-circle"
+        content="直接发布（免审）"
+        size="large"
+        bindtap="releaseDirect"
+      />
     </view>
   </view>
 </view>

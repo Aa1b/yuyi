@@ -21,9 +21,9 @@ const authenticate = async (req, res, next) => {
     // 验证 token
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret_key');
 
-    // 查询用户信息
+    // 查询用户信息（含是否管理员）
     const [users] = await pool.execute(
-      'SELECT id, openid, nickname, avatar FROM users WHERE id = ?',
+      'SELECT id, openid, nickname, avatar, is_admin FROM users WHERE id = ?',
       [decoded.userId]
     );
 
@@ -71,7 +71,7 @@ const optionalAuth = async (req, res, next) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret_key');
       
       const [users] = await pool.execute(
-        'SELECT id, openid, nickname, avatar FROM users WHERE id = ?',
+        'SELECT id, openid, nickname, avatar, is_admin FROM users WHERE id = ?',
         [decoded.userId]
       );
 
@@ -87,7 +87,21 @@ const optionalAuth = async (req, res, next) => {
   }
 };
 
+/**
+ * 要求当前用户为管理员（需在 authenticate 之后使用）
+ */
+const requireAdmin = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ code: 401, message: '请先登录' });
+  }
+  if (!req.user.is_admin) {
+    return res.status(403).json({ code: 403, message: '无权限，仅管理员可操作' });
+  }
+  next();
+};
+
 module.exports = {
   authenticate,
   optionalAuth,
+  requireAdmin,
 };

@@ -45,12 +45,22 @@ Page({
     
     // 位置
     location: '',
+    isAdmin: false,
   },
   
   async onLoad() {
-    // 加载分类和标签数据
     await this.loadCategories();
     await this.loadTags();
+    await this.checkAdmin();
+  },
+
+  async checkAdmin() {
+    try {
+      const res = await request('/auth/profile');
+      this.setData({ isAdmin: !!res?.data?.isAdmin });
+    } catch (e) {
+      this.setData({ isAdmin: false });
+    }
   },
   
   // 加载分类
@@ -314,15 +324,20 @@ Page({
     }
   },
   
-  // 发布
+  // 发布（提交审核，通过后才会在首页展示）
   async release() {
-    if (!this.validateForm()) {
-      return;
-    }
-    
+    if (!this.validateForm()) return;
+    await this.submitPublish('pending', '提交中...', '已提交审核，通过后将在首页展示', '/pages/my-life-records/index?publishStatus=pending');
+  },
+
+  // 直接发布（免审，仅管理员可用）
+  async releaseDirect() {
+    if (!this.validateForm()) return;
+    await this.submitPublish('published', '发布中...', '已发布', '/pages/home/index?oper=release');
+  },
+
+  async submitPublish(publishStatus, loadingText, successText, navigateUrl) {
     const { content, mediaType, imageFiles, videoFile, privacy, category, selectedTags, location } = this.data;
-    
-    // 准备数据（发布为已发布）
     const recordData = {
       content: content.trim(),
       type: mediaType,
@@ -336,53 +351,29 @@ Page({
       category,
       tags: selectedTags,
       location: location || null,
-      publishStatus: 'published',
+      publishStatus,
     };
-    
     try {
-      wx.showLoading({
-        title: '发布中...',
-        mask: true,
-      });
-      
-      // 如果有媒体文件需要上传，先上传到云存储
+      wx.showLoading({ title: loadingText, mask: true });
       if (mediaType === 'image' && imageFiles.length > 0) {
         recordData.images = await this.uploadImages(imageFiles);
       } else if (mediaType === 'video' && videoFile) {
-        const uploadedVideo = await this.uploadVideo(videoFile);
-        recordData.video = uploadedVideo;
+        recordData.video = await this.uploadVideo(videoFile);
       }
-      
-      // 提交到服务器
       await request('/life/record', 'POST', recordData);
-      
       wx.hideLoading();
-      
-      // 清除草稿
       wx.removeStorageSync('life_record_draft');
-      
-      Message.success({
-        context: this,
-        offset: [120, 32],
-        duration: 2000,
-        content: '发布成功',
-      });
-      
-      // 延迟跳转，让用户看到成功提示
+      Message.success({ context: this, offset: [120, 32], duration: 2000, content: successText });
       setTimeout(() => {
-        wx.reLaunch({
-          url: '/pages/home/index?oper=release',
-        });
+        if (navigateUrl.startsWith('/pages/home')) {
+          wx.reLaunch({ url: navigateUrl });
+        } else {
+          wx.navigateTo({ url: navigateUrl });
+        }
       }, 1500);
     } catch (error) {
       wx.hideLoading();
-      console.error('发布失败', error);
-      Message.error({
-        context: this,
-        offset: [120, 32],
-        duration: 2000,
-        content: '发布失败，请重试',
-      });
+      Message.error({ context: this, offset: [120, 32], duration: 2000, content: '提交失败，请重试' });
     }
   },
   

@@ -256,7 +256,7 @@ exports.getProfile = async (req, res, next) => {
     const userId = req.user.id;
 
     const [users] = await pool.execute(
-      'SELECT id, openid, nickname, avatar, gender, phone, created_at FROM users WHERE id = ?',
+      'SELECT id, openid, nickname, avatar, gender, phone, is_admin, created_at FROM users WHERE id = ?',
       [userId]
     );
 
@@ -267,10 +267,12 @@ exports.getProfile = async (req, res, next) => {
       });
     }
 
+    const profile = { ...users[0], isAdmin: !!users[0].is_admin };
+    delete profile.is_admin;
     res.json({
       code: 200,
       message: '获取成功',
-      data: users[0],
+      data: profile,
     });
   } catch (error) {
     next(error);

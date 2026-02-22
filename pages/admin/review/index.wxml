@@ -1,0 +1,37 @@
+<t-navbar title="审核管理" left-arrow />
+<view class="admin-review-container">
+  <view class="admin-review-list">
+    <view wx:for="{{list}}" wx:key="id" wx:for-item="item" class="admin-review-item">
+      <view class="admin-review-card-wrap" bindtap="onViewDetail" data-id="{{item.id}}">
+        <life-record-card record="{{item}}" />
+      </view>
+      <view class="admin-review-meta">由 {{item.userName}} 提交 · {{item.createdAt}}</view>
+      <view class="admin-review-actions">
+        <t-button theme="primary" size="small" data-id="{{item.id}}" bindtap="onApprove">通过</t-button>
+        <t-button theme="danger" size="small" variant="outline" data-id="{{item.id}}" bindtap="onReject">驳回</t-button>
+      </view>
+    </view>
+  </view>
+  <view wx:if="{{loading}}" class="admin-review-loading">
+    <t-loading theme="circular" size="32rpx" text="加载中..." />
+  </view>
+  <view wx:if="{{!loading && list.length === 0}}" class="admin-review-empty">
+    <t-empty icon="file-paste" description="暂无待审核记录" />
+  </view>
+</view>
+
+<t-dialog
+  visible="{{rejectVisible}}"
+  title="驳回原因"
+  confirm-btn="确定驳回"
+  cancel-btn="取消"
+  bind:confirm="confirmReject"
+  bind:cancel="cancelReject"
+>
+  <t-input
+    placeholder="选填，填写后作者可见"
+    value="{{rejectReason}}"
+    bind:change="onRejectReasonChange"
+  />
+</t-dialog>
+<t-message id="t-message" />

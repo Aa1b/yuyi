@@ -29,6 +29,9 @@
       <view bindtap="viewDetail" data-id="{{record.id}}">
         <life-record-card record="{{record}}" />
       </view>
+      <view wx:if="{{record.rejectedReason}}" class="my-life-records-reject-tip">
+        <text class="my-life-records-reject-label">驳回原因：</text><text class="my-life-records-reject-text">{{record.rejectedReason}}</text>
+      </view>
       <!-- 操作按钮 -->
       <view class="my-life-records-actions">
         <t-button

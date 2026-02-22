@@ -13,6 +13,7 @@ const lifeRoutes = require('./routes/life');
 const userRoutes = require('./routes/user');
 const uploadRoutes = require('./routes/upload');
 const notificationRoutes = require('./routes/notification');
+const adminRoutes = require('./routes/admin');
 
 // 导入中间件
 const errorHandler = require('./middleware/errorHandler');
@@ -61,6 +62,7 @@ app.use('/api/life', lifeRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/notification', notificationRoutes);
+app.use('/api/admin', adminRoutes);
 
 // 首页轮播（可选，无则前端用空列表）
 app.get('/api/home/swipers', (req, res) => {

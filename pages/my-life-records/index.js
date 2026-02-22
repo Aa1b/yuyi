@@ -17,7 +17,7 @@ Page({
   
   onLoad(options) {
     const publishStatus = options.publishStatus || 'all';
-    const titles = { all: '全部发布', draft: '草稿箱', pending: '审核中', published: '已发布' };
+    const titles = { all: '全部发布', draft: '草稿箱', pending: '审核中', published: '已发布', rejected: '已驳回' };
     this.setData({
       publishStatus,
       pageTitle: titles[publishStatus] || '我的记录',

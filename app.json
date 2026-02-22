@@ -73,6 +73,11 @@
       "root": "pages/search-result",
       "name": "searchResult",
       "pages": ["index"]
+    },
+    {
+      "root": "pages/admin",
+      "name": "admin",
+      "pages": ["review/index"]
     }
   ],
   "window": {

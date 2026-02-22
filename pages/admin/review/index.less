@@ -1,0 +1,47 @@
+@import '/variable.less';
+
+.admin-review-container {
+  min-height: 100vh;
+  background: @bg-color;
+  padding-bottom: 32rpx;
+}
+
+.admin-review-list {
+  padding: 24rpx;
+}
+
+.admin-review-item {
+  margin-bottom: 24rpx;
+  background: @bg-color-white;
+  border-radius: 16rpx;
+  overflow: hidden;
+
+  .admin-review-card-wrap {
+    padding: 0;
+  }
+
+  .admin-review-meta {
+    padding: 12rpx 24rpx;
+    font-size: 24rpx;
+    color: @text-color-placeholder;
+    border-top: 1rpx solid @border-color;
+  }
+
+  .admin-review-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 24rpx;
+    padding: 16rpx 24rpx;
+    border-top: 1rpx solid @border-color;
+  }
+}
+
+.admin-review-loading {
+  display: flex;
+  justify-content: center;
+  padding: 40rpx 0;
+}
+
+.admin-review-empty {
+  padding: 120rpx 32rpx;
+}

@@ -29,6 +29,12 @@ Page({
         url: '/pages/my-life-records/index?publishStatus=published',
       },
       {
+        name: '已驳回',
+        icon: 'close-circle',
+        type: 'rejected',
+        url: '/pages/my-life-records/index?publishStatus=rejected',
+      },
+      {
         name: '草稿箱',
         icon: 'file-copy',
         type: 'draft',
@@ -40,6 +46,7 @@ Page({
       { name: '联系客服', icon: 'service', type: 'service', url: '' },
       { name: '设置', icon: 'setting', type: 'setting', url: '/pages/setting/index' },
     ],
+    isAdmin: false,
   },
 
   onLoad() {
@@ -53,10 +60,23 @@ Page({
       return;
     }
     const personalInfo = await this.getPersonalInfo();
+    const isAdmin = !!(personalInfo && personalInfo.isAdmin);
+    let settingList = [
+      { name: '联系客服', icon: 'service', type: 'service', url: '' },
+      { name: '设置', icon: 'setting', type: 'setting', url: '/pages/setting/index' },
+    ];
+    if (isAdmin) {
+      settingList = [
+        { name: '审核管理', icon: 'approval', type: 'admin', url: '/pages/admin/review/index' },
+        ...settingList,
+      ];
+    }
     this.setData({
       isLoad: true,
       personalInfo: personalInfo || {},
       isLoggedIn: !!(personalInfo && personalInfo.name),
+      isAdmin,
+      settingList,
     });
   },
 
@@ -79,6 +99,7 @@ Page({
         image: p.avatar || '',
         star: p.star || '',
         city: p.city || '',
+        isAdmin: !!p.isAdmin,
       };
     } catch (e) {
       return null;

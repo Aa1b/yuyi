@@ -1,5 +1,6 @@
 <t-navbar left-arrow title="个人信息" />
 <view class="info-edit">
+  <t-cell class="info-edit__cell" title="用户代码（设置管理员用）" note="{{userId || '加载中...'}}" />
   <t-cell class="info-edit__cell" title="用户名">
     <t-input bind:change="onNameChange" borderless placeholder="请输入用户名" slot="note" value="{{personInfo.name}}" />
   </t-cell>

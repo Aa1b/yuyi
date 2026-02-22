@@ -22,7 +22,8 @@ Page({
       count: 9, // 最多9张图片
     },
     
-    // 内容
+    // 标题与内容
+    title: '',
     content: '',
     
     // 隐私设置: public | private | friends
@@ -33,18 +34,18 @@ Page({
       { label: '私密', value: 'private', icon: 'lock-on' },
     ],
     
-    // 分类
+    // 分类（初始用默认列表，接口返回后会覆盖）
     category: '',
-    categories: [],
-    categoryVisible: false,
-    categoryIndex: [],
+    categoryList: ['日常', '旅行', '美食', '心情', '运动', '学习', '工作', '其他'],
+    categoryIndex: 0,
     
-    // 标签
-    allTags: [],
+    // 标签：可选列表来自接口或默认，已选初始为空
+    tagOptions: ['日常', '旅行', '美食', '心情', '运动', '学习', '记录'],
     selectedTags: [],
     
     // 位置
     location: '',
+    tagInput: '',
     isAdmin: false,
   },
   
@@ -63,29 +64,44 @@ Page({
     }
   },
   
-  // 加载分类
+  // 默认分类与标签（接口为空时使用）
+  getDefaultCategories() {
+    return ['日常', '旅行', '美食', '心情', '运动', '学习', '工作', '其他'];
+  },
+  getDefaultTags() {
+    return ['日常', '旅行', '美食', '心情', '运动', '学习', '记录'];
+  },
+
   async loadCategories() {
     try {
       const res = await request('/life/categories');
       const list = res?.data ?? [];
-      const categoryOptions = Array.isArray(list) ? list.map(item => ({ label: item, value: item })) : [];
-      this.setData({ categories: categoryOptions });
+      let names = Array.isArray(list) ? list : [];
+      if (names.length === 0) names = this.getDefaultCategories();
+      const category = this.data.category;
+      const categoryIndex = names.indexOf(category);
+      this.setData({
+        categoryList: names,
+        categoryIndex: categoryIndex >= 0 ? categoryIndex : 0,
+      });
     } catch (error) {
       console.error('加载分类失败', error);
+      const names = this.getDefaultCategories();
+      this.setData({ categoryList: names, categoryIndex: 0 });
     }
   },
-  
-  // 加载标签
+
   async loadTags() {
     try {
       const res = await request('/life/tags');
       const list = res?.data ?? [];
       const raw = Array.isArray(list) ? list : [];
-      this.setData({
-        allTags: raw.map(item => (item && item.name) ? item.name : item),
-      });
+      let names = raw.map(item => (item && item.name) ? item.name : item).filter(Boolean);
+      if (names.length === 0) names = this.getDefaultTags();
+      this.setData({ tagOptions: names });
     } catch (error) {
       console.error('加载标签失败', error);
+      this.setData({ tagOptions: this.getDefaultTags() });
     }
   },
   
@@ -149,100 +165,103 @@ Page({
     });
   },
   
-  // 显示分类选择器
-  showCategoryPicker() {
-    this.setData({
-      categoryVisible: true,
-    });
-  },
-  
-  // 隐藏分类选择器
-  hideCategoryPicker() {
-    this.setData({
-      categoryVisible: false,
-    });
-  },
-  
-  // 选择分类
   onCategoryChange(e) {
-    const { value } = e.detail;
-    const { categories } = this.data;
-    if (value && value[0] !== undefined) {
-      this.setData({
-        category: categories[value[0]].label,
-        categoryIndex: value,
-        categoryVisible: false,
-      });
-    }
+    const idx = e.detail && e.detail.value != null ? Number(e.detail.value) : 0;
+    const list = this.data.categoryList && this.data.categoryList.length ? this.data.categoryList : this.getDefaultCategories();
+    const category = list[idx];
+    this.setData({ categoryIndex: idx, category: category || '' });
   },
   
-  // 切换标签选择
-  onTagToggle(e) {
-    const { checked } = e.detail;
-    const { tag } = e.currentTarget.dataset;
+  // 点击标签切换选中（不依赖 t-check-tag 的 change）
+  onTagTap(e) {
+    const tag = e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.tag;
+    if (tag == null) return;
     let { selectedTags } = this.data;
-    
-    if (checked) {
+    const idx = selectedTags.indexOf(tag);
+    if (idx === -1) {
       if (selectedTags.length >= 5) {
-        Message.warning({
-          context: this,
-          offset: [120, 32],
-          duration: 2000,
-          content: '最多只能选择5个标签',
-        });
-        // 阻止选中
-        this.setData({
-          [`tagChecked_${tag}`]: false,
-        });
+        Message.warning({ context: this, offset: [120, 32], duration: 2000, content: '最多选择5个标签' });
         return;
       }
-      if (selectedTags.indexOf(tag) === -1) {
-        selectedTags.push(tag);
-      }
+      selectedTags = [...selectedTags, tag];
     } else {
-      const index = selectedTags.indexOf(tag);
-      if (index > -1) {
-        selectedTags.splice(index, 1);
-      }
+      selectedTags = selectedTags.filter((_, i) => i !== idx);
     }
-    
-    this.setData({
-      selectedTags: [...selectedTags],
-    });
+    this.setData({ selectedTags });
+  },
+
+  onRemoveTag(e) {
+    const tag = e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.tag;
+    if (tag == null) return;
+    const selectedTags = this.data.selectedTags.filter((t) => t !== tag);
+    this.setData({ selectedTags });
+  },
+
+  onTagInputChange(e) {
+    const v = (e.detail && e.detail.value) != null ? e.detail.value : e.detail;
+    this.setData({ tagInput: String(v || '').trim() });
+  },
+
+  onAddTagConfirm() {
+    const tag = String(this.data.tagInput || '').trim().replace(/^#/, '');
+    if (!tag) {
+      Message.warning({ context: this, offset: [120, 32], duration: 2000, content: '请输入标签' });
+      return;
+    }
+    let { selectedTags, tagOptions } = this.data;
+    if (selectedTags.length >= 5) {
+      Message.warning({ context: this, offset: [120, 32], duration: 2000, content: '最多选择5个标签' });
+      return;
+    }
+    if (selectedTags.indexOf(tag) === -1) selectedTags = [...selectedTags, tag];
+    if (tagOptions.indexOf(tag) === -1) tagOptions = [...tagOptions, tag];
+    this.setData({ selectedTags, tagOptions, tagInput: '' });
   },
   
-  // 获取位置
-  async gotoMap() {
-    try {
-      const res = await wx.chooseLocation({
-        success: (result) => {
-          this.setData({
-            location: result.name || result.address,
-          });
-        },
-      });
-    } catch (error) {
-      if (error.errMsg && error.errMsg.includes('auth deny')) {
+  // 所在位置点击：尝试打开地图选点（真机有效）；开发工具中可在下方输入框填写
+  onLocationTap() {
+    if (typeof wx.chooseLocation !== 'function') {
+      Message.warning({ context: this, offset: [120, 32], duration: 2000, content: '请在下方的输入框中填写位置' });
+      return;
+    }
+    wx.chooseLocation({
+      success: (res) => {
+        this.setData({ location: res.name || res.address || '' });
+      },
+      fail: (err) => {
+        const msg = (err && err.errMsg) || '';
+        if (msg.includes('cancel')) return;
         Message.warning({
           context: this,
           offset: [120, 32],
-          duration: 2000,
-          content: '请允许获取位置权限',
+          duration: 2500,
+          content: '选点失败（需真机或授权），请在下方的输入框中填写位置',
         });
-      }
-    }
+      },
+    });
+  },
+
+  onLocationInput(e) {
+    const v = e.detail;
+    const location = (v && (v.value !== undefined ? v.value : v)) ?? '';
+    this.setData({ location: String(location).trim() });
   },
   
+  onTitleInput(e) {
+    const v = (e.detail && e.detail.value) != null ? e.detail.value : e.detail;
+    this.setData({ title: v == null ? '' : String(v) });
+  },
+
   // 验证表单
   validateForm() {
-    const { content, mediaType, imageFiles, videoFile, category } = this.data;
+    const { title, content, mediaType, imageFiles, videoFile, category } = this.data;
     
-    if (!content.trim()) {
+    if (!(title && title.trim()) && !(content && content.trim())) {
       Message.warning({
         context: this,
         offset: [120, 32],
         duration: 2000,
-        content: '请输入内容描述',
+        content: '请填写标题或内容',
       });
       return false;
     }
@@ -282,8 +301,8 @@ Page({
   
   // 保存草稿（提交到服务器，出现在草稿箱）
   async saveDraft() {
-    const { content, mediaType, imageFiles, videoFile, privacy, category, selectedTags, location } = this.data;
-    const hasContent = (content && content.trim()) || (mediaType === 'image' && imageFiles.length > 0) || (mediaType === 'video' && videoFile);
+    const { title, content, mediaType, imageFiles, videoFile, privacy, category, selectedTags, location } = this.data;
+    const hasContent = (title && title.trim()) || (content && content.trim()) || (mediaType === 'image' && imageFiles.length > 0) || (mediaType === 'video' && videoFile);
     if (!hasContent) {
       Message.warning({
         context: this,
@@ -294,6 +313,7 @@ Page({
       return;
     }
     const recordData = {
+      title: (title || '').trim(),
       content: (content || '').trim(),
       type: mediaType,
       images: mediaType === 'image' ? imageFiles.map(f => f.url) : [],
@@ -337,9 +357,10 @@ Page({
   },
 
   async submitPublish(publishStatus, loadingText, successText, navigateUrl) {
-    const { content, mediaType, imageFiles, videoFile, privacy, category, selectedTags, location } = this.data;
+    const { title, content, mediaType, imageFiles, videoFile, privacy, category, selectedTags, location } = this.data;
     const recordData = {
-      content: content.trim(),
+      title: (title || '').trim(),
+      content: (content || '').trim(),
       type: mediaType,
       images: mediaType === 'image' ? imageFiles.map(file => file.url) : [],
       video: mediaType === 'video' && videoFile ? {

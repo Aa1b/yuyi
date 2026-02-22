@@ -43,12 +43,13 @@
               />
             </view>
             
-            <!-- 生活记录列表 -->
+            <!-- 生活记录列表：仅展示图片+标题，点进详情看全文 -->
             <view class="home-life-records">
               <life-record-card
                 wx:for="{{lifeRecords}}"
                 wx:key="id"
                 record="{{item}}"
+                preview="{{true}}"
               />
             </view>
             
@@ -73,6 +74,7 @@
               wx:for="{{focusRecords}}"
               wx:key="id"
               record="{{item}}"
+              preview="{{true}}"
             />
           </view>
           <view wx:if="{{focusRecords.length === 0}}" class="home-empty">

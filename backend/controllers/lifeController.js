@@ -141,7 +141,7 @@ exports.getList = async (req, res, next) => {
     let total;
     try {
       const [rows] = await pool.execute(
-        `SELECT r.id, r.user_id as userId, u.nickname as userName, u.avatar, r.content, r.type, r.privacy, r.category, r.location, r.like_count as likeCount, r.comment_count as commentCount, r.created_at as createdAt, r.publish_status as publishStatus, r.rejected_reason as rejectedReason FROM life_records r LEFT JOIN users u ON r.user_id = u.id ${whereClause} ORDER BY r.created_at DESC LIMIT ? OFFSET ?`,
+        `SELECT r.id, r.user_id as userId, u.nickname as userName, u.avatar, r.title, r.content, r.type, r.privacy, r.category, r.location, r.like_count as likeCount, r.comment_count as commentCount, r.created_at as createdAt, r.publish_status as publishStatus, r.rejected_reason as rejectedReason FROM life_records r LEFT JOIN users u ON r.user_id = u.id ${whereClause} ORDER BY r.created_at DESC LIMIT ? OFFSET ?`,
         listParams
       );
       records = rows;
@@ -154,7 +154,7 @@ exports.getList = async (req, res, next) => {
         const whereFallback = whereNoPub.length ? `WHERE ${whereNoPub.join(' AND ')}` : '';
         const paramsFallback = queryParams.filter((_, idx) => !whereConditions[idx].includes('publish_status'));
         const [rows] = await pool.execute(
-          `SELECT r.id, r.user_id as userId, u.nickname as userName, u.avatar, r.content, r.type, r.privacy, r.category, r.location, r.like_count as likeCount, r.comment_count as commentCount, r.created_at as createdAt FROM life_records r LEFT JOIN users u ON r.user_id = u.id ${whereFallback} ORDER BY r.created_at DESC LIMIT ? OFFSET ?`,
+          `SELECT r.id, r.user_id as userId, u.nickname as userName, u.avatar, r.title, r.content, r.type, r.privacy, r.category, r.location, r.like_count as likeCount, r.comment_count as commentCount, r.created_at as createdAt FROM life_records r LEFT JOIN users u ON r.user_id = u.id ${whereFallback} ORDER BY r.created_at DESC LIMIT ? OFFSET ?`,
           [...paramsFallback, limit, offset]
         );
         records = rows.map(r => ({ ...r, publishStatus: 'published', rejectedReason: null }));
@@ -257,6 +257,7 @@ exports.getDetail = async (req, res, next) => {
         r.user_id as userId,
         u.nickname as userName,
         u.avatar,
+        r.title,
         r.content,
         r.type,
         r.privacy,
@@ -353,12 +354,20 @@ exports.getDetail = async (req, res, next) => {
 exports.createRecord = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { content, type, privacy, category, tags, location, images, video, publishStatus } = req.body;
+    const { title, content, type, privacy, category, tags, location, images, video, publishStatus } = req.body;
 
-    if (!content || !type) {
+    if (!type) {
       return res.status(400).json({
         code: 400,
-        message: '内容和类型不能为空',
+        message: '类型不能为空',
+      });
+    }
+    const recordTitle = (title != null && String(title).trim()) ? String(title).trim() : '';
+    const recordContent = (content != null && String(content).trim()) ? String(content).trim() : '';
+    if (!recordTitle && !recordContent) {
+      return res.status(400).json({
+        code: 400,
+        message: '标题或内容至少填写一项',
       });
     }
 
@@ -386,11 +395,12 @@ exports.createRecord = async (req, res, next) => {
     // 创建记录
     const [result] = await pool.execute(
       `INSERT INTO life_records 
-       (user_id, content, type, privacy, category, location, publish_status) 
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+       (user_id, title, content, type, privacy, category, location, publish_status) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         userId,
-        content,
+        recordTitle,
+        recordContent,
         type,
         privacy || 'public',
         category || null,
@@ -470,7 +480,7 @@ exports.createRecord = async (req, res, next) => {
 exports.updateRecord = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { id, content, privacy, category, tags, location, publishStatus } = req.body;
+    const { id, title, content, privacy, category, tags, location, publishStatus } = req.body;
 
     if (!id) {
       return res.status(400).json({
@@ -503,6 +513,10 @@ exports.updateRecord = async (req, res, next) => {
     const updateFields = [];
     const updateValues = [];
 
+    if (title !== undefined) {
+      updateFields.push('title = ?');
+      updateValues.push(typeof title === 'string' ? title.trim() : title);
+    }
     if (content !== undefined) {
       updateFields.push('content = ?');
       updateValues.push(content);
@@ -956,13 +970,13 @@ exports.search = async (req, res, next) => {
     let whereConditions = ['r.status = 1', 'r.privacy = ?', 'r.publish_status = ?'];
     const queryParams = ['public', 'published'];
 
-    // 关键词搜索（内容、标签）
+    // 关键词搜索（标题、内容、标签）
     if (keyword) {
       whereConditions.push(
-        '(r.content LIKE ? OR EXISTS (SELECT 1 FROM life_record_tags rrt LEFT JOIN life_tags t ON rrt.tag_id = t.id WHERE rrt.record_id = r.id AND t.name LIKE ?))'
+        '(r.title LIKE ? OR r.content LIKE ? OR EXISTS (SELECT 1 FROM life_record_tags rrt LEFT JOIN life_tags t ON rrt.tag_id = t.id WHERE rrt.record_id = r.id AND t.name LIKE ?))'
       );
       const keywordPattern = `%${keyword}%`;
-      queryParams.push(keywordPattern, keywordPattern);
+      queryParams.push(keywordPattern, keywordPattern, keywordPattern);
     }
 
     // 分类筛选
@@ -986,6 +1000,7 @@ exports.search = async (req, res, next) => {
         r.user_id as userId,
         u.nickname as userName,
         u.avatar,
+        r.title,
         r.content,
         r.type,
         r.privacy,

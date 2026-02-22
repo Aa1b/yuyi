@@ -26,8 +26,9 @@
         </view>
       </view>
 
-      <!-- 内容 -->
+      <!-- 标题与内容 -->
       <view class="life-detail-body">
+        <view wx:if="{{record.title}}" class="life-detail-title">{{record.title}}</view>
         <text class="life-detail-text">{{record.content}}</text>
 
         <!-- 图片展示 -->

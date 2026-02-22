@@ -5,9 +5,20 @@
   </view>
 
   <view wx:else class="life-edit-content">
-    <!-- 内容描述 -->
+    <!-- 标题 -->
+    <view class="title box">
+      <view class="title-label">标题</view>
+      <t-input
+        class="title-input"
+        placeholder="给这条记录起个标题"
+        value="{{title}}"
+        maxlength="100"
+        bind:change="onTitleInput"
+      />
+    </view>
+    <!-- 开始记录（内容） -->
     <view class="desc box">
-      <view class="desc-label">添加描述</view>
+      <view class="desc-label">开始记录</view>
       <t-textarea
         t-class="desc-class"
         placeholder="分享你此刻的想法..."

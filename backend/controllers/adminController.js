@@ -15,6 +15,7 @@ exports.getPendingRecords = async (req, res, next) => {
         r.user_id as userId,
         u.nickname as userName,
         u.avatar,
+        r.title,
         r.content,
         r.type,
         r.privacy,

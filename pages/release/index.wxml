@@ -36,13 +36,25 @@
       />
     </view>
 
-    <!-- 内容描述 -->
+    <!-- 标题 -->
+    <view class="title box">
+      <view class="title-label">标题</view>
+      <t-input
+        class="title-input"
+        placeholder="给这条记录起个标题"
+        value="{{title}}"
+        maxlength="100"
+        bind:change="onTitleInput"
+      />
+    </view>
+
+    <!-- 开始记录（内容） -->
     <view class="desc box">
-      <view class="desc-label">添加描述</view>
+      <view class="desc-label">开始记录</view>
       <t-textarea
         t-class="desc-class"
         t-class-textarea="placeholder-class"
-        placeholder="分享你此刻的想法..."
+        placeholder="写下此刻的想法或故事..."
         maxlength="500"
         value="{{content}}"
         bind:input="onContentInput"
@@ -60,40 +72,63 @@
       </t-cell>
     </view>
 
-    <!-- 分类选择 -->
+    <!-- 分类选择（原生 picker，支持任意数量且点击稳定） -->
     <view class="category box">
-      <t-cell title="分类" arrow value="{{category || '请选择分类'}}" bindtap="showCategoryPicker" />
-      <t-picker
-        title="选择分类"
-        value="{{categoryIndex}}"
-        visible="{{categoryVisible}}"
-        bind:change="onCategoryChange"
-        bind:cancel="hideCategoryPicker"
-        bind:close="hideCategoryPicker"
-      >
-        <t-picker-item options="{{categories}}" />
-      </t-picker>
+      <picker mode="selector" range="{{categoryList}}" value="{{categoryIndex}}" bindchange="onCategoryChange">
+        <t-cell
+          title="分类"
+          arrow
+          value="{{category || '请选择分类'}}"
+          value-class="{{category ? 'category-cell--has-value' : ''}}"
+        />
+      </picker>
+      <view class="category-selected" wx:if="{{category}}">
+        <text class="category-selected-label">当前分类：</text>
+        <text class="category-selected-value">{{category}}</text>
+      </view>
     </view>
 
-    <!-- 标签选择 -->
+    <!-- 标签：初始为空，点击下方选项即选中，可自定义添加 -->
     <view class="taggroup box">
-      <t-cell title="添加标签">
-        <view class="tag-list" slot="note">
-          <t-check-tag
-            wx:for="{{allTags}}"
-            wx:key="index"
-            wx:for-item="tag"
-            wx:for-index="tagIndex"
-            data-tag="{{tag}}"
-            t-class="tag-class"
-            size="medium"
-            checked="{{selectedTags.indexOf(tag) > -1}}"
-            variant="{{selectedTags.indexOf(tag) > -1 ? 'dark' : 'light'}}"
-            content="#{{tag}}"
-            bind:change="onTagToggle"
-          />
+      <view class="taggroup-header">
+        <text class="taggroup-title">添加标签</text>
+        <text class="taggroup-count">已选 {{selectedTags.length}}/5 个</text>
+      </view>
+      <view class="taggroup-hint">点击下方标签进行选择，选中后标签会高亮；再次点击或点 × 可取消</view>
+      <!-- 已选标签：可点 × 取消 -->
+      <view class="tag-selected-row" wx:if="{{selectedTags.length > 0}}">
+        <view
+          wx:for="{{selectedTags}}"
+          wx:key="*this"
+          wx:for-item="t"
+          class="tag-selected-item"
+        >
+          <text>#{{t}}</text>
+          <text class="tag-selected-item-remove" data-tag="{{t}}" catchtap="onRemoveTag">×</text>
         </view>
-      </t-cell>
+      </view>
+      <view class="tag-list">
+        <view
+          wx:for="{{tagOptions}}"
+          wx:key="*this"
+          wx:for-item="tag"
+          class="tag-chip {{selectedTags.indexOf(tag) > -1 ? 'tag-chip--selected' : ''}}"
+          data-tag="{{tag}}"
+          bindtap="onTagTap"
+        >#{{tag}}</view>
+      </view>
+      <view class="taggroup-custom">
+        <text class="taggroup-custom-label">自定义标签</text>
+        <view class="tag-input-row">
+          <t-input
+            class="tag-input"
+            placeholder="输入后点添加"
+            value="{{tagInput}}"
+            bind:change="onTagInputChange"
+          />
+          <t-button size="small" theme="primary" bindtap="onAddTagConfirm">添加</t-button>
+        </view>
+      </view>
     </view>
 
     <!-- 位置信息 -->
@@ -103,38 +138,54 @@
         hover
         arrow
         leftIcon="location"
-        value="{{location || '添加位置（可选）'}}"
-        bindtap="gotoMap"
+        value="{{location || '点击选择或下方输入（可选）'}}"
+        bindtap="onLocationTap"
+      />
+      <t-input
+        class="location-input"
+        placeholder="或在此输入位置（可选）"
+        value="{{location}}"
+        bind:change="onLocationInput"
+        bind:blur="onLocationInput"
       />
     </view>
 
-    <!-- 操作按钮 -->
-    <view class="btngroup box">
-      <t-button
-        t-class="btn-class"
-        theme="light"
-        icon="file-copy"
-        content="存草稿"
-        size="large"
-        bindtap="saveDraft"
-      />
-      <t-button
-        t-class="btn-class"
-        theme="primary"
-        icon="upload"
-        content="发布"
-        size="large"
-        bindtap="release"
-      />
-      <t-button
-        wx:if="{{isAdmin}}"
-        t-class="btn-class"
-        theme="success"
-        icon="check-circle"
-        content="直接发布（免审）"
-        size="large"
-        bindtap="releaseDirect"
-      />
+    <!-- 底部占位，避免内容被固定按钮挡住 -->
+    <view class="btngroup-placeholder" />
+  </view>
+  <!-- 操作按钮（固定底部，与 release-container 平级，三按钮等分） -->
+  <view class="btngroup">
+    <view class="btngroup-inner">
+      <view class="btngroup-btn-wrap">
+        <t-button
+          t-class="btn-class"
+          theme="light"
+          icon="file-copy"
+          content="存草稿"
+          size="small"
+          bindtap="saveDraft"
+        />
+      </view>
+      <view class="btngroup-btn-wrap">
+        <t-button
+          t-class="btn-class"
+          theme="primary"
+          icon="upload"
+          content="发布"
+          size="small"
+          bindtap="release"
+        />
+      </view>
+      <view class="btngroup-btn-wrap" wx:if="{{isAdmin}}">
+        <t-button
+          t-class="btn-class"
+          theme="success"
+          icon="check-circle"
+          content="直接发布"
+          size="small"
+          bindtap="releaseDirect"
+        />
+      </view>
     </view>
   </view>
 </view>

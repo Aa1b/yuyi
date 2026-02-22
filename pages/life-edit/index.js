@@ -20,7 +20,8 @@ Page({
       count: 9,
     },
     
-    // 内容
+    // 标题与内容
+    title: '',
     content: '',
     
     // 隐私设置
@@ -77,6 +78,7 @@ Page({
       const res = await request(`/life/detail?id=${this.data.recordId}`);
       const record = res?.data ?? {};
       this.setData({
+        title: record.title || '',
         content: record.content || '',
         privacy: record.privacy || 'public',
         category: record.category || '',
@@ -167,6 +169,11 @@ Page({
   onContentInput(e) {
     this.setData({ content: e.detail.value });
   },
+
+  onTitleInput(e) {
+    const v = (e.detail && e.detail.value) != null ? e.detail.value : e.detail;
+    this.setData({ title: v == null ? '' : String(v) });
+  },
   
   // 选择隐私设置
   onPrivacyChange(e) {
@@ -253,14 +260,14 @@ Page({
   
   // 验证表单
   validateForm() {
-    const { content, mediaType, imageFiles, videoFile, category } = this.data;
+    const { title, content, mediaType, imageFiles, videoFile, category } = this.data;
     
-    if (!content.trim()) {
+    if (!(title && title.trim()) && !(content && content.trim())) {
       Message.warning({
         context: this,
         offset: [120, 32],
         duration: 2000,
-        content: '请输入内容描述',
+        content: '请填写标题或内容',
       });
       return false;
     }
@@ -311,11 +318,12 @@ Page({
   },
 
   async submitUpdate(publishStatus) {
-    const { recordId, content, mediaType, imageFiles, videoFile, privacy, category, selectedTags, location } = this.data;
+    const { recordId, title, content, mediaType, imageFiles, videoFile, privacy, category, selectedTags, location } = this.data;
     
     const recordData = {
       id: recordId,
-      content: content.trim(),
+      title: (title || '').trim(),
+      content: (content || '').trim(),
       privacy,
       category,
       tags: selectedTags,

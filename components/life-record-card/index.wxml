@@ -1,12 +1,12 @@
-<view class="life-record-card" bindtap="goToDetail">
+<view class="life-record-card {{preview ? 'life-record-card--preview' : ''}}" bindtap="goToDetail">
   <!-- 用户信息 -->
   <view class="life-record-card__header">
-    <t-avatar image="{{record.avatar}}" size="small" bindtap="goToUserProfile" data-user-id="{{record.userId}}" />
-    <view class="life-record-card__user-info" bindtap="goToUserProfile" data-user-id="{{record.userId}}">
+    <t-avatar image="{{record.avatar}}" size="small" catchtap="goToUserProfile" data-user-id="{{record.userId}}" />
+    <view class="life-record-card__user-info" catchtap="goToUserProfile" data-user-id="{{record.userId}}">
       <text class="life-record-card__username">{{record.userName}}</text>
       <text class="life-record-card__time">{{record.createdAt}}</text>
     </view>
-    <view class="life-record-card__privacy">
+    <view class="life-record-card__privacy" wx:if="{{!preview}}">
       <t-icon
         name="{{record.privacy === 'public' ? 'globe' : record.privacy === 'friends' ? 'user' : 'lock-on'}}"
         size="32rpx"
@@ -15,73 +15,97 @@
     </view>
   </view>
 
-  <!-- 内容区域 -->
-  <view class="life-record-card__content">
-    <text class="life-record-card__text">{{record.content}}</text>
-
-    <!-- 图片展示 -->
-    <view wx:if="{{record.type === 'image' && record.images && record.images.length > 0}}" class="life-record-card__media">
-      <t-image
-        wx:for="{{record.images}}"
-        wx:key="index"
-        wx:for-item="img"
-        src="{{img}}"
-        mode="aspectFill"
-        class="life-record-card__image"
-      />
-    </view>
-
-    <!-- 视频展示 -->
-    <view wx:if="{{record.type === 'video' && record.video}}" class="life-record-card__media" catchtap="handleVideoPlay">
-      <video
-        id="life-video-{{record.id}}"
-        src="{{record.video.url}}"
-        poster="{{record.video.cover}}"
-        controls="{{false}}"
-        class="life-record-card__video"
-      />
-      <view class="life-record-card__video-play">
-        <t-icon name="play-circle" size="80rpx" color="#fff" />
+  <!-- 预览模式：图片为主 + 标题 -->
+  <block wx:if="{{preview}}">
+    <view class="life-record-card__preview-media">
+      <view wx:if="{{record.type === 'image' && record.images && record.images.length > 0}}" class="life-record-card__preview-img-wrap">
+        <t-image
+          src="{{record.images[0]}}"
+          mode="aspectFill"
+          class="life-record-card__preview-img"
+        />
       </view>
-      <text class="life-record-card__video-duration">{{record.video.duration}}s</text>
+      <view wx:elif="{{record.type === 'video' && record.video}}" class="life-record-card__preview-video-wrap" catchtap="handleVideoPlay">
+        <t-image
+          src="{{record.video.cover || record.video.url}}"
+          mode="aspectFill"
+          class="life-record-card__preview-img"
+        />
+        <view class="life-record-card__video-play">
+          <t-icon name="play-circle" size="80rpx" color="#fff" />
+        </view>
+      </view>
+      <view wx:else class="life-record-card__preview-placeholder">
+        <t-icon name="image" size="80rpx" color="#ccc" />
+      </view>
+    </view>
+    <view class="life-record-card__preview-title">{{record.title || record.content || '无标题'}}</view>
+  </block>
+
+  <!-- 完整模式：内容 + 媒体 + 位置 + 标签 + 互动 -->
+  <block wx:if="{{!preview}}">
+    <view class="life-record-card__content">
+      <text class="life-record-card__text">{{record.content}}</text>
+
+      <view wx:if="{{record.type === 'image' && record.images && record.images.length > 0}}" class="life-record-card__media">
+        <t-image
+          wx:for="{{record.images}}"
+          wx:key="index"
+          wx:for-item="img"
+          src="{{img}}"
+          mode="aspectFill"
+          class="life-record-card__image"
+        />
+      </view>
+
+      <view wx:if="{{record.type === 'video' && record.video}}" class="life-record-card__media" catchtap="handleVideoPlay">
+        <video
+          id="life-video-{{record.id}}"
+          src="{{record.video.url}}"
+          poster="{{record.video.cover}}"
+          controls="{{false}}"
+          class="life-record-card__video"
+        />
+        <view class="life-record-card__video-play">
+          <t-icon name="play-circle" size="80rpx" color="#fff" />
+        </view>
+        <text class="life-record-card__video-duration">{{record.video.duration}}s</text>
+      </view>
+
+      <view wx:if="{{record.location}}" class="life-record-card__location">
+        <t-icon name="location" size="32rpx" color="#999" />
+        <text class="life-record-card__location-text">{{record.location}}</text>
+      </view>
+
+      <view class="life-record-card__meta">
+        <t-tag wx:if="{{record.category}}" size="small" variant="light" theme="primary">{{record.category}}</t-tag>
+        <t-tag
+          wx:for="{{record.tags}}"
+          wx:key="index"
+          wx:for-item="tag"
+          size="small"
+          variant="light"
+          theme="success"
+          class="life-record-card__tag"
+        >
+          #{{tag}}
+        </t-tag>
+      </view>
     </view>
 
-    <!-- 位置信息 -->
-    <view wx:if="{{record.location}}" class="life-record-card__location">
-      <t-icon name="location" size="32rpx" color="#999" />
-      <text class="life-record-card__location-text">{{record.location}}</text>
+    <view class="life-record-card__actions" catchtap="stopPropagation">
+      <view class="life-record-card__action-item" catchtap="handleLike">
+        <t-icon
+          name="{{record.isLiked ? 'heart-filled' : 'heart'}}"
+          size="40rpx"
+          color="{{record.isLiked ? '#ff4d4f' : '#666'}}"
+        />
+        <text class="life-record-card__action-item-text {{record.isLiked ? 'life-record-card__action-text--active' : ''}}">{{record.likeCount || 0}}</text>
+      </view>
+      <view class="life-record-card__action-item" catchtap="handleComment">
+        <t-icon name="chat" size="40rpx" color="#666" />
+        <text class="life-record-card__action-item-text">{{record.commentCount || 0}}</text>
+      </view>
     </view>
-
-    <!-- 分类和标签 -->
-    <view class="life-record-card__meta">
-      <t-tag wx:if="{{record.category}}" size="small" variant="light" theme="primary">{{record.category}}</t-tag>
-      <t-tag
-        wx:for="{{record.tags}}"
-        wx:key="index"
-        wx:for-item="tag"
-        size="small"
-        variant="light"
-        theme="success"
-        class="life-record-card__tag"
-      >
-        #{{tag}}
-      </t-tag>
-    </view>
-  </view>
-
-  <!-- 互动区域 -->
-  <view class="life-record-card__actions" catchtap="stopPropagation">
-    <view class="life-record-card__action-item" catchtap="handleLike">
-      <t-icon
-        name="{{record.isLiked ? 'heart-filled' : 'heart'}}"
-        size="40rpx"
-        color="{{record.isLiked ? '#ff4d4f' : '#666'}}"
-      />
-      <text class="life-record-card__action-item-text {{record.isLiked ? 'life-record-card__action-text--active' : ''}}">{{record.likeCount || 0}}</text>
-    </view>
-    <view class="life-record-card__action-item" catchtap="handleComment">
-      <t-icon name="chat" size="40rpx" color="#666" />
-      <text class="life-record-card__action-item-text">{{record.commentCount || 0}}</text>
-    </view>
-  </view>
+  </block>
 </view>

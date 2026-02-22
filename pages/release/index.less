@@ -1,10 +1,14 @@
 /* pages/release/index.wxss */
+.page {
+  padding-bottom: 0;
+}
+
 .release-container {
   display: flex;
   flex-direction: column;
   padding: 32rpx;
   box-sizing: border-box;
-  padding-bottom: 200rpx;
+  padding-bottom: 32rpx;
 
   .box {
     width: 100%;
@@ -23,6 +27,24 @@
     border-radius: 16rpx;
 
     &-class {
+      width: 100%;
+    }
+  }
+
+  .title {
+    padding: 32rpx;
+    background: #fff;
+    border-radius: 16rpx;
+
+    .title-label {
+      font-size: 28rpx;
+      font-weight: 500;
+      color: #333;
+      margin-bottom: 16rpx;
+      display: block;
+    }
+
+    .title-input {
       width: 100%;
     }
   }
@@ -58,38 +80,174 @@
     overflow: hidden;
   }
 
+  .category-selected {
+    padding: 16rpx 32rpx 20rpx;
+    border-top: 1rpx solid #eee;
+    display: flex;
+    align-items: center;
+    gap: 8rpx;
+  }
+
+  .category-selected-label {
+    font-size: 24rpx;
+    color: #999;
+  }
+
+  .category-selected-value {
+    font-size: 28rpx;
+    font-weight: 600;
+    color: #0052d9;
+  }
+
+  /* 分类单元格有选中值时右侧文字高亮（若 t-cell 支持 value-class） */
+  .category-cell--has-value {
+    color: #0052d9;
+    font-weight: 600;
+  }
+
+  .btngroup-placeholder {
+    height: 140rpx;
+    flex-shrink: 0;
+  }
+
   .taggroup {
     background: #fff;
     border-radius: 16rpx;
     padding: 24rpx 32rpx;
 
+    .taggroup-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8rpx;
+    }
+
+    .taggroup-title {
+      font-size: 30rpx;
+      font-weight: 500;
+      color: #333;
+    }
+
+    .taggroup-count {
+      font-size: 24rpx;
+      color: #999;
+    }
+
+    .taggroup-hint {
+      font-size: 24rpx;
+      color: #999;
+      margin-bottom: 20rpx;
+    }
+
     .tag-list {
       display: flex;
       flex-wrap: wrap;
       gap: 16rpx;
-      margin-top: 16rpx;
+      margin-bottom: 24rpx;
     }
 
-    .tag-class {
-      margin: 0;
+    .tag-chip {
+      padding: 12rpx 24rpx;
+      font-size: 26rpx;
+      color: #666;
+      background: #f0f0f0;
+      border-radius: 32rpx;
+      border: 2rpx solid #e0e0e0;
+      transition: color 0.2s, background 0.2s, border-color 0.2s;
+    }
+
+    .tag-chip--selected {
+      color: #fff;
+      background: #0052d9;
+      border-color: #0052d9;
+    }
+
+    /* 已选标签行：带取消按钮 */
+    .tag-selected-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12rpx;
+      margin-bottom: 20rpx;
+      min-height: 60rpx;
+    }
+
+    .tag-selected-item {
+      display: inline-flex;
+      align-items: center;
+      padding: 8rpx 12rpx 8rpx 20rpx;
+      font-size: 24rpx;
+      color: #0052d9;
+      background: #e7f0ff;
+      border-radius: 32rpx;
+      border: 2rpx solid #0052d9;
+    }
+
+    .tag-selected-item-remove {
+      margin-left: 8rpx;
+      padding: 0 4rpx;
+      font-size: 28rpx;
+      line-height: 1;
+      color: #0052d9;
+      opacity: 0.9;
+    }
+
+    .taggroup-custom {
+      padding-top: 16rpx;
+      border-top: 1rpx solid #eee;
+    }
+
+    .taggroup-custom-label {
+      font-size: 26rpx;
+      color: #666;
+      display: block;
+      margin-bottom: 12rpx;
+    }
+
+    .tag-input-row {
+      display: flex;
+      align-items: center;
+      gap: 16rpx;
+
+      .tag-input {
+        flex: 1;
+      }
     }
   }
+}
 
-  .btngroup {
-    display: flex;
-    justify-content: space-between;
-    gap: 24rpx;
-    padding: 32rpx;
-    background: #fff;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.08);
+/* 底部按钮栏（与 release-container 平级，三按钮等分显示） */
+.btngroup {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 16rpx 24rpx;
+  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
+  background: #fff;
+  box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.08);
+  box-sizing: border-box;
+  z-index: 100;
+}
 
-    .btn-class {
-      flex: 1;
-      margin: 0;
-    }
-  }
+.btngroup-inner {
+  display: flex;
+  align-items: stretch;
+  gap: 12rpx;
+  width: 100%;
+  min-width: 0;
+}
+
+.btngroup-btn-wrap {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+}
+
+.btngroup .btn-class {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  width: 100%;
+  box-sizing: border-box;
 }

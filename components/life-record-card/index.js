@@ -7,6 +7,11 @@ Component({
       type: Object,
       value: {},
     },
+    /** 是否为预览模式：主页列表仅展示图片+标题，点击进入详情看全文 */
+    preview: {
+      type: Boolean,
+      value: false,
+    },
   },
   data: {},
   methods: {

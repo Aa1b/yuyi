@@ -6,6 +6,37 @@
   padding-bottom: 32rpx;
 }
 
+.following-tabs {
+  display: flex;
+  padding: 0 24rpx;
+  gap: 32rpx;
+  background: @bg-color-white;
+  margin-bottom: 16rpx;
+}
+
+.following-tab {
+  font-size: 30rpx;
+  color: @text-color-secondary;
+  padding: 24rpx 0;
+  position: relative;
+
+  &--active {
+    color: @brand7-normal;
+    font-weight: 500;
+
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 4rpx;
+      background: @brand7-normal;
+      border-radius: 2rpx;
+    }
+  }
+}
+
 .following-empty {
   padding: 120rpx 32rpx;
 }

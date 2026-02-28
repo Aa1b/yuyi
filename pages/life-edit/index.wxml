@@ -5,32 +5,21 @@
   </view>
 
   <view wx:else class="life-edit-content">
-    <!-- 标题 -->
-    <view class="title box">
-      <view class="title-label">标题</view>
-      <t-input
-        class="title-input"
-        placeholder="给这条记录起个标题"
-        value="{{title}}"
-        maxlength="100"
-        bind:change="onTitleInput"
-      />
-    </view>
-    <!-- 开始记录（内容） -->
-    <view class="desc box">
-      <view class="desc-label">开始记录</view>
-      <t-textarea
-        t-class="desc-class"
-        placeholder="分享你此刻的想法..."
-        maxlength="500"
-        value="{{content}}"
-        bind:input="onContentInput"
-        disableDefaultPadding="{{true}}"
-        indicator
-      />
+    <!-- 内容类型 + 隐私（与发布页一致，编辑时类型不可改） -->
+    <view class="release-options box">
+      <view class="release-options-row">
+        <text class="release-options-label">内容类型</text>
+        <text class="release-options-value">{{mediaType === 'image' ? '图文' : '视频'}}</text>
+      </view>
+      <view class="release-options-row">
+        <text class="release-options-label">隐私</text>
+        <t-radio-group value="{{privacy}}" bind:change="onPrivacyChange" class="release-options-group">
+          <t-radio wx:for="{{privacyOptions}}" wx:key="value" value="{{item.value}}" label="{{item.label}}" />
+        </t-radio-group>
+      </view>
     </view>
 
-    <!-- 图片展示（只读） -->
+    <!-- 图片展示（可删不可增） -->
     <view wx:if="{{mediaType === 'image' && imageFiles.length > 0}}" class="upload box">
       <view class="image-list">
         <view wx:for="{{imageFiles}}" wx:key="index" class="image-item">
@@ -59,48 +48,75 @@
       <view class="upload-tip">编辑模式下暂不支持更换视频</view>
     </view>
 
-    <!-- 隐私设置 -->
-    <view class="privacy box">
-      <t-cell title="隐私设置">
-        <t-radio-group value="{{privacy}}" bind:change="onPrivacyChange" slot="note">
-          <t-radio wx:for="{{privacyOptions}}" wx:key="value" value="{{item.value}}" label="{{item.label}}" />
-        </t-radio-group>
-      </t-cell>
+    <!-- 标题（与发布页一致，可修改） -->
+    <view class="title box">
+      <view class="title-label">标题</view>
+      <t-input
+        class="title-input"
+        placeholder="给这条记录起个标题"
+        value="{{title}}"
+        maxlength="100"
+        bind:input="onTitleInput"
+        bind:blur="onTitleInput"
+      />
     </view>
 
-    <!-- 分类选择 -->
+    <!-- 开始记录（内容） -->
+    <view class="desc box">
+      <view class="desc-label">开始记录</view>
+      <t-textarea
+        t-class="desc-class"
+        placeholder="写下此刻的想法或故事..."
+        maxlength="500"
+        value="{{content}}"
+        bind:input="onContentInput"
+        bind:blur="onContentInput"
+        disableDefaultPadding="{{true}}"
+        indicator
+      />
+    </view>
+
+    <!-- 分类选择（与发布页一致：原生 picker + 当前分类展示） -->
     <view class="category box">
-      <t-cell title="分类" arrow value="{{category || '请选择分类'}}" bindtap="showCategoryPicker" />
-      <t-picker
-        title="选择分类"
-        value="{{categoryIndex}}"
-        visible="{{categoryVisible}}"
-        bind:change="onCategoryChange"
-        bind:cancel="hideCategoryPicker"
-        bind:close="hideCategoryPicker"
-      >
-        <t-picker-item options="{{categories}}" />
-      </t-picker>
+      <picker mode="selector" range="{{categoryList}}" value="{{categoryIndex}}" bindchange="onCategoryChange">
+        <t-cell title="分类" arrow value="{{category || '请选择分类'}}" />
+      </picker>
+      <view class="category-selected" wx:if="{{category}}">
+        <text class="category-selected-label">当前分类：</text>
+        <text class="category-selected-value">{{category}}</text>
+      </view>
     </view>
 
-    <!-- 标签选择 -->
+    <!-- 标签（与发布页一致：已选行+芯片+自定义） -->
     <view class="taggroup box">
-      <t-cell title="添加标签">
-        <view class="tag-list" slot="note">
-          <t-check-tag
-            wx:for="{{allTags}}"
-            wx:key="index"
-            wx:for-item="tag"
-            data-tag="{{tag}}"
-            t-class="tag-class"
-            size="medium"
-            checked="{{selectedTags.indexOf(tag) > -1}}"
-            variant="{{selectedTags.indexOf(tag) > -1 ? 'dark' : 'light'}}"
-            content="#{{tag}}"
-            bind:change="onTagToggle"
-          />
+      <view class="taggroup-header">
+        <text class="taggroup-title">添加标签</text>
+        <text class="taggroup-count">已选 {{selectedTags.length}}/5 个</text>
+      </view>
+      <view class="taggroup-hint">点击下方标签进行选择，选中后标签会高亮；再次点击或点 × 可取消</view>
+      <view class="tag-selected-row" wx:if="{{selectedTags.length > 0}}">
+        <view wx:for="{{selectedTags}}" wx:key="*this" wx:for-item="t" class="tag-selected-item">
+          <text>#{{t}}</text>
+          <text class="tag-selected-item-remove" data-tag="{{t}}" catchtap="onRemoveTag">×</text>
         </view>
-      </t-cell>
+      </view>
+      <view class="tag-list">
+        <view
+          wx:for="{{tagOptions}}"
+          wx:key="*this"
+          wx:for-item="tag"
+          class="tag-chip {{selectedTags.indexOf(tag) > -1 ? 'tag-chip--selected' : ''}}"
+          data-tag="{{tag}}"
+          bindtap="onTagTap"
+        >#{{tag}}</view>
+      </view>
+      <view class="taggroup-custom">
+        <text class="taggroup-custom-label">自定义标签</text>
+        <view class="tag-input-row">
+          <t-input class="tag-input" placeholder="输入后点添加" value="{{tagInput}}" bind:change="onTagInputChange" />
+          <t-button size="small" theme="primary" bindtap="onAddTagConfirm">添加</t-button>
+        </view>
+      </view>
     </view>
 
     <!-- 位置信息 -->

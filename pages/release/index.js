@@ -96,9 +96,14 @@ Page({
       const res = await request('/life/tags');
       const list = res?.data ?? [];
       const raw = Array.isArray(list) ? list : [];
-      let names = raw.map(item => (item && item.name) ? item.name : item).filter(Boolean);
-      if (names.length === 0) names = this.getDefaultTags();
-      this.setData({ tagOptions: names });
+      const fromApi = raw.map(item => (item && item.name) ? item.name : item).filter(Boolean);
+      const defaults = this.getDefaultTags();
+      // 合并接口返回与默认标签并去重，保证发布页始终有完整可选列表（接口只返回 count>0 的标签，会只剩少数几项）
+      const merged = [...defaults];
+      fromApi.forEach(name => {
+        if (merged.indexOf(name) === -1) merged.push(name);
+      });
+      this.setData({ tagOptions: merged });
     } catch (error) {
       console.error('加载标签失败', error);
       this.setData({ tagOptions: this.getDefaultTags() });
@@ -150,11 +155,10 @@ Page({
     });
   },
   
-  // 内容输入
+  // 内容输入（兼容 detail.value / detail 两种结构）
   onContentInput(e) {
-    this.setData({
-      content: e.detail.value,
-    });
+    const v = (e.detail && e.detail.value) !== undefined ? e.detail.value : e.detail;
+    this.setData({ content: v != null ? String(v) : '' });
   },
   
   // 选择隐私设置
@@ -247,9 +251,10 @@ Page({
     this.setData({ location: String(location).trim() });
   },
   
+  // 标题输入（input 实时同步 + blur 兜底，避免只触发 change 时未写入）
   onTitleInput(e) {
-    const v = (e.detail && e.detail.value) != null ? e.detail.value : e.detail;
-    this.setData({ title: v == null ? '' : String(v) });
+    const v = (e.detail && e.detail.value) !== undefined ? e.detail.value : e.detail;
+    this.setData({ title: v != null ? String(v) : '' });
   },
 
   // 验证表单

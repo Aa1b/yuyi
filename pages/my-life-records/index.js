@@ -164,10 +164,10 @@ Page({
     });
   },
   
-  // 编辑记录
+  // 编辑记录（小程序事件对象可能无 stopPropagation，需判断）
   editRecord(e) {
-    e.stopPropagation();
-    const { id } = e.currentTarget.dataset;
+    if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+    const id = e && e.currentTarget && e.currentTarget.dataset ? e.currentTarget.dataset.id : null;
     if (id) {
       wx.navigateTo({
         url: `/pages/life-edit/index?id=${id}`,

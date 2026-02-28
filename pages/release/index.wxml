@@ -1,14 +1,21 @@
 <t-navbar title="发布生活记录" left-arrow />
 <view class="page">
   <view class="release-container">
-    <!-- 媒体类型选择 -->
-    <view class="media-type box">
-      <t-cell title="内容类型">
-        <t-radio-group value="{{mediaType}}" bind:change="onMediaTypeChange" slot="note">
+    <!-- 内容类型 + 隐私设置（单行紧凑） -->
+    <view class="release-options box">
+      <view class="release-options-row">
+        <text class="release-options-label">内容类型</text>
+        <t-radio-group value="{{mediaType}}" bind:change="onMediaTypeChange" class="release-options-group">
           <t-radio value="image" label="图文" />
           <t-radio value="video" label="视频" />
         </t-radio-group>
-      </t-cell>
+      </view>
+      <view class="release-options-row">
+        <text class="release-options-label">隐私</text>
+        <t-radio-group value="{{privacy}}" bind:change="onPrivacyChange" class="release-options-group">
+          <t-radio wx:for="{{privacyOptions}}" wx:key="value" value="{{item.value}}" label="{{item.label}}" />
+        </t-radio-group>
+      </view>
     </view>
 
     <!-- 图片上传 -->
@@ -44,7 +51,8 @@
         placeholder="给这条记录起个标题"
         value="{{title}}"
         maxlength="100"
-        bind:change="onTitleInput"
+        bind:input="onTitleInput"
+        bind:blur="onTitleInput"
       />
     </view>
 
@@ -58,18 +66,10 @@
         maxlength="500"
         value="{{content}}"
         bind:input="onContentInput"
+        bind:blur="onContentInput"
         disableDefaultPadding="{{true}}"
         indicator
       />
-    </view>
-
-    <!-- 隐私设置 -->
-    <view class="privacy box">
-      <t-cell title="隐私设置">
-        <t-radio-group value="{{privacy}}" bind:change="onPrivacyChange" slot="note">
-          <t-radio wx:for="{{privacyOptions}}" wx:key="value" value="{{item.value}}" label="{{item.label}}" />
-        </t-radio-group>
-      </t-cell>
     </view>
 
     <!-- 分类选择（原生 picker，支持任意数量且点击稳定） -->

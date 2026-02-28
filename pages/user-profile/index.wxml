@@ -15,41 +15,70 @@
             <text class="stat-value">{{userInfo.recordCount || 0}}</text>
             <text class="stat-label">记录</text>
           </view>
-          <view class="stat-item" bindtap="viewFollowers">
-            <text class="stat-value">{{userInfo.followerCount || 0}}</text>
-            <text class="stat-label">粉丝</text>
-          </view>
           <view class="stat-item" bindtap="viewFollowing">
             <text class="stat-value">{{userInfo.followingCount || 0}}</text>
             <text class="stat-label">关注</text>
           </view>
+          <view class="stat-item" bindtap="viewFollowers">
+            <text class="stat-value">{{userInfo.followerCount || 0}}</text>
+            <text class="stat-label">粉丝</text>
+          </view>
+          <view class="stat-item">
+            <text class="stat-value">{{userInfo.likeCount || 0}}</text>
+            <text class="stat-label">获赞</text>
+          </view>
         </view>
       </view>
-      <!-- 关注按钮 -->
-      <view wx:if="{{!isSelf}}" class="user-profile-actions">
+      <!-- 关注区域：他人显示关注/已关注，自己显示已关注 -->
+      <view class="user-profile-actions">
         <t-button
-          wx:if="{{isFollowing}}"
+          wx:if="{{isSelf}}"
           theme="light"
           size="small"
           variant="outline"
-          bindtap="toggleFollow"
+          disabled
         >
           已关注
         </t-button>
-        <t-button
-          wx:else
-          theme="primary"
-          size="small"
-          bindtap="toggleFollow"
-        >
-          关注
-        </t-button>
+        <block wx:else>
+          <t-button
+            wx:if="{{isFollowing}}"
+            theme="light"
+            size="small"
+            variant="outline"
+            bindtap="toggleFollow"
+          >
+            已关注
+          </t-button>
+          <t-button
+            wx:else
+            theme="primary"
+            size="small"
+            bindtap="toggleFollow"
+          >
+            关注
+          </t-button>
+        </block>
       </view>
     </view>
 
+    <!-- 本人时显示 Tab：我的记录 | 我赞过的 -->
+    <view class="user-profile-tabs" wx:if="{{isSelf}}">
+      <view
+        class="tab-item {{activeTab === 'records' ? 'tab-item--active' : ''}}"
+        data-tab="records"
+        bindtap="onTabChange"
+      >我的记录</view>
+      <view
+        class="tab-item {{activeTab === 'liked' ? 'tab-item--active' : ''}}"
+        data-tab="liked"
+        bindtap="onTabChange"
+      >我赞过的</view>
+    </view>
+
     <!-- 用户记录列表 -->
-    <view class="user-profile-records">
-      <view class="records-title">他的记录</view>
+    <view class="user-profile-records" wx:if="{{activeTab === 'records' || !isSelf}}">
+      <view class="records-title">{{isSelf ? '我的记录' : '他的记录'}}</view>
       <view wx:if="{{records.length === 0 && !loading}}" class="records-empty">
         <t-empty
           icon="file-image"
@@ -61,15 +90,38 @@
           wx:for="{{records}}"
           wx:key="id"
           record="{{item}}"
-          bindtap="viewDetail"
+          preview="{{true}}"
         />
       </view>
-      
-      <!-- 加载更多 -->
       <view wx:if="{{loading}}" class="records-loading">
         <t-loading theme="circular" size="32rpx" text="加载中..." />
       </view>
       <view wx:if="{{!hasMore && records.length > 0}}" class="records-no-more">
+        <text>没有更多了</text>
+      </view>
+    </view>
+
+    <!-- 我赞过的（仅本人可见） -->
+    <view class="user-profile-records" wx:if="{{isSelf && activeTab === 'liked'}}">
+      <view class="records-title">我赞过的</view>
+      <view wx:if="{{likedRecords.length === 0 && !loadingLiked}}" class="records-empty">
+        <t-empty
+          icon="heart"
+          description="还没有点赞过任何记录"
+        />
+      </view>
+      <view wx:else class="records-list">
+        <life-record-card
+          wx:for="{{likedRecords}}"
+          wx:key="id"
+          record="{{item}}"
+          preview="{{true}}"
+        />
+      </view>
+      <view wx:if="{{loadingLiked}}" class="records-loading">
+        <t-loading theme="circular" size="32rpx" text="加载中..." />
+      </view>
+      <view wx:if="{{!hasMoreLiked && likedRecords.length > 0}}" class="records-no-more">
         <text>没有更多了</text>
       </view>
     </view>

@@ -88,12 +88,13 @@ Page({
   },
 
   onAreaPick(e) {
-    const { column, index } = e.detail;
+    const detail = e && e.detail;
+    const { column, index } = detail || {};
     const { provinces } = this.data;
+    const list = Array.isArray(provinces) ? provinces : [];
 
-    // 更改省份则更新城市列表
-    if (column === 0) {
-      const cities = this.getCities(provinces[index].value);
+    if (column === 0 && list[index] != null && list[index].value != null) {
+      const cities = this.getCities(list[index].value);
       this.setData({ cities });
     }
   },
@@ -117,13 +118,16 @@ Page({
   },
 
   onPickerChange(e) {
-    const { value, label } = e.detail;
-    const { mode } = e.currentTarget.dataset;
+    const detail = e && e.detail;
+    const { value, label } = detail || {};
+    const mode = e.currentTarget && e.currentTarget.dataset ? e.currentTarget.dataset.mode : null;
 
-    this.setData({
-      [`personInfo.${mode}`]: value,
-    });
-    if (mode === 'address') {
+    if (mode) {
+      this.setData({
+        [`personInfo.${mode}`]: value,
+      });
+    }
+    if (mode === 'address' && Array.isArray(label)) {
       this.setData({
         addressText: label.join(' '),
       });

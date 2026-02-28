@@ -25,23 +25,21 @@ function request(url, method = 'GET', data = {}) {
       timeout: 10000, // 10秒超时
       success(res) {
         setTimeout(() => {
-          // 检查HTTP状态码
-          if (res.statusCode === 200) {
-            // 检查业务状态码
+          // 2xx 视为 HTTP 成功（含 200 OK、201 Created）
+          const ok = res.statusCode >= 200 && res.statusCode < 300;
+          if (ok) {
             if (res.data && res.data.code === 200) {
               resolve(res.data);
             } else {
-              // 业务错误
               reject({
                 ...res.data,
                 statusCode: res.statusCode,
               });
             }
           } else {
-            // HTTP错误
             reject({
               code: res.statusCode,
-              message: `请求失败 (${res.statusCode})`,
+              message: res.data?.message || `请求失败 (${res.statusCode})`,
               data: res.data,
               statusCode: res.statusCode,
             });

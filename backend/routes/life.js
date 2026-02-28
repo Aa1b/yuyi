@@ -87,4 +87,11 @@ router.get('/tags', lifeController.getTags);
  */
 router.get('/search', optionalAuth, lifeController.search);
 
+/**
+ * @route GET /api/life/liked
+ * @desc 获取当前用户点赞过的记录列表
+ * @access Private
+ */
+router.get('/liked', authenticate, lifeController.getLikedRecords);
+
 module.exports = router;

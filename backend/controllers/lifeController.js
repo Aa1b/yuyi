@@ -227,6 +227,71 @@ exports.getList = async (req, res, next) => {
 };
 
 /**
+ * 获取当前用户点赞过的记录列表（仅本人可调用）
+ */
+exports.getLikedRecords = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { page = 1, pageSize = 10 } = req.query;
+    const limit = Math.max(1, Math.min(50, parseInt(pageSize, 10) || 10));
+    const offset = Math.max(0, ((parseInt(page, 10) || 1) - 1) * limit);
+
+    const [rows] = await pool.execute(
+      `SELECT r.id, r.user_id as userId, u.nickname as userName, u.avatar, r.title, r.content, r.type, r.privacy, r.category, r.location, r.like_count as likeCount, r.comment_count as commentCount, r.created_at as createdAt, r.publish_status as publishStatus
+       FROM life_likes l
+       INNER JOIN life_records r ON l.record_id = r.id AND r.status = 1 AND r.publish_status = 'published'
+       LEFT JOIN users u ON r.user_id = u.id
+       WHERE l.user_id = ?
+       ORDER BY l.id DESC
+       LIMIT ? OFFSET ?`,
+      [userId, limit, offset]
+    );
+
+    const [countResult] = await pool.execute(
+      `SELECT COUNT(*) as total FROM life_likes l
+       INNER JOIN life_records r ON l.record_id = r.id AND r.status = 1 AND r.publish_status = 'published'
+       WHERE l.user_id = ?`,
+      [userId]
+    );
+    const total = countResult[0].total;
+
+    const records = rows;
+    const recordIds = records.map(r => r.id);
+
+    if (recordIds.length > 0) {
+      const placeholders = recordIds.map(() => '?').join(',');
+      const [media] = await pool.execute(
+        `SELECT record_id, media_type as type, url, thumbnail_url as cover, duration 
+         FROM life_media WHERE record_id IN (${placeholders}) ORDER BY sort_order, id`,
+        recordIds
+      );
+      const [tags] = await pool.execute(
+        `SELECT rrt.record_id, t.name FROM life_record_tags rrt
+         LEFT JOIN life_tags t ON rrt.tag_id = t.id
+         WHERE rrt.record_id IN (${placeholders})`,
+        recordIds
+      );
+
+      records.forEach(record => {
+        record.images = media.filter(m => m.record_id === record.id && m.type === 'image').map(m => m.url);
+        const videoMedia = media.find(m => m.record_id === record.id && m.type === 'video');
+        record.video = videoMedia ? { url: videoMedia.url, cover: videoMedia.cover, duration: videoMedia.duration } : null;
+        record.tags = tags.filter(t => t.record_id === record.id).map(t => t.name);
+        record.isLiked = true;
+      });
+    }
+
+    res.json({
+      code: 200,
+      message: '获取成功',
+      data: { list: records, total, page: parseInt(page), pageSize: limit },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * 获取生活记录详情
  */
 exports.getDetail = async (req, res, next) => {

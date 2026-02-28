@@ -1,47 +1,56 @@
-<t-navbar title="我的关注" left-arrow />
+<t-navbar title="{{type === 'followers' ? '粉丝' : '关注'}}" left-arrow />
 <view class="following-container">
-  <view wx:if="{{followingList.length === 0 && !loading}}" class="following-empty">
+  <!-- 本人时显示 Tab 切换 -->
+  <view class="following-tabs" wx:if="{{!userId}}">
+    <view
+      class="following-tab {{type === 'following' ? 'following-tab--active' : ''}}"
+      data-type="following"
+      bindtap="onTabChange"
+    >我的关注</view>
+    <view
+      class="following-tab {{type === 'followers' ? 'following-tab--active' : ''}}"
+      data-type="followers"
+      bindtap="onTabChange"
+    >我的粉丝</view>
+  </view>
+  <view wx:if="{{list.length === 0 && !loading}}" class="following-empty">
     <t-empty
       icon="user"
-      description="还没有关注任何人"
+      description="{{type === 'followers' ? '暂无粉丝' : '还没有关注任何人'}}"
     >
-      <t-button
-        theme="primary"
-        size="medium"
-        slot="action"
-        bindtap="goToHome"
-      >
-        去发现
-      </t-button>
+      <t-button theme="primary" size="medium" slot="action" bindtap="goToHome">去发现</t-button>
     </t-empty>
   </view>
 
   <view wx:else class="following-list">
-    <view wx:for="{{followingList}}" wx:key="id" wx:for-item="user" class="following-item">
+    <view wx:for="{{list}}" wx:key="id" wx:for-item="user" class="following-item">
       <view class="following-user" bindtap="goToUserProfile" data-user-id="{{user.id}}">
         <t-avatar image="{{user.avatar}}" size="medium" />
         <view class="following-user-info">
           <text class="following-username">{{user.nickname}}</text>
-          <text class="following-time">关注于 {{user.followAt}}</text>
+          <text class="following-time">{{type === 'followers' ? '关注了你' : '关注于 ' + user.followAt}}</text>
         </view>
       </view>
-      <t-button
-        theme="light"
-        size="small"
-        variant="outline"
-        data-user-id="{{user.id}}"
-        bindtap="unfollow"
-      >
-        取消关注
-      </t-button>
+      <block wx:if="{{type === 'following' && !userId}}">
+        <t-button theme="light" size="small" variant="outline" data-user-id="{{user.id}}" bindtap="unfollow">取消关注</t-button>
+      </block>
+      <block wx:else>
+        <t-button
+          wx:if="{{!user.isFollowing}}"
+          theme="primary"
+          size="small"
+          data-user-id="{{user.id}}"
+          bindtap="followUser"
+        >关注</t-button>
+        <t-button wx:else theme="light" size="small" variant="outline" disabled>已关注</t-button>
+      </block>
     </view>
   </view>
 
-  <!-- 加载更多 -->
   <view wx:if="{{loading}}" class="following-loading">
     <t-loading theme="circular" size="32rpx" text="加载中..." />
   </view>
-  <view wx:if="{{!hasMore && followingList.length > 0}}" class="following-no-more">
+  <view wx:if="{{!hasMore && list.length > 0}}" class="following-no-more">
     <text>没有更多了</text>
   </view>
 </view>

@@ -67,6 +67,37 @@
   align-items: center;
 }
 
+.user-profile-tabs {
+  display: flex;
+  padding: 0 24rpx 16rpx;
+  gap: 32rpx;
+  background: @bg-color-white;
+  margin-bottom: 16rpx;
+}
+
+.tab-item {
+  font-size: 30rpx;
+  color: @text-color-secondary;
+  padding: 16rpx 0;
+  position: relative;
+
+  &--active {
+    color: @brand7-normal;
+    font-weight: 500;
+
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 4rpx;
+      background: @brand7-normal;
+      border-radius: 2rpx;
+    }
+  }
+}
+
 .user-profile-records {
   padding: 0 24rpx;
 }

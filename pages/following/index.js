@@ -4,67 +4,65 @@ import Message from 'tdesign-miniprogram/message/index';
 
 Page({
   data: {
-    followingList: [],
+    type: 'following', // following | followers
+    userId: null, // 查看他人时传入
+    list: [],
     loading: false,
     hasMore: true,
     page: 1,
     pageSize: 20,
   },
   
-  onLoad() {
-    this.loadFollowingList(true);
+  onLoad(options) {
+    const { type = 'following', userId } = options || {};
+    this.setData({ type: type || 'following', userId: userId || null }, () => {
+      this.loadList(true);
+    });
   },
   
-  // 加载关注列表
-  async loadFollowingList(refresh = false) {
+  async loadList(refresh = false) {
     if (this.data.loading) return;
+    
+    const { type, userId, page, pageSize } = this.data;
+    const api = type === 'followers' ? '/user/followers' : '/user/following';
+    const params = { page: refresh ? 1 : page, pageSize };
+    if (userId) params.userId = userId;
     
     try {
       this.setData({ loading: true });
       
-      const { page, pageSize } = this.data;
-      const params = {
-        page: refresh ? 1 : page,
-        pageSize,
-      };
-      
       const queryString = Object.keys(params)
-        .map(key => `${key}=${encodeURIComponent(params[key])}`)
+        .map(k => `${k}=${encodeURIComponent(params[k])}`)
         .join('&');
       
-      const res = await request(`/user/following?${queryString}`);
+      const res = await request(`${api}?${queryString}`);
       const { list = [], total = 0 } = res.data || {};
       
       if (refresh) {
         this.setData({
-          followingList: list,
+          list,
           page: 1,
           hasMore: list.length < total,
           loading: false,
         });
       } else {
         this.setData({
-          followingList: [...this.data.followingList, ...list],
+          list: [...this.data.list, ...list],
           page: page + 1,
-          hasMore: this.data.followingList.length + list.length < total,
+          hasMore: this.data.list.length + list.length < total,
           loading: false,
         });
       }
     } catch (error) {
       this.setData({ loading: false });
-      console.error('加载关注列表失败', error);
-      Message.error({
-        context: this,
-        offset: [120, 32],
-        duration: 2000,
-        content: '加载失败，请重试',
-      });
+      console.error('加载列表失败', error);
+      Message.error({ context: this, offset: [120, 32], duration: 2000, content: '加载失败，请重试' });
     }
   },
   
-  // 取消关注
   async unfollow(e) {
-    const { userId } = e.currentTarget.dataset;
+    const uid = e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.userId;
+    if (!uid) return;
     
     wx.showModal({
       title: '确认取消关注',
@@ -72,45 +70,46 @@ Page({
       success: async (res) => {
         if (res.confirm) {
           try {
-            await request(`/user/follow?followingId=${userId}`, 'DELETE');
-            
-            // 从列表中移除
-            const { followingList } = this.data;
-            const index = followingList.findIndex(item => item.id === userId);
-            if (index > -1) {
-              followingList.splice(index, 1);
-              this.setData({
-                followingList: [...followingList],
-              });
-            }
-            
-            Message.success({
-              context: this,
-              offset: [120, 32],
-              duration: 2000,
-              content: '已取消关注',
-            });
+            await request(`/user/follow?followingId=${uid}`, 'DELETE');
+            const { list } = this.data;
+            const next = list.filter(item => item.id != uid);
+            this.setData({ list: next });
+            Message.success({ context: this, offset: [120, 32], duration: 2000, content: '已取消关注' });
           } catch (error) {
-            Message.error({
-              context: this,
-              offset: [120, 32],
-              duration: 2000,
-              content: '操作失败，请重试',
-            });
+            Message.error({ context: this, offset: [120, 32], duration: 2000, content: '操作失败，请重试' });
           }
         }
       },
     });
   },
-  
-  // 跳转到用户主页
-  goToUserProfile(e) {
-    const { userId } = e.currentTarget.dataset;
-    if (userId) {
-      wx.navigateTo({
-        url: `/pages/user-profile/index?userId=${userId}`,
-      });
+
+  async followUser(e) {
+    const uid = e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.userId;
+    if (!uid) return;
+    try {
+      await request('/user/follow', 'POST', { followingId: uid });
+      const { list } = this.data;
+      const idx = list.findIndex(item => item.id == uid);
+      if (idx >= 0) {
+        list[idx].isFollowing = true;
+        this.setData({ list: [...list] });
+      }
+      Message.success({ context: this, offset: [120, 32], duration: 2000, content: '关注成功' });
+    } catch (error) {
+      Message.error({ context: this, offset: [120, 32], duration: 2000, content: '操作失败，请重试' });
     }
+  },
+  
+  onTabChange(e) {
+    const t = e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.type;
+    if (t && t !== this.data.type) {
+      this.setData({ type: t, list: [], page: 1 }, () => this.loadList(true));
+    }
+  },
+
+  goToUserProfile(e) {
+    const uid = e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.userId;
+    if (uid) wx.navigateTo({ url: `/pages/user-profile/index?userId=${uid}` });
   },
   
   // 去发现（跳转到首页）
@@ -120,17 +119,11 @@ Page({
     });
   },
   
-  // 下拉刷新
   onPullDownRefresh() {
-    this.loadFollowingList(true).then(() => {
-      wx.stopPullDownRefresh();
-    });
+    this.loadList(true).finally(() => wx.stopPullDownRefresh());
   },
   
-  // 上拉加载更多
   onReachBottom() {
-    if (this.data.hasMore && !this.data.loading) {
-      this.loadFollowingList();
-    }
+    if (this.data.hasMore && !this.data.loading) this.loadList();
   },
 });

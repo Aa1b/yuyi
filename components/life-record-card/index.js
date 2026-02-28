@@ -28,10 +28,10 @@ Component({
         });
       }
     },
-    // 跳转到用户主页
+    // 跳转到用户主页（小程序事件对象可能无 stopPropagation，需判断）
     goToUserProfile(e) {
-      e.stopPropagation();
-      const { userId } = e.currentTarget.dataset;
+      if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+      const userId = e && e.currentTarget && e.currentTarget.dataset ? e.currentTarget.dataset.userId : null;
       if (userId) {
         wx.navigateTo({
           url: `/pages/user-profile/index?userId=${userId}`,
@@ -40,9 +40,7 @@ Component({
     },
     // 点赞/取消点赞
     async handleLike(e) {
-      if (e) {
-        e.stopPropagation();
-      }
+      if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
       const { record } = this.data;
       if (!record || !record.id) return;
       const { id, isLiked } = record;
@@ -74,16 +72,12 @@ Component({
     },
     // 评论
     handleComment(e) {
-      if (e) {
-        e.stopPropagation();
-      }
+      if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
       this.goToDetail();
     },
     // 播放视频
     handleVideoPlay(e) {
-      if (e) {
-        e.stopPropagation();
-      }
+      if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
       const { record } = this.data;
       if (record && record.video && record.video.url) {
         // 跳转到详情页播放视频

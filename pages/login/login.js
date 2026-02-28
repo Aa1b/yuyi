@@ -1,12 +1,13 @@
 import request from '~/api/request';
 
+function isValidEmail(str) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(str).trim());
+}
+
 Page({
   data: {
-    phoneNumber: '',
-    isPhoneNumber: false,
     isCheck: false,
     isSubmit: false,
-    isPasswordLogin: false,
     passwordInfo: {
       account: '',
       password: '',
@@ -14,32 +15,15 @@ Page({
     radioValue: '',
   },
 
-  /* 自定义功能函数 */
   changeSubmit() {
-    if (this.data.isPasswordLogin) {
-      if (this.data.passwordInfo.account !== '' && this.data.passwordInfo.password !== '' && this.data.isCheck) {
-        this.setData({ isSubmit: true });
-      } else {
-        this.setData({ isSubmit: false });
-      }
-    } else if (this.data.isPhoneNumber && this.data.isCheck) {
-      this.setData({ isSubmit: true });
-    } else {
-      this.setData({ isSubmit: false });
-    }
+    const { account, password } = this.data.passwordInfo;
+    const ok =
+      isValidEmail(account) &&
+      (password || '').length > 0 &&
+      this.data.isCheck;
+    this.setData({ isSubmit: ok });
   },
 
-  // 手机号变更
-  onPhoneInput(e) {
-    const isPhoneNumber = /^[1][3,4,5,7,8,9][0-9]{9}$/.test(e.detail.value);
-    this.setData({
-      isPhoneNumber,
-      phoneNumber: e.detail.value,
-    });
-    this.changeSubmit();
-  },
-
-  // 用户协议选择变更
   onCheckChange(e) {
     const { value } = e.detail;
     this.setData({
@@ -59,16 +43,11 @@ Page({
     this.changeSubmit();
   },
 
-  // 切换登录方式
-  changeLogin() {
-    this.setData({ isPasswordLogin: !this.data.isPasswordLogin, isSubmit: false });
-  },
-
   goRegister() {
     wx.navigateTo({ url: '/pages/login/register' });
   },
 
-  /** 微信一键登录：wx.login 取 code，调用后端 /auth/login 换 openid 并拿到 token */
+  /** 微信登录 */
   async onWechatLogin() {
     if (!this.data.isCheck) {
       wx.showToast({ title: '请先同意《协议条款》', icon: 'none' });
@@ -98,32 +77,39 @@ Page({
     }
   },
 
+  /** 邮箱 + 密码登录 */
   async login() {
-    const { passwordInfo, isPasswordLogin } = this.data;
-    if (isPasswordLogin) {
-      // 调用后端账号密码登录
-      try {
-        const res = await request('/auth/password-login', 'POST', {
-          account: (passwordInfo.account || '').trim(),
-          password: passwordInfo.password || '',
-        });
-        if (res.code === 200 && res.data && res.data.token) {
-          wx.setStorageSync('access_token', res.data.token);
-          if (res.data.user) {
-            wx.setStorageSync('user_info', res.data.user);
-          }
-          wx.showToast({ title: '登录成功', icon: 'success' });
-          wx.switchTab({ url: '/pages/my/index' });
-        } else {
-          wx.showToast({ title: res.message || '登录失败', icon: 'none' });
-        }
-      } catch (err) {
-        const msg = (err && err.message) || (err && err.code === 401 && '账号或密码错误') || '网络错误，请重试';
-        wx.showToast({ title: msg, icon: 'none' });
-      }
+    const { passwordInfo } = this.data;
+    const account = (passwordInfo.account || '').trim();
+    const password = passwordInfo.password || '';
+
+    if (!isValidEmail(account)) {
+      wx.showToast({ title: '请输入正确邮箱', icon: 'none' });
       return;
     }
-    // 验证码登录：暂引导使用密码登录
-    wx.showToast({ title: '请使用密码登录', icon: 'none' });
+    if (!password) {
+      wx.showToast({ title: '请输入密码', icon: 'none' });
+      return;
+    }
+
+    try {
+      const res = await request('/auth/password-login', 'POST', {
+        account,
+        password,
+      });
+      if (res.code === 200 && res.data && res.data.token) {
+        wx.setStorageSync('access_token', res.data.token);
+        if (res.data.user) {
+          wx.setStorageSync('user_info', res.data.user);
+        }
+        wx.showToast({ title: '登录成功', icon: 'success' });
+        wx.switchTab({ url: '/pages/my/index' });
+      } else {
+        wx.showToast({ title: res.message || '登录失败', icon: 'none' });
+      }
+    } catch (err) {
+      const msg = (err && err.message) || (err && err.code === 401 && '邮箱或密码错误') || '网络错误，请重试';
+      wx.showToast({ title: msg, icon: 'none' });
+    }
   },
 });

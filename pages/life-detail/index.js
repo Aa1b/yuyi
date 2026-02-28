@@ -1,22 +1,35 @@
 // pages/life-detail/index.js
 import request from '~/api/request';
 import Message from 'tdesign-miniprogram/message/index';
+import { getSetting, SETTING_KEYS } from '~/utils/settings';
 
 Page({
   data: {
     recordId: null,
     record: null,
     comments: [],
+    videoAutoplay: false,
+    videoMute: false,
     commentContent: '',
     showCommentInput: false,
     loading: false,
   },
   
   onLoad(options) {
+    const token = wx.getStorageSync('access_token');
+    if (!token) {
+      wx.showToast({ title: '请先登录', icon: 'none' });
+      wx.redirectTo({ url: '/pages/login/login' });
+      return;
+    }
     const { id } = options;
+    const videoAutoplay = getSetting(SETTING_KEYS.VIDEO_AUTOPLAY);
+    const videoMute = getSetting(SETTING_KEYS.VIDEO_MUTE);
     if (id) {
       this.setData({
         recordId: id,
+        videoAutoplay,
+        videoMute,
       });
       this.loadDetail();
     }

@@ -1,6 +1,7 @@
 // pages/release/index.js
 import request from '~/api/request';
 import Message from 'tdesign-miniprogram/message/index';
+import { getSetting, SETTING_KEYS } from '~/utils/settings';
 
 Page({
   /**
@@ -26,8 +27,8 @@ Page({
     title: '',
     content: '',
     
-    // 隐私设置: public | private | friends
-    privacy: 'public',
+    // 隐私设置: public | private | friends（优先从设置读取默认值）
+    privacy: getSetting(SETTING_KEYS.DEFAULT_PRIVACY) || 'public',
     privacyOptions: [
       { label: '公开', value: 'public', icon: 'globe' },
       { label: '好友可见', value: 'friends', icon: 'user' },

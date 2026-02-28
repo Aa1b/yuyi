@@ -54,6 +54,8 @@
             src="{{record.video.url}}"
             poster="{{record.video.cover}}"
             controls
+            autoplay="{{videoAutoplay}}"
+            muted="{{videoMute}}"
             class="life-detail-video"
             bindplay="handleVideoPlay"
           />

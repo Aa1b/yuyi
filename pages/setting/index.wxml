@@ -1,21 +1,73 @@
 <t-navbar title="设置" left-arrow />
 <view class="setting">
-  <t-cell-group wx:for="{{menuData}}" wx:for-item="item" wx:key="index" t-class="cell-group-class" theme="card">
-    <t-cell
-      wx:for="{{item}}"
-      wx:for-item="carditem"
-      wx:key="cardkey"
-      title="{{carditem.title}}"
-      hover
-      arrow
-      left-icon="app"
-      url="{{carditem.url}}"
-      bordered="true"
-      leftIcon="{{carditem.icon}}"
-      data-data="{{carditem}}"
-      bindclick="onEleClick"
-    />
+  <view class="setting-group">
+    <view class="setting-row">
+      <view class="setting-row-left">
+        <t-icon name="image" size="40rpx" />
+        <text class="setting-title">深色模式</text>
+      </view>
+      <switch checked="{{darkMode}}" bindchange="onDarkModeChange" />
+    </view>
+    <view class="setting-cell" bindtap="onFontSizeTap">
+      <view class="setting-row-left">
+        <t-icon name="chart" size="40rpx" />
+        <text class="setting-title">字体大小</text>
+      </view>
+      <text class="setting-note">{{fontSizeLabel}}</text>
+      <t-icon name="chevron-right" size="32rpx" class="setting-arrow" />
+    </view>
+    <view class="setting-cell" bindtap="onPlayTap">
+      <view class="setting-row-left">
+        <t-icon name="sound" size="40rpx" />
+        <text class="setting-title">播放设置</text>
+      </view>
+      <text class="setting-note">{{videoPlayLabel}}</text>
+      <t-icon name="chevron-right" size="32rpx" class="setting-arrow" />
+    </view>
+    <view class="setting-row">
+      <view class="setting-row-left">
+        <t-icon name="sound" size="40rpx" />
+        <text class="setting-title">静音播放</text>
+      </view>
+      <switch checked="{{videoMute}}" bindchange="onVideoMuteChange" />
+    </view>
+  </view>
+
+  <view class="setting-group">
+    <view class="setting-row">
+      <view class="setting-row-left">
+        <t-icon name="thumb-up" size="40rpx" />
+        <text class="setting-title">接收点赞通知</text>
+      </view>
+      <switch checked="{{notifyLike}}" bindchange="onNotifyLikeChange" />
+    </view>
+    <view class="setting-row">
+      <view class="setting-row-left">
+        <t-icon name="chat" size="40rpx" />
+        <text class="setting-title">接收评论通知</text>
+      </view>
+      <switch checked="{{notifyComment}}" bindchange="onNotifyCommentChange" />
+    </view>
+    <view class="setting-row">
+      <view class="setting-row-left">
+        <t-icon name="user-add" size="40rpx" />
+        <text class="setting-title">接收关注通知</text>
+      </view>
+      <switch checked="{{notifyFollow}}" bindchange="onNotifyFollowChange" />
+    </view>
+  </view>
+
+  <t-cell-group theme="card" t-class="cell-group-class">
+    <t-cell title="新记录默认隐私" left-icon="lock-on" note="{{defaultPrivacyLabel}}" hover bindtap="onPrivacyTap" arrow />
   </t-cell-group>
+
+  <t-cell-group theme="card" t-class="cell-group-class">
+    <t-cell title="修改密码" left-icon="lock" hover bindtap="onChangePassword" arrow />
+  </t-cell-group>
+
+  <view class="logout-wrap">
+    <t-button theme="danger" variant="outline" block bindtap="onLogout">退出登录</t-button>
+  </view>
 </view>
 
 <t-toast id="t-toast" />

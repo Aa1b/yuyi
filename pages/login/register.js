@@ -1,8 +1,12 @@
 import request from '~/api/request';
 
+function isValidEmail(str) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(str).trim());
+}
+
 Page({
   data: {
-    phone: '',
+    email: '',
     password: '',
     confirmPassword: '',
     nickname: '',
@@ -13,9 +17,9 @@ Page({
     wx.navigateBack();
   },
 
-  onPhoneInput(e) {
-    const phone = (e.detail.value || '').trim();
-    this.setData({ phone });
+  onEmailInput(e) {
+    const email = (e.detail.value || '').trim();
+    this.setData({ email });
     this.checkSubmit();
   },
 
@@ -35,15 +39,16 @@ Page({
   },
 
   checkSubmit() {
-    const { phone, password, confirmPassword } = this.data;
-    const ok = /^1[3-9]\d{9}$/.test(phone) && password.length >= 6 && password === confirmPassword;
+    const { email, password, confirmPassword } = this.data;
+    const ok = isValidEmail(email) && password.length >= 6 && password === confirmPassword;
     this.setData({ canSubmit: ok });
   },
 
   async submit() {
-    const { phone, password, nickname } = this.data;
-    if (!/^1[3-9]\d{9}$/.test(phone)) {
-      wx.showToast({ title: '请输入正确手机号', icon: 'none' });
+    const { email, password, nickname } = this.data;
+    const emailTrim = email.trim();
+    if (!isValidEmail(emailTrim)) {
+      wx.showToast({ title: '请输入正确邮箱', icon: 'none' });
       return;
     }
     if (password.length < 6) {
@@ -57,7 +62,7 @@ Page({
 
     try {
       const res = await request('/auth/register', 'POST', {
-        phone,
+        email: emailTrim,
         password,
         nickname: nickname || '用户',
       });
@@ -71,7 +76,7 @@ Page({
       }
     } catch (err) {
       wx.showToast({
-        title: (err && err.message) || (err.code === 400 && '该手机号已注册') || '网络错误',
+        title: (err && err.message) || (err.code === 400 && '该邮箱已注册') || '网络错误',
         icon: 'none',
       });
     }

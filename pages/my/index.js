@@ -7,7 +7,6 @@ Page({
   data: {
     isLoad: false,
     isLoggedIn: false,
-    service: [],
     personalInfo: {},
     gridList: [
       {
@@ -49,9 +48,7 @@ Page({
     isAdmin: false,
   },
 
-  onLoad() {
-    this.getServiceList();
-  },
+  onLoad() {},
 
   async onShow() {
     const token = wx.getStorageSync('access_token');
@@ -64,10 +61,11 @@ Page({
     let settingList = [
       { name: '联系客服', icon: 'service', type: 'service', url: '' },
       { name: '设置', icon: 'setting', type: 'setting', url: '/pages/setting/index' },
+      { name: '退出登录', icon: 'logout', type: 'logout', url: '' },
     ];
     if (isAdmin) {
       settingList = [
-        { name: '审核管理', icon: 'approval', type: 'admin', url: '/pages/admin/review/index' },
+        { name: '审核管理', icon: 'check-circle', type: 'admin', url: '/pages/admin/review/index' },
         ...settingList,
       ];
     }
@@ -80,27 +78,31 @@ Page({
     });
   },
 
-  getServiceList() {
-    request('/api/getServiceList').then((res) => {
-      const raw = res?.data ?? [];
-      const list = Array.isArray(raw) ? raw : (raw.service ?? []);
-      const service = list.map(item => ({ ...item, url: item.url != null ? String(item.url) : '' }));
-      this.setData({ service });
-    }).catch(() => {});
-  },
-
   async getPersonalInfo() {
     try {
       const res = await request('/auth/profile');
       const p = res?.data;
       if (!p) return null;
-      return {
+      const base = {
         name: p.nickname || '用户',
         image: p.avatar || '',
         star: p.star || '',
         city: p.city || '',
         isAdmin: !!p.isAdmin,
+        id: p.id,
       };
+      if (!p.id) return base;
+      try {
+        const profileRes = await request(`/user/profile/${p.id}`);
+        const profile = profileRes?.data;
+        if (profile) {
+          base.recordCount = profile.recordCount ?? 0;
+          base.followingCount = profile.followingCount ?? 0;
+          base.followerCount = profile.followerCount ?? 0;
+          base.likeCount = profile.likeCount ?? 0;
+        }
+      } catch (_) {}
+      return base;
     } catch (e) {
       return null;
     }
@@ -116,9 +118,34 @@ Page({
     wx.navigateTo({ url: `/pages/my/info-edit/index` });
   },
 
+  onGoProfile() {
+    const id = this.data.personalInfo?.id;
+    if (id) wx.navigateTo({ url: `/pages/user-profile/index?userId=${id}` });
+  },
+  onGoFollowing() {
+    wx.navigateTo({ url: '/pages/following/index?type=following' });
+  },
+  onGoFollowers() {
+    wx.navigateTo({ url: '/pages/following/index?type=followers' });
+  },
+
   onEleClick(e) {
     const item = e.currentTarget.dataset.data || {};
-    const { url } = item;
+    const { url, type } = item;
+    if (type === 'logout') {
+      wx.showModal({
+        title: '退出登录',
+        content: '确定要退出登录吗？',
+        success: (res) => {
+          if (res.confirm) {
+            wx.removeStorageSync('access_token');
+            wx.removeStorageSync('user_info');
+            wx.reLaunch({ url: '/pages/login/login' });
+          }
+        },
+      });
+      return;
+    }
     if (url) {
       wx.navigateTo({ url });
       return;

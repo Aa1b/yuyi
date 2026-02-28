@@ -9,6 +9,24 @@
         <t-avatar image="{{personalInfo.image}}" slot="left-icon" size="large" />
         <view class="my-info__person" slot="description">
           <view class="name">{{personalInfo.name}}</view>
+          <view class="my-info__stats">
+            <view class="my-info__stat" bindtap="onGoProfile">
+              <text class="my-info__stat-value">{{personalInfo.recordCount || 0}}</text>
+              <text class="my-info__stat-label">记录</text>
+            </view>
+            <view class="my-info__stat" bindtap="onGoFollowing">
+              <text class="my-info__stat-value">{{personalInfo.followingCount || 0}}</text>
+              <text class="my-info__stat-label">关注</text>
+            </view>
+            <view class="my-info__stat" bindtap="onGoFollowers">
+              <text class="my-info__stat-value">{{personalInfo.followerCount || 0}}</text>
+              <text class="my-info__stat-label">粉丝</text>
+            </view>
+            <view class="my-info__stat">
+              <text class="my-info__stat-value">{{personalInfo.likeCount || 0}}</text>
+              <text class="my-info__stat-label">获赞</text>
+            </view>
+          </view>
           <view class="tags">
             <t-tag class="tag" variant="light" icon="discount">{{personalInfo.star}}</t-tag>
             <t-tag class="tag" variant="light" icon="location">{{personalInfo.city}}</t-tag>
@@ -42,22 +60,6 @@
     </t-grid>
   </view>
 
-  <view class="my-service">
-    <view class="my-service--tips">推荐服务</view>
-    <t-grid column="{{4}}" class="my-service__list">
-      <t-grid-item
-        class="my-service__list-item"
-        wx:for="{{service}}"
-        wx:key="item"
-        text="{{item.name}}"
-        image="{{item.image}}"
-        url="{{item.url || ''}}"
-        data-data="{{item}}"
-        bindclick="onEleClick"
-      />
-    </t-grid>
-  </view>
-
   <t-cell-group theme="card">
     <t-cell
       wx:for="{{settingList}}"
@@ -65,11 +67,13 @@
       wx:key="type"
       title="{{item.name}}"
       url="{{item.url || ''}}"
-      leftIcon="{{item.icon}}"
+      leftIcon="{{item.type === 'admin' ? '' : item.icon}}"
       hover
       arrow
       data-data="{{item}}"
       bindclick="onEleClick"
-    />
+    >
+      <t-icon wx:if="{{item.type === 'admin'}}" slot="left-icon" name="check-circle" size="40rpx" />
+    </t-cell>
   </t-cell-group>
 </view>

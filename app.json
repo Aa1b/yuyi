@@ -37,7 +37,7 @@
     {
       "root": "pages/setting",
       "name": "setting",
-      "pages": ["index"]
+      "pages": ["index", "change-password/index"]
     },
     {
       "root": "pages/release",

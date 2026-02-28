@@ -38,4 +38,11 @@ router.get('/profile', authenticate, authController.getProfile);
  */
 router.put('/profile', authenticate, authController.updateProfile);
 
+/**
+ * @route PUT /api/auth/password
+ * @desc 修改密码（仅手机号注册用户）
+ * @access Private
+ */
+router.put('/password', authenticate, authController.changePassword);
+
 module.exports = router;

@@ -21,6 +21,12 @@ Page({
   },
   
   onLoad(options) {
+    const token = wx.getStorageSync('access_token');
+    if (!token) {
+      wx.showToast({ title: '请先登录', icon: 'none' });
+      wx.redirectTo({ url: '/pages/login/login' });
+      return;
+    }
     const { userId } = options;
     if (!userId) {
       Message.error({

@@ -132,40 +132,52 @@ exports.login = async (req, res, next) => {
   }
 };
 
+/** 简单邮箱格式校验 */
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim());
+}
+
 /**
- * 用户注册（备用方案）
+ * 用户注册（邮箱 + 密码）
  */
 exports.register = async (req, res, next) => {
   try {
-    const { phone, password, nickname } = req.body;
+    const { email, password, nickname } = req.body;
+    const emailTrim = email ? String(email).trim().toLowerCase() : '';
 
-    if (!phone || !password) {
+    if (!emailTrim || !password) {
       return res.status(400).json({
         code: 400,
-        message: '手机号和密码不能为空',
+        message: '邮箱和密码不能为空',
+      });
+    }
+    if (!isValidEmail(emailTrim)) {
+      return res.status(400).json({
+        code: 400,
+        message: '邮箱格式不正确',
       });
     }
 
-    // 检查手机号是否已注册
+    // 检查邮箱是否已注册
     const [existing] = await pool.execute(
-      'SELECT id FROM users WHERE phone = ?',
-      [phone]
+      'SELECT id FROM users WHERE email = ?',
+      [emailTrim]
     );
 
     if (existing.length > 0) {
       return res.status(400).json({
         code: 400,
-        message: '该手机号已注册',
+        message: '该邮箱已注册',
       });
     }
 
-    // 加密密码；openid 必填，手机号注册用 phone_ 前缀
+    // 加密密码；openid 必填，邮箱注册用 email_ 前缀
     const hashedPassword = await bcrypt.hash(password, 10);
-    const openid = `phone_${phone}`;
+    const openid = `email_${emailTrim}`;
 
     const [result] = await pool.execute(
-      'INSERT INTO users (openid, phone, password, nickname) VALUES (?, ?, ?, ?)',
-      [openid, phone, hashedPassword, nickname || '用户']
+      'INSERT INTO users (openid, email, password, nickname) VALUES (?, ?, ?, ?)',
+      [openid, emailTrim, hashedPassword, nickname || '用户']
     );
 
     const token = generateToken(result.insertId);
@@ -187,23 +199,24 @@ exports.register = async (req, res, next) => {
 };
 
 /**
- * 账号密码登录（手机号/账号 + 密码）
+ * 账号密码登录（邮箱 + 密码）
  */
 exports.passwordLogin = async (req, res, next) => {
   try {
     const { account, password } = req.body;
+    const email = account ? String(account).trim().toLowerCase() : '';
 
-    if (!account || !password) {
+    if (!email || !password) {
       return res.status(400).json({
         code: 400,
-        message: '账号和密码不能为空',
+        message: '邮箱和密码不能为空',
       });
     }
 
-    // 支持手机号或 openid(phone_xxx) 登录
+    // 按邮箱或 openid(email_xxx) 查询
     const [users] = await pool.execute(
-      'SELECT id, nickname, avatar, password FROM users WHERE phone = ? OR openid = ?',
-      [account, account.startsWith('phone_') ? account : `phone_${account}`]
+      'SELECT id, nickname, avatar, password FROM users WHERE email = ? OR openid = ?',
+      [email, email.startsWith('email_') ? email : `email_${email}`]
     );
 
     if (users.length === 0) {
@@ -327,6 +340,63 @@ exports.updateProfile = async (req, res, next) => {
       code: 200,
       message: '更新成功',
       data: users[0],
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * 修改密码（仅邮箱注册用户）
+ */
+exports.changePassword = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { oldPassword, newPassword } = req.body;
+
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({
+        code: 400,
+        message: '请填写原密码和新密码',
+      });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        code: 400,
+        message: '新密码至少6位',
+      });
+    }
+
+    const [users] = await pool.execute(
+      'SELECT id, password FROM users WHERE id = ?',
+      [userId]
+    );
+    if (users.length === 0) {
+      return res.status(404).json({ code: 404, message: '用户不存在' });
+    }
+    const user = users[0];
+    if (!user.password) {
+      return res.status(400).json({
+        code: 400,
+        message: '当前账号为微信登录，无法修改密码',
+      });
+    }
+
+    const valid = await bcrypt.compare(oldPassword, user.password);
+    if (!valid) {
+      return res.status(400).json({
+        code: 400,
+        message: '原密码错误',
+      });
+    }
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+    await pool.execute('UPDATE users SET password = ? WHERE id = ?', [hashed, userId]);
+
+    res.json({
+      code: 200,
+      message: '密码修改成功',
+      data: null,
     });
   } catch (error) {
     next(error);

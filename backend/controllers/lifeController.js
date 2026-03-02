@@ -236,15 +236,30 @@ exports.getLikedRecords = async (req, res, next) => {
     const limit = Math.max(1, Math.min(50, parseInt(pageSize, 10) || 10));
     const offset = Math.max(0, ((parseInt(page, 10) || 1) - 1) * limit);
 
-    const [rows] = await pool.execute(
-      `SELECT r.id, r.user_id as userId, u.nickname as userName, u.avatar, r.title, r.content, r.type, r.privacy, r.category, r.location, r.like_count as likeCount, r.comment_count as commentCount, r.created_at as createdAt, r.publish_status as publishStatus
+    // 为避免某些 MySQL 版本对 LIMIT/OFFSET 绑定参数的兼容问题，这里将其直接拼入 SQL（均为服务端计算的数字，不来自用户输入）
+    const [rows] = await pool.query(
+      `SELECT 
+         r.id,
+         r.user_id as userId,
+         u.nickname as userName,
+         u.avatar,
+         r.title,
+         r.content,
+         r.type,
+         r.privacy,
+         r.category,
+         r.location,
+         r.like_count as likeCount,
+         r.comment_count as commentCount,
+         r.created_at as createdAt,
+         r.publish_status as publishStatus
        FROM life_likes l
        INNER JOIN life_records r ON l.record_id = r.id AND r.status = 1 AND r.publish_status = 'published'
        LEFT JOIN users u ON r.user_id = u.id
        WHERE l.user_id = ?
        ORDER BY l.id DESC
-       LIMIT ? OFFSET ?`,
-      [userId, limit, offset]
+       LIMIT ${limit} OFFSET ${offset}`,
+      [userId]
     );
 
     const [countResult] = await pool.execute(

@@ -137,6 +137,7 @@
       maxlength="200"
       value="{{commentContent}}"
       bind:input="onCommentInput"
+      bind:blur="onCommentInput"
       indicator
       autofocus
     />

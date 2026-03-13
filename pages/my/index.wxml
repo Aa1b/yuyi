@@ -32,6 +32,7 @@
     <t-grid t-class="grid-class">
       <t-grid-item
         wx:for="{{gridList}}"
+        wx:if="{{gridItem.type !== 'reviewCenter' || isAdmin}}"
         wx:for-item="gridItem"
         wx:key="type"
         text="{{gridItem.name}}"

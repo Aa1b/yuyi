@@ -1,0 +1,46 @@
+<t-navbar title="内容审核" left-arrow />
+<view class="review-center-container">
+  <!-- 待审核列表 -->
+  <view class="review-center-list">
+    <view wx:for="{{records}}" wx:key="id" wx:for-item="record" class="review-center-item">
+      <view bindtap="viewDetail" data-id="{{record.id}}">
+        <life-record-card record="{{record}}" />
+      </view>
+      <view class="review-center-actions">
+        <t-button
+          theme="primary"
+          size="small"
+          variant="outline"
+          data-id="{{record.id}}"
+          data-action="approve"
+          bindtap="reviewRecord"
+        >
+          通过
+        </t-button>
+        <t-button
+          theme="danger"
+          size="small"
+          variant="outline"
+          data-id="{{record.id}}"
+          data-action="reject"
+          bindtap="reviewRecord"
+        >
+          驳回
+        </t-button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 加载状态 -->
+  <view wx:if="{{loading}}" class="review-center-loading">
+    <t-loading theme="circular" size="32rpx" text="加载中..." />
+  </view>
+
+  <!-- 空状态 -->
+  <view wx:if="{{!loading && records.length === 0}}" class="review-center-empty">
+    <t-empty icon="file-image" description="当前没有待审核的记录" />
+  </view>
+</view>
+
+<t-message id="t-message" />
+

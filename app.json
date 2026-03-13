@@ -55,6 +55,11 @@
       "pages": ["index"]
     },
     {
+      "root": "pages/review-center",
+      "name": "reviewCenter",
+      "pages": ["index"]
+    },
+    {
       "root": "pages/life-edit",
       "name": "lifeEdit",
       "pages": ["index"]

@@ -9,17 +9,12 @@ Page({
     service: [],
     personalInfo: {},
     userIp: '',
+    isAdmin: false,
     gridList: [
       {
         name: '全部发布',
         icon: 'root-list',
         type: 'all',
-        url: '',
-      },
-      {
-        name: '审核中',
-        icon: 'search',
-        type: 'progress',
         url: '',
       },
       {
@@ -32,6 +27,12 @@ Page({
         name: '草稿箱',
         icon: 'file-copy',
         type: 'draft',
+        url: '',
+      },
+      {
+        name: '内容审核',
+        icon: 'search',
+        type: 'reviewCenter',
         url: '',
       },
     ],
@@ -56,12 +57,13 @@ Page({
         personalInfo,
       });
 
-      // 额外获取一次真实后端的用户信息，用于展示IP
+      // 额外获取一次真实后端的用户信息，用于展示IP和角色
       try {
         const profileRes = await request('/auth/profile').then((res) => res.data);
         if (profileRes.code === 200 && profileRes.data) {
           this.setData({
             userIp: profileRes.data.ip || '',
+            isAdmin: profileRes.data.role === 'admin',
           });
         }
       } catch (e) {
@@ -101,16 +103,16 @@ Page({
       wx.navigateTo({ url: '/pages/my-life-records/index?filter=all' });
       return;
     }
-    if (type === 'progress') {
-      wx.navigateTo({ url: '/pages/my-life-records/index?filter=pending' });
-      return;
-    }
     if (type === 'published') {
       wx.navigateTo({ url: '/pages/my-life-records/index?filter=published' });
       return;
     }
     if (type === 'draft') {
       wx.navigateTo({ url: '/pages/my-life-records/index?filter=draft' });
+      return;
+    }
+    if (type === 'reviewCenter') {
+      wx.navigateTo({ url: '/pages/review-center/index' });
       return;
     }
 

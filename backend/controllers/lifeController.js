@@ -82,14 +82,17 @@ exports.getList = async (req, res, next) => {
     const whereConditions = [];
     const queryParams = [];
 
-    // 状态筛选：默认只看已发布
+    // 记录状态：仅查询未删除的记录
+    whereConditions.push('r.status = 1');
+
+    // 发布状态筛选：使用 publish_status 字段
     if (status === 'all') {
-      whereConditions.push('r.status IN (1, 2)');
+      whereConditions.push("r.publish_status IN ('pending', 'published')");
     } else if (status === 'pending') {
-      whereConditions.push('r.status = 2');
+      whereConditions.push("r.publish_status = 'pending'");
     } else {
-      // 默认或 status=1
-      whereConditions.push('r.status = 1');
+      // 默认或 status=1：仅已发布
+      whereConditions.push("r.publish_status = 'published'");
     }
 
     // 隐私筛选
@@ -150,7 +153,7 @@ exports.getList = async (req, res, next) => {
         r.privacy,
         r.category,
         r.location,
-        r.status,
+        r.publish_status as publishStatus,
         r.like_count as likeCount,
         r.comment_count as commentCount,
         r.created_at as createdAt
@@ -266,7 +269,7 @@ exports.getDetail = async (req, res, next) => {
         r.privacy,
         r.category,
         r.location,
-        r.status,
+        r.publish_status as publishStatus,
         r.like_count as likeCount,
         r.comment_count as commentCount,
         r.created_at as createdAt
@@ -381,11 +384,11 @@ exports.createRecord = async (req, res, next) => {
       });
     }
 
-    // 创建记录，默认状态为待审核（2）
+    // 创建记录：默认正常(status=1)且发布状态为待审核(pending)
     const [result] = await pool.execute(
       `INSERT INTO life_records 
-       (user_id, content, type, privacy, category, location, status) 
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+       (user_id, content, type, privacy, category, location, status, publish_status) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         userId,
         content,
@@ -393,7 +396,8 @@ exports.createRecord = async (req, res, next) => {
         privacy || 'public',
         category || null,
         location || null,
-        2, // 待审核
+        1, // 正常
+        'pending', // 待审核
       ]
     );
 
@@ -627,7 +631,7 @@ exports.deleteRecord = async (req, res, next) => {
  */
 exports.reviewRecord = async (req, res, next) => {
   try {
-    const { id, action } = req.body;
+    const { id, action, reason } = req.body;
 
     if (!id || !['approve', 'reject'].includes(action)) {
       return res.status(400).json({
@@ -637,11 +641,12 @@ exports.reviewRecord = async (req, res, next) => {
     }
 
     // TODO: 这里可以根据 req.user 判断是否为管理员
-    const newStatus = action === 'approve' ? 1 : 0;
+    const publishStatus = action === 'approve' ? 'published' : 'draft';
+    const rejectedReason = action === 'reject' ? (reason || '不符合发布要求') : null;
 
     const [result] = await pool.execute(
-      'UPDATE life_records SET status = ? WHERE id = ?',
-      [newStatus, id]
+      'UPDATE life_records SET publish_status = ?, rejected_reason = ? WHERE id = ?',
+      [publishStatus, rejectedReason, id]
     );
 
     if (result.affectedRows === 0) {
@@ -656,7 +661,8 @@ exports.reviewRecord = async (req, res, next) => {
       message: action === 'approve' ? '审核通过' : '已驳回',
       data: {
         id,
-        status: newStatus,
+        publishStatus,
+        rejectedReason,
       },
     });
   } catch (error) {
@@ -681,7 +687,7 @@ exports.like = async (req, res, next) => {
 
     // 检查记录是否存在
     const [records] = await pool.execute(
-      'SELECT id FROM life_records WHERE id = ? AND status = 1',
+      "SELECT id FROM life_records WHERE id = ? AND status = 1 AND publish_status = 'published'",
       [recordId]
     );
 
@@ -845,7 +851,7 @@ exports.createComment = async (req, res, next) => {
 
     // 检查记录是否存在
     const [records] = await pool.execute(
-      'SELECT id FROM life_records WHERE id = ? AND status = 1',
+      "SELECT id FROM life_records WHERE id = ? AND status = 1 AND publish_status = 'published'",
       [recordId]
     );
 

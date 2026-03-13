@@ -151,7 +151,7 @@ exports.getProfile = async (req, res, next) => {
     const userId = req.user.id;
 
     const [users] = await pool.execute(
-      'SELECT id, openid, nickname, avatar, gender, phone, role, created_at FROM users WHERE id = ?',
+      'SELECT id, openid, nickname, avatar, gender, phone, is_admin, created_at FROM users WHERE id = ?',
       [userId]
     );
 
@@ -191,7 +191,7 @@ exports.getProfile = async (req, res, next) => {
     }
 
     user.ip = displayIp;
-    user.role = user.role || 'user';
+    user.role = user.is_admin === 1 ? 'admin' : 'user';
 
     res.json({
       code: 200,

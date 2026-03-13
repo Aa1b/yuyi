@@ -64,6 +64,49 @@ Page({
     this.setData({ isPasswordLogin: !this.data.isPasswordLogin, isSubmit: false });
   },
 
+  // 微信登录（真实后端）
+  async loginWithWeChat() {
+    try {
+      // 1. 调用 wx.login 获取临时登录凭证 code
+      const loginRes = await wx.login();
+      if (!loginRes.code) {
+        wx.showToast({ title: '微信登录失败，请重试', icon: 'none' });
+        return;
+      }
+
+      // 2. 获取微信用户信息（用于后端创建/更新用户资料）
+      let userInfo = null;
+      try {
+        const userRes = await wx.getUserProfile({
+          desc: '用于完善会员资料',
+        });
+        userInfo = userRes.userInfo;
+      } catch (e) {
+        wx.showToast({ title: '已取消授权', icon: 'none' });
+        return;
+      }
+
+      // 3. 调用后端 /auth/login 接口换取业务 token
+      const res = await request('/auth/login', 'POST', {
+        code: loginRes.code,
+        userInfo,
+      });
+
+      if (res && res.data && res.data.token) {
+        wx.setStorageSync('access_token', res.data.token);
+        wx.showToast({ title: '登录成功', icon: 'success' });
+        wx.switchTab({
+          url: '/pages/my/index',
+        });
+      } else {
+        wx.showToast({ title: '登录失败，请重试', icon: 'none' });
+      }
+    } catch (error) {
+      wx.showToast({ title: '登录异常，请稍后再试', icon: 'none' });
+      console.error('微信登录失败', error);
+    }
+  },
+
   async login() {
     if (this.data.isPasswordLogin) {
       const res = await request('/login/postPasswordLogin', 'post', { data: this.data.passwordInfo });

@@ -1,6 +1,5 @@
 const pool = require('../config/database');
 const cache = require('../utils/cache');
-const cache = require('../utils/cache');
 
 /**
  * 检查用户是否有权限查看记录（基于隐私设置）
@@ -73,8 +72,10 @@ exports.getList = async (req, res, next) => {
     } = req.query;
 
     const currentUserId = req.user?.id || null;
-    const limit = parseInt(pageSize);
-    const offset = (parseInt(page) - 1) * limit;
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const pageSizeNum = Math.min(100, Math.max(1, parseInt(pageSize, 10) || 10));
+    const limit = pageSizeNum;
+    const offset = (pageNum - 1) * limit;
 
     // 构建查询条件
     let whereConditions = ['r.status = 1'];
@@ -123,8 +124,10 @@ exports.getList = async (req, res, next) => {
     }
 
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+    const limitNum = Math.floor(Number(limit)) || 10;
+    const offsetNum = Math.floor(Number(offset)) || 0;
 
-    // 查询记录列表
+    // 查询记录列表（LIMIT/OFFSET 使用已校验整数拼接，避免预编译参数类型报错）
     const [records] = await pool.execute(
       `SELECT 
         r.id,
@@ -143,8 +146,8 @@ exports.getList = async (req, res, next) => {
       LEFT JOIN users u ON r.user_id = u.id
       ${whereClause}
       ORDER BY r.created_at DESC
-      LIMIT ? OFFSET ?`,
-      [...queryParams, limit, offset]
+      LIMIT ${limitNum} OFFSET ${offsetNum}`,
+      queryParams
     );
 
     // 查询总数

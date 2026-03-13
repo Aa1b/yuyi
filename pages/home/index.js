@@ -14,7 +14,7 @@ Page({
     activeTab: 'recommend', // recommend | follow | category
     categories: [],
     selectedCategory: '',
-    // 位置筛选
+    // 位置筛选 / 同城
     locationCity: '',
     useLocationFilter: false,
     // 分页
@@ -73,12 +73,13 @@ Page({
       const params = {
         page: refresh ? 1 : page,
         pageSize,
-        privacy: activeTab === 'recommend' ? 'public' : 'all',
+        // 推荐和同城只展示公开内容，关注列表使用全部可见内容
+        privacy: (activeTab === 'recommend' || activeTab === 'sameCity') ? 'public' : 'all',
         category: selectedCategory || '',
       };
 
-      // 按当前位置筛选
-      if (useLocationFilter && locationCity) {
+      // 同城筛选：在 sameCity 标签下按当前城市过滤
+      if (activeTab === 'sameCity' && locationCity) {
         params.location = locationCity;
       }
       
@@ -129,6 +130,9 @@ Page({
     if (value === 'follow') {
       // 加载关注的记录
       this.loadFollowRecords();
+    } else if (value === 'sameCity') {
+      // 加载同城记录：先获取当前城市，再加载列表
+      this.fetchCurrentCityAndFilter();
     } else {
       this.loadLifeRecords(true);
     }

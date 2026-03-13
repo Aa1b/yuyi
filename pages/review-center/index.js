@@ -34,7 +34,7 @@ Page({
         .map((key) => `${key}=${encodeURIComponent(params[key])}`)
         .join('&');
 
-      const res = await request(`/life/list?${queryString}`).then((res) => res.data);
+      const res = await request(`/life/list?${queryString}`);
       const { list = [], total = 0 } = res.data || {};
 
       if (refresh) {

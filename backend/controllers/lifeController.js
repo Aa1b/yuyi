@@ -837,22 +837,27 @@ exports.createComment = async (req, res, next) => {
 exports.getCategories = async (req, res, next) => {
   try {
     const cacheKey = 'life_categories';
+    const defaultCategories = ['日常', '旅行', '美食', '心情', '运动', '学习', '工作', '其他'];
     
     // 尝试从缓存获取
     let categoryList = cache.get(cacheKey);
     
     if (!categoryList) {
-      // 从数据库查询
+      // 从数据库查询已有分类
       const [categories] = await pool.execute(
         'SELECT DISTINCT category FROM life_records WHERE category IS NOT NULL AND status = 1 ORDER BY category'
       );
 
-      categoryList = categories.map(c => c.category);
-      
-      // 如果数据库没有数据，使用默认分类
-      if (categoryList.length === 0) {
-        categoryList = ['日常', '旅行', '美食', '心情', '运动', '学习', '工作', '其他'];
-      }
+      const dbCategories = categories
+        .map(c => c.category)
+        .filter(name => typeof name === 'string' && name.trim());
+
+      // 使用「默认分类 + 数据库中出现过的分类」去重合并，确保默认项始终存在
+      const mergedSet = new Set([
+        ...defaultCategories,
+        ...dbCategories,
+      ]);
+      categoryList = Array.from(mergedSet);
       
       // 缓存10分钟
       cache.set(cacheKey, categoryList, 10 * 60 * 1000);
@@ -881,9 +886,9 @@ exports.getTags = async (req, res, next) => {
     
     if (!tagList) {
       // 从数据库查询
+      const limitNum = Math.max(1, Math.min(50, parseInt(limit, 10) || 10));
       const [tags] = await pool.execute(
-        'SELECT name, count FROM life_tags WHERE count > 0 ORDER BY count DESC, name ASC LIMIT ?',
-        [parseInt(limit)]
+        `SELECT name, count FROM life_tags WHERE count > 0 ORDER BY count DESC, name ASC LIMIT ${limitNum}`
       );
 
       tagList = tags.map(t => ({

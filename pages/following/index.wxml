@@ -1,0 +1,49 @@
+<t-navbar title="我的关注" left-arrow />
+<view class="following-container">
+  <view wx:if="{{followingList.length === 0 && !loading}}" class="following-empty">
+    <t-empty
+      icon="user"
+      description="还没有关注任何人"
+    >
+      <t-button
+        theme="primary"
+        size="medium"
+        slot="action"
+        bindtap="goToHome"
+      >
+        去发现
+      </t-button>
+    </t-empty>
+  </view>
+
+  <view wx:else class="following-list">
+    <view wx:for="{{followingList}}" wx:key="id" wx:for-item="user" class="following-item">
+      <view class="following-user" bindtap="goToUserProfile" data-user-id="{{user.id}}">
+        <t-avatar image="{{user.avatar}}" size="medium" />
+        <view class="following-user-info">
+          <text class="following-username">{{user.nickname}}</text>
+          <text class="following-time">关注于 {{user.followAt}}</text>
+        </view>
+      </view>
+      <t-button
+        theme="light"
+        size="small"
+        variant="outline"
+        data-user-id="{{user.id}}"
+        bindtap="unfollow"
+      >
+        取消关注
+      </t-button>
+    </view>
+  </view>
+
+  <!-- 加载更多 -->
+  <view wx:if="{{loading}}" class="following-loading">
+    <t-loading theme="circular" size="32rpx" text="加载中..." />
+  </view>
+  <view wx:if="{{!hasMore && followingList.length > 0}}" class="following-no-more">
+    <text>没有更多了</text>
+  </view>
+</view>
+
+<t-message id="t-message" />

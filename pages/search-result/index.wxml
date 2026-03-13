@@ -1,0 +1,71 @@
+<t-navbar title="搜索结果" left-arrow />
+<view class="search-result-container">
+  <!-- 搜索关键词 -->
+  <view class="search-result-keyword" wx:if="{{keyword}}">
+    <text>搜索"{{keyword}}"</text>
+    <text class="result-count" wx:if="{{!loading && records.length > 0}}">共找到 {{records.length}} 条结果</text>
+  </view>
+
+  <!-- 筛选栏 -->
+  <view class="search-result-filters">
+    <!-- 分类筛选 -->
+    <view class="filter-section">
+      <t-check-tag
+        checked="{{selectedCategory === ''}}"
+        size="medium"
+        variant="{{selectedCategory === '' ? 'dark' : 'light'}}"
+        content="全部"
+        data-value="all"
+        bind:change="onCategoryChange"
+      />
+      <t-check-tag
+        wx:for="{{categories}}"
+        wx:key="index"
+        wx:for-item="category"
+        checked="{{selectedCategory === category}}"
+        size="medium"
+        variant="{{selectedCategory === category ? 'dark' : 'light'}}"
+        content="{{category}}"
+        data-value="{{category}}"
+        bind:change="onCategoryChange"
+      />
+    </view>
+    
+    <!-- 类型筛选 -->
+    <view class="filter-section">
+      <t-radio-group value="{{selectedType}}" bind:change="onTypeChange">
+        <t-radio value="all" label="全部" />
+        <t-radio value="image" label="图文" />
+        <t-radio value="video" label="视频" />
+      </t-radio-group>
+    </view>
+  </view>
+
+  <!-- 结果列表 -->
+  <view class="search-result-list">
+    <view wx:if="{{records.length === 0 && !loading}}" class="search-result-empty">
+      <t-empty
+        icon="search"
+        description="没有找到相关记录"
+      />
+    </view>
+    <view wx:else class="result-list">
+      <life-record-card
+        wx:for="{{records}}"
+        wx:key="id"
+        record="{{item}}"
+        bindtap="viewDetail"
+      />
+    </view>
+    
+    <!-- 加载更多 -->
+    <view wx:if="{{loading}}" class="search-result-loading">
+      <t-loading theme="circular" size="32rpx" text="加载中..." />
+    </view>
+    <view wx:if="{{!hasMore && records.length > 0}}" class="search-result-no-more">
+      <text>没有更多了</text>
+    </view>
+  </view>
+</view>
+
+<t-message id="t-message" />

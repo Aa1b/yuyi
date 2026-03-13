@@ -1,0 +1,66 @@
+@import '/variable.less';
+
+.following-container {
+  min-height: 100vh;
+  background: @bg-color;
+  padding-bottom: 32rpx;
+}
+
+.following-empty {
+  padding: 120rpx 32rpx;
+}
+
+.following-list {
+  padding: 24rpx;
+}
+
+.following-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx;
+  margin-bottom: 16rpx;
+  background: @bg-color-white;
+  border-radius: 16rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+}
+
+.following-user {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  cursor: pointer;
+}
+
+.following-user-info {
+  display: flex;
+  flex-direction: column;
+  margin-left: 16rpx;
+  flex: 1;
+}
+
+.following-username {
+  font-size: @font-size-medium;
+  font-weight: 500;
+  color: @text-color-primary;
+  margin-bottom: 8rpx;
+}
+
+.following-time {
+  font-size: @font-size-small;
+  color: @text-color-placeholder;
+}
+
+.following-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40rpx 0;
+}
+
+.following-no-more {
+  text-align: center;
+  padding: 40rpx 0;
+  color: @text-color-placeholder;
+  font-size: @font-size-small;
+}

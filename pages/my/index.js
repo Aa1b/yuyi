@@ -8,6 +8,7 @@ Page({
     isLoad: false,
     service: [],
     personalInfo: {},
+    userIp: '',
     gridList: [
       {
         name: '全部发布',
@@ -54,6 +55,18 @@ Page({
         isLoad: true,
         personalInfo,
       });
+
+      // 额外获取一次真实后端的用户信息，用于展示IP
+      try {
+        const profileRes = await request('/auth/profile').then((res) => res.data);
+        if (profileRes.code === 200 && profileRes.data) {
+          this.setData({
+            userIp: profileRes.data.ip || '',
+          });
+        }
+      } catch (e) {
+        // 忽略IP获取失败，不影响其他功能
+      }
     }
   },
 

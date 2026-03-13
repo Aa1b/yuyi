@@ -1,0 +1,246 @@
+@import '/variable.less';
+
+.life-detail-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding-bottom: 120rpx;
+  background: @bg-color;
+}
+
+.life-detail-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 200rpx 0;
+}
+
+.life-detail-content {
+  padding: 32rpx;
+}
+
+.life-detail-record {
+  background: @bg-color-white;
+  border-radius: 16rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+}
+
+.life-detail-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 24rpx;
+}
+
+.life-detail-user-info {
+  display: flex;
+  flex-direction: column;
+  margin-left: 16rpx;
+  flex: 1;
+}
+
+.life-detail-username {
+  font-size: @font-size-medium;
+  font-weight: 500;
+  color: @text-color-primary;
+}
+
+.life-detail-time {
+  font-size: @font-size-small;
+  color: @text-color-placeholder;
+  margin-top: 4rpx;
+}
+
+.life-detail-privacy {
+  display: flex;
+  align-items: center;
+}
+
+.life-detail-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.life-detail-text {
+  font-size: @font-size-base;
+  color: @text-color-primary;
+  line-height: 1.8;
+  margin-bottom: 24rpx;
+  word-break: break-all;
+}
+
+.life-detail-media {
+  margin-bottom: 24rpx;
+  border-radius: 8rpx;
+  overflow: hidden;
+}
+
+.life-detail-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8rpx;
+}
+
+.life-detail-image {
+  width: calc(33.33% - 6rpx);
+  height: 200rpx;
+  border-radius: 8rpx;
+  overflow: hidden;
+
+  &--single {
+    width: 100%;
+    height: 500rpx;
+  }
+}
+
+.life-detail-video {
+  width: 100%;
+  height: 400rpx;
+  background: #000;
+  border-radius: 8rpx;
+}
+
+.life-detail-location {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16rpx;
+  font-size: @font-size-small;
+  color: @text-color-secondary;
+
+  text {
+    margin-left: 8rpx;
+  }
+}
+
+.life-detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-bottom: 16rpx;
+}
+
+.life-detail-tag {
+  margin-right: 8rpx;
+}
+
+.life-detail-stats {
+  display: flex;
+  gap: 32rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid @border-color;
+  font-size: @font-size-small;
+  color: @text-color-secondary;
+}
+
+.life-detail-comments {
+  background: @bg-color-white;
+  border-radius: 16rpx;
+  padding: 32rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+}
+
+.life-detail-comments-title {
+  font-size: @font-size-medium;
+  font-weight: 500;
+  color: @text-color-primary;
+  margin-bottom: 24rpx;
+}
+
+.life-detail-comments-empty {
+  text-align: center;
+  padding: 80rpx 0;
+  color: @text-color-placeholder;
+  font-size: @font-size-small;
+}
+
+.life-detail-comments-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.life-detail-comment {
+  display: flex;
+  margin-bottom: 24rpx;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.life-detail-comment-content {
+  flex: 1;
+  margin-left: 16rpx;
+  display: flex;
+  flex-direction: column;
+}
+
+.life-detail-comment-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8rpx;
+}
+
+.life-detail-comment-username {
+  font-size: @font-size-small;
+  font-weight: 500;
+  color: @text-color-primary;
+  margin-right: 16rpx;
+}
+
+.life-detail-comment-time {
+  font-size: @font-size-small;
+  color: @text-color-placeholder;
+}
+
+.life-detail-comment-text {
+  font-size: @font-size-small;
+  color: @text-color-primary;
+  line-height: 1.6;
+  word-break: break-all;
+}
+
+.life-detail-actions {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 24rpx 32rpx;
+  background: @bg-color-white;
+  border-top: 1rpx solid @border-color;
+  box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.08);
+  z-index: 100;
+}
+
+.life-detail-action-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+  font-size: @font-size-small;
+  color: @text-color-secondary;
+
+  text {
+    font-size: @font-size-small;
+  }
+}
+
+.life-detail-action-text--active {
+  color: #ff4d4f;
+}
+
+.life-detail-comment-input {
+  padding: 32rpx;
+  background: @bg-color-white;
+  border-radius: 16rpx 16rpx 0 0;
+}
+
+.life-detail-comment-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 16rpx;
+  margin-top: 24rpx;
+}

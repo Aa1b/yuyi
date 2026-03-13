@@ -1,0 +1,103 @@
+@import '/variable.less';
+
+.user-profile-container {
+  min-height: 100vh;
+  background: @bg-color;
+}
+
+.user-profile-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 200rpx 0;
+}
+
+.user-profile-content {
+  padding-bottom: 32rpx;
+}
+
+.user-profile-header {
+  display: flex;
+  align-items: flex-start;
+  padding: 32rpx;
+  background: @bg-color-white;
+  margin-bottom: 24rpx;
+}
+
+.user-profile-info {
+  flex: 1;
+  margin-left: 24rpx;
+  display: flex;
+  flex-direction: column;
+}
+
+.user-profile-name {
+  font-size: @font-size-medium;
+  font-weight: 500;
+  color: @text-color-primary;
+  margin-bottom: 24rpx;
+}
+
+.user-profile-stats {
+  display: flex;
+  gap: 32rpx;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+}
+
+.stat-value {
+  font-size: @font-size-medium;
+  font-weight: 500;
+  color: @text-color-primary;
+  margin-bottom: 8rpx;
+}
+
+.stat-label {
+  font-size: @font-size-small;
+  color: @text-color-secondary;
+}
+
+.user-profile-actions {
+  display: flex;
+  align-items: center;
+}
+
+.user-profile-records {
+  padding: 0 24rpx;
+}
+
+.records-title {
+  font-size: @font-size-medium;
+  font-weight: 500;
+  color: @text-color-primary;
+  margin-bottom: 24rpx;
+  padding: 0 8rpx;
+}
+
+.records-empty {
+  padding: 120rpx 32rpx;
+}
+
+.records-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.records-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40rpx 0;
+}
+
+.records-no-more {
+  text-align: center;
+  padding: 40rpx 0;
+  color: @text-color-placeholder;
+  font-size: @font-size-small;
+}

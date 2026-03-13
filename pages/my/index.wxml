@@ -9,6 +9,7 @@
         <t-avatar image="{{personalInfo.image}}" slot="left-icon" size="large" />
         <view class="my-info__person" slot="description">
           <view class="name">{{personalInfo.name}}</view>
+          <view wx:if="{{userIp}}" class="ip">当前IP：{{userIp}}</view>
           <view class="tags">
             <t-tag class="tag" variant="light" icon="discount">{{personalInfo.star}}</t-tag>
             <t-tag class="tag" variant="light" icon="location">{{personalInfo.city}}</t-tag>

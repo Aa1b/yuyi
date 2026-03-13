@@ -1,0 +1,84 @@
+<t-navbar title="我的记录" left-arrow />
+<view class="my-life-records-container">
+  <!-- 分类筛选 -->
+  <view class="my-life-records-filter">
+    <t-check-tag
+      checked="{{selectedCategory === ''}}"
+      size="medium"
+      variant="{{selectedCategory === '' ? 'dark' : 'light'}}"
+      content="全部"
+      data-value="all"
+      bind:change="onCategoryChange"
+    />
+    <t-check-tag
+      wx:for="{{categories}}"
+      wx:key="index"
+      wx:for-item="category"
+      checked="{{selectedCategory === category}}"
+      size="medium"
+      variant="{{selectedCategory === category ? 'dark' : 'light'}}"
+      content="{{category}}"
+      data-value="{{category}}"
+      bind:change="onCategoryChange"
+    />
+  </view>
+
+  <!-- 记录列表 -->
+  <view class="my-life-records-list">
+    <view wx:for="{{records}}" wx:key="id" wx:for-item="record" class="my-life-records-item">
+      <view bindtap="viewDetail" data-id="{{record.id}}">
+        <life-record-card record="{{record}}" />
+      </view>
+      <!-- 操作按钮 -->
+      <view class="my-life-records-actions">
+        <t-button
+          theme="light"
+          size="small"
+          variant="outline"
+          data-id="{{record.id}}"
+          bindtap="editRecord"
+        >
+          编辑
+        </t-button>
+        <t-button
+          theme="danger"
+          size="small"
+          variant="outline"
+          data-id="{{record.id}}"
+          bindtap="deleteRecord"
+        >
+          删除
+        </t-button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 加载状态 -->
+  <view wx:if="{{loading}}" class="my-life-records-loading">
+    <t-loading theme="circular" size="32rpx" text="加载中..." />
+  </view>
+  
+  <!-- 没有更多 -->
+  <view wx:if="{{!hasMore && records.length > 0}}" class="my-life-records-no-more">
+    <text>没有更多了</text>
+  </view>
+  
+  <!-- 空状态 -->
+  <view wx:if="{{!loading && records.length === 0}}" class="my-life-records-empty">
+    <t-empty
+      icon="file-image"
+      description="还没有发布任何记录"
+    >
+      <t-button
+        theme="primary"
+        size="medium"
+        slot="action"
+        bindtap="goRelease"
+      >
+        去发布
+      </t-button>
+    </t-empty>
+  </view>
+</view>
+
+<t-message id="t-message" />

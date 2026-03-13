@@ -1,25 +1,93 @@
-<wxs src="./index.wxs" module="utils" />
+<nav nav-type="title" title-text="消息通知" />
+<view class="message-container">
+  <!-- 类型筛选 -->
+  <view class="message-filters">
+    <t-tabs value="{{selectedType}}" bind:change="onTypeChange">
+      <t-tab-panel label="全部" value="all" />
+      <t-tab-panel label="点赞" value="like" />
+      <t-tab-panel label="评论" value="comment" />
+      <t-tab-panel label="关注" value="follow" />
+    </t-tabs>
+  </view>
 
-<nav nav-type="title" title-text="全部消息"></nav>
-<scroll-view
-  class="message-list"
-  scroll-y
-  refresher-enabled
-  refresher-triggered="{{ loading }}"
-  bindrefresherrefresh="getMessageList"
->
-  <t-cell
-    wx:for="{{ messageList }}"
-    wx:key="index"
-    t-class-image="avatar"
-    t-class-description="content {{ utils.isRead(item.messages) ? '' : 'unread' }}"
-    image="{{ item.avatar }}"
-    title="{{ item.name }}"
-    description="{{ item.messages[item.messages.length - 1].content }}"
-    hover
-    bind:tap="toChat"
-    data-user-id="{{ item.userId }}"
-  >
-    <t-badge slot="right-icon" count="{{ utils.computeUnreadNum(item.messages) }}" class="wrapper" />
-  </t-cell>
-</scroll-view>
+  <!-- 操作栏 -->
+  <view class="message-actions" wx:if="{{unreadCount > 0}}">
+    <t-button theme="light" size="small" bindtap="markAllAsRead">
+      全部已读
+    </t-button>
+  </view>
+
+  <!-- 通知列表 -->
+  <view class="message-list">
+    <view wx:if="{{notifications.length === 0 && !loading}}" class="message-empty">
+      <t-empty
+        icon="notification"
+        description="暂无通知"
+      />
+    </view>
+    
+    <view wx:else class="notification-list">
+      <view
+        wx:for="{{notifications}}"
+        wx:key="id"
+        wx:for-item="notification"
+        class="notification-item {{notification.isRead ? '' : 'notification-item--unread'}}"
+        bindtap="goToDetail"
+        data-record-id="{{notification.recordId}}"
+      >
+        <view class="notification-content">
+          <t-avatar
+            image="{{notification.fromUserAvatar}}"
+            size="small"
+            bindtap="goToUserProfile"
+            data-user-id="{{notification.fromUserId}}"
+          />
+          <view class="notification-info">
+            <view class="notification-header">
+              <text class="notification-user" bindtap="goToUserProfile" data-user-id="{{notification.fromUserId}}">
+                {{notification.fromUserName}}
+              </text>
+              <text class="notification-type">
+                <t-icon
+                  name="{{notification.type === 'like' ? 'heart' : notification.type === 'comment' ? 'chat' : 'user'}}"
+                  size="24rpx"
+                  color="#999"
+                />
+                {{notification.type === 'like' ? '点赞' : notification.type === 'comment' ? '评论' : '关注'}}了你
+              </text>
+            </view>
+            <text class="notification-text">{{notification.content}}</text>
+            <text class="notification-time">{{notification.createdAt}}</text>
+          </view>
+        </view>
+        <view class="notification-actions">
+          <view
+            wx:if="{{!notification.isRead}}"
+            class="notification-mark-read"
+            data-id="{{notification.id}}"
+            bindtap="markAsRead"
+          >
+            <t-icon name="check" size="32rpx" color="#999" />
+          </view>
+          <view
+            class="notification-delete"
+            data-id="{{notification.id}}"
+            bindtap="deleteNotification"
+          >
+            <t-icon name="close" size="32rpx" color="#999" />
+          </view>
+        </view>
+      </view>
+    </view>
+    
+    <!-- 加载更多 -->
+    <view wx:if="{{loading}}" class="message-loading">
+      <t-loading theme="circular" size="32rpx" text="加载中..." />
+    </view>
+    <view wx:if="{{!hasMore && notifications.length > 0}}" class="message-no-more">
+      <text>没有更多了</text>
+    </view>
+  </view>
+</view>
+
+<t-message id="t-message" />

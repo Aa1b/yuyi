@@ -1,0 +1,70 @@
+/**
+ * 获取通知列表
+ * GET /notification/list?page=1&pageSize=20&type=all
+ */
+export default {
+  path: '/notification/list',
+  data: {
+    code: 200,
+    message: '获取成功',
+    data: {
+      list: [
+        {
+          id: 1,
+          type: 'like',
+          recordId: 1,
+          fromUserId: 2,
+          fromUserName: '用户2',
+          fromUserAvatar: '/static/chat/avatar-Kingdom.png',
+          content: '点赞了你的记录',
+          isRead: 0,
+          createdAt: '2024-01-15 15:00:00',
+          recordContent: '今天天气真好，和朋友一起去公园野餐～',
+          recordType: 'image',
+        },
+        {
+          id: 2,
+          type: 'comment',
+          recordId: 1,
+          fromUserId: 3,
+          fromUserName: '用户3',
+          fromUserAvatar: '/static/chat/avatar-Mollymolly.png',
+          content: '评论了你的记录：看起来很不错！',
+          isRead: 0,
+          createdAt: '2024-01-15 16:00:00',
+          recordContent: '今天天气真好，和朋友一起去公园野餐～',
+          recordType: 'image',
+        },
+        {
+          id: 3,
+          type: 'follow',
+          recordId: null,
+          fromUserId: 4,
+          fromUserName: '用户4',
+          fromUserAvatar: '/static/chat/avatar-Paige.png',
+          content: '关注了你',
+          isRead: 1,
+          createdAt: '2024-01-14 10:00:00',
+          recordContent: null,
+          recordType: null,
+        },
+        {
+          id: 4,
+          type: 'like',
+          recordId: 2,
+          fromUserId: 1,
+          fromUserName: '用户1',
+          fromUserAvatar: '/static/chat/avatar.png',
+          content: '点赞了你的记录',
+          isRead: 1,
+          createdAt: '2024-01-13 12:00:00',
+          recordContent: '记录一次美好的旅行',
+          recordType: 'video',
+        },
+      ],
+      total: 4,
+      page: 1,
+      pageSize: 20,
+    },
+  },
+};

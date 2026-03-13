@@ -28,13 +28,14 @@ exports.login = async (req, res, next) => {
       });
     }
 
-    const appid = process.env.WX_APPID;
-    const secret = process.env.WX_SECRET;
+    // 兼容两种环境变量命名：优先使用 WECHAT_APPID/WECHAT_SECRET，其次使用 WX_APPID/WX_SECRET
+    const appid = process.env.WECHAT_APPID || process.env.WX_APPID;
+    const secret = process.env.WECHAT_SECRET || process.env.WX_SECRET;
 
     if (!appid || !secret) {
       return res.status(500).json({
         code: 500,
-        message: '服务端未配置微信登录参数，请设置 WX_APPID 和 WX_SECRET',
+        message: '服务端未配置微信登录参数，请设置 WECHAT_APPID/WECHAT_SECRET 或 WX_APPID/WX_SECRET',
       });
     }
 

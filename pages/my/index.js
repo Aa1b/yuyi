@@ -93,8 +93,28 @@ Page({
   },
 
   onEleClick(e) {
-    const { name, url } = e.currentTarget.dataset.data;
+    const { type, url } = e.currentTarget.dataset.data;
     if (url) return;
-    this.onShowToast('#t-toast', name);
+
+    // 根据类型跳转到不同的记录列表视图
+    if (type === 'all') {
+      wx.navigateTo({ url: '/pages/my-life-records/index?filter=all' });
+      return;
+    }
+    if (type === 'progress') {
+      wx.navigateTo({ url: '/pages/my-life-records/index?filter=pending' });
+      return;
+    }
+    if (type === 'published') {
+      wx.navigateTo({ url: '/pages/my-life-records/index?filter=published' });
+      return;
+    }
+    if (type === 'draft') {
+      wx.navigateTo({ url: '/pages/my-life-records/index?filter=draft' });
+      return;
+    }
+
+    // 其他类型暂时仍然使用 toast
+    this.onShowToast('#t-toast', type);
   },
 });

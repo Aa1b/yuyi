@@ -87,4 +87,11 @@ router.get('/tags', lifeController.getTags);
  */
 router.get('/search', optionalAuth, lifeController.search);
 
+/**
+ * @route POST /api/life/review
+ * @desc 审核生活记录（通过 / 驳回）
+ * @access Private
+ */
+router.post('/review', authenticate, lifeController.reviewRecord);
+
 module.exports = router;

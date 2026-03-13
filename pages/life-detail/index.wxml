@@ -50,8 +50,9 @@
             src="{{record.video.url}}"
             poster="{{record.video.cover}}"
             controls
+            enable-progress-gesture="true"
+            show-center-play-btn="true"
             class="life-detail-video"
-            bindplay="handleVideoPlay"
           />
         </view>
 

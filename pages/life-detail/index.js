@@ -146,15 +146,6 @@ Page({
     }
   },
   
-  // 播放视频
-  handleVideoPlay() {
-    const { record } = this.data;
-    if (record && record.video && record.video.url) {
-      const videoContext = wx.createVideoContext('life-detail-video', this);
-      videoContext.play();
-    }
-  },
-  
   // 预览图片
   previewImage(e) {
     const { index } = e.currentTarget.dataset;

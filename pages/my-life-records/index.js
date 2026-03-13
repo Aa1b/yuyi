@@ -7,13 +7,16 @@ Page({
     records: [],
     categories: [],
     selectedCategory: '',
+    filter: 'all', // all | pending | published | draft
     loading: false,
     hasMore: true,
     page: 1,
     pageSize: 10,
   },
   
-  onLoad() {
+  onLoad(options) {
+    const { filter = 'all' } = options || {};
+    this.setData({ filter });
     this.loadCategories();
     this.loadMyRecords(true);
   },
@@ -37,19 +40,27 @@ Page({
     try {
       this.setData({ loading: true });
       
-      const { selectedCategory, page, pageSize } = this.data;
+      const { selectedCategory, page, pageSize, filter } = this.data;
       const params = {
         page: refresh ? 1 : page,
         pageSize,
-        privacy: 'all', // 我的记录显示所有隐私级别
+        privacy: 'all', // 管理视角下显示所有隐私级别
         category: selectedCategory || '',
       };
+
+      // 根据不同入口设置状态筛选
+      if (filter === 'pending') {
+        params.status = 'pending';
+      } else if (filter === 'published') {
+        params.status = 1;
+      } else if (filter === 'all') {
+        params.status = 'all';
+      }
       
       const queryString = Object.keys(params)
         .map(key => `${key}=${encodeURIComponent(params[key])}`)
         .join('&');
       
-      // TODO: 实际应该调用 /life/my-records 接口，这里先用通用接口
       const res = await request(`/life/list?${queryString}`).then((res) => res.data);
       const { list, total } = res.data;
       
@@ -144,6 +155,50 @@ Page({
               content: '删除失败，请重试',
             });
           }
+        }
+      },
+    });
+  },
+
+  // 审核记录（通过 / 驳回）
+  async reviewRecord(e) {
+    const { id, action } = e.currentTarget.dataset;
+    const actionText = action === 'approve' ? '通过' : '驳回';
+
+    wx.showModal({
+      title: `确认${actionText}`,
+      content: `确定要${actionText}这条记录吗？`,
+      success: async (res) => {
+        if (!res.confirm) return;
+        try {
+          wx.showLoading({ title: `${actionText}中...`, mask: true });
+          await request('/life/review', 'POST', { id, action });
+          wx.hideLoading();
+
+          // 从列表中移除
+          const { records } = this.data;
+          const index = records.findIndex(item => item.id === id);
+          if (index > -1) {
+            records.splice(index, 1);
+            this.setData({
+              records: [...records],
+            });
+          }
+
+          Message.success({
+            context: this,
+            offset: [120, 32],
+            duration: 2000,
+            content: `${actionText}成功`,
+          });
+        } catch (error) {
+          wx.hideLoading();
+          Message.error({
+            context: this,
+            offset: [120, 32],
+            duration: 2000,
+            content: `${actionText}失败，请重试`,
+          });
         }
       },
     });

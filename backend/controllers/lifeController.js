@@ -69,6 +69,7 @@ exports.getList = async (req, res, next) => {
       type = 'all',
       userId = null, // 可选：获取指定用户的记录
       location = '', // 可选：按位置关键字筛选
+      status = 1, // 可选：状态筛选，1=已发布，pending=待审核，all=已发布+待审核
     } = req.query;
 
     const currentUserId = req.user?.id || null;
@@ -78,8 +79,18 @@ exports.getList = async (req, res, next) => {
     const offset = (pageNum - 1) * limit;
 
     // 构建查询条件
-    let whereConditions = ['r.status = 1'];
+    const whereConditions = [];
     const queryParams = [];
+
+    // 状态筛选：默认只看已发布
+    if (status === 'all') {
+      whereConditions.push('r.status IN (1, 2)');
+    } else if (status === 'pending') {
+      whereConditions.push('r.status = 2');
+    } else {
+      // 默认或 status=1
+      whereConditions.push('r.status = 1');
+    }
 
     // 隐私筛选
     if (privacy === 'public') {
@@ -139,6 +150,7 @@ exports.getList = async (req, res, next) => {
         r.privacy,
         r.category,
         r.location,
+        r.status,
         r.like_count as likeCount,
         r.comment_count as commentCount,
         r.created_at as createdAt
@@ -254,6 +266,7 @@ exports.getDetail = async (req, res, next) => {
         r.privacy,
         r.category,
         r.location,
+        r.status,
         r.like_count as likeCount,
         r.comment_count as commentCount,
         r.created_at as createdAt
@@ -368,11 +381,11 @@ exports.createRecord = async (req, res, next) => {
       });
     }
 
-    // 创建记录
+    // 创建记录，默认状态为待审核（2）
     const [result] = await pool.execute(
       `INSERT INTO life_records 
-       (user_id, content, type, privacy, category, location) 
-       VALUES (?, ?, ?, ?, ?, ?)`,
+       (user_id, content, type, privacy, category, location, status) 
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
         userId,
         content,
@@ -380,6 +393,7 @@ exports.createRecord = async (req, res, next) => {
         privacy || 'public',
         category || null,
         location || null,
+        2, // 待审核
       ]
     );
 
@@ -602,6 +616,48 @@ exports.deleteRecord = async (req, res, next) => {
       code: 200,
       message: '删除成功',
       data: null,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * 审核生活记录（通过 / 驳回）
+ */
+exports.reviewRecord = async (req, res, next) => {
+  try {
+    const { id, action } = req.body;
+
+    if (!id || !['approve', 'reject'].includes(action)) {
+      return res.status(400).json({
+        code: 400,
+        message: '参数错误',
+      });
+    }
+
+    // TODO: 这里可以根据 req.user 判断是否为管理员
+    const newStatus = action === 'approve' ? 1 : 0;
+
+    const [result] = await pool.execute(
+      'UPDATE life_records SET status = ? WHERE id = ?',
+      [newStatus, id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        code: 404,
+        message: '记录不存在',
+      });
+    }
+
+    res.json({
+      code: 200,
+      message: action === 'approve' ? '审核通过' : '已驳回',
+      data: {
+        id,
+        status: newStatus,
+      },
     });
   } catch (error) {
     next(error);

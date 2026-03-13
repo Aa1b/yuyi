@@ -246,12 +246,38 @@ Page({
               page: 1,
               hasMore: true,
             });
-            that.loadLifeRecords(true);
+          } else {
+            // 逆地理编码失败，不启用同城筛选
+            that.setData({
+              useLocationFilter: false,
+              lifeRecords: [],
+              page: 1,
+              hasMore: true,
+            });
           }
+          // 无论成功或失败，都加载一次列表，避免需要手动刷新
+          that.loadLifeRecords(true);
+        },
+        fail() {
+          // 地图请求失败，降级为不按城市筛选
+          that.setData({
+            useLocationFilter: false,
+            lifeRecords: [],
+            page: 1,
+            hasMore: true,
+          });
+          that.loadLifeRecords(true);
         },
       });
     } catch (e) {
-      // 获取失败时不启用位置筛选
+      // 获取定位失败，降级为不按城市筛选
+      this.setData({
+        useLocationFilter: false,
+        lifeRecords: [],
+        page: 1,
+        hasMore: true,
+      });
+      this.loadLifeRecords(true);
     }
   },
 

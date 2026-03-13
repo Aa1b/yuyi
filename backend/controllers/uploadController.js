@@ -61,10 +61,12 @@ exports.uploadImage = async (req, res, next) => {
         fs.unlinkSync(originalPath);
       }
 
-      // TODO: 实际项目中应该上传到云存储（微信云开发或OSS）
-      // 这里返回本地路径（实际应该是云存储URL）
-      const fileUrl = `/uploads/images/${path.basename(compressedPath)}`;
-      const thumbnailUrl = `/uploads/images/${path.basename(thumbnailPath)}`;
+      // 拼接对外可访问的完整 URL
+      const storageBaseUrl = (process.env.STORAGE_BASE_URL || '').replace(/\/+$/, '');
+      const filePath = `/uploads/images/${path.basename(compressedPath)}`;
+      const thumbPath = `/uploads/images/${path.basename(thumbnailPath)}`;
+      const fileUrl = storageBaseUrl ? `${storageBaseUrl}${filePath}` : filePath;
+      const thumbnailUrl = storageBaseUrl ? `${storageBaseUrl}${thumbPath}` : thumbPath;
 
       res.json({
         code: 200,
@@ -82,7 +84,9 @@ exports.uploadImage = async (req, res, next) => {
     } catch (error) {
       console.error('图片处理失败:', error);
       // 如果处理失败，返回原图
-      const fileUrl = `/uploads/images/${filename}`;
+      const storageBaseUrl = (process.env.STORAGE_BASE_URL || '').replace(/\/+$/, '');
+      const filePath = `/uploads/images/${filename}`;
+      const fileUrl = storageBaseUrl ? `${storageBaseUrl}${filePath}` : filePath;
       res.json({
         code: 200,
         message: '上传成功（未压缩）',
@@ -170,16 +174,19 @@ exports.uploadVideo = async (req, res, next) => {
       coverUrl = `/uploads/videos/thumbnails/default.jpg`;
     }
 
-    // TODO: 实际项目中应该上传到云存储（微信云开发或OSS）
-    // 这里返回本地路径（实际应该是云存储URL）
-    const fileUrl = `/uploads/videos/${filename}`;
+    // 拼接对外可访问的完整 URL
+    const storageBaseUrl = (process.env.STORAGE_BASE_URL || '').replace(/\/+$/, '');
+    const videoPathRelative = `/uploads/videos/${filename}`;
+    const coverPathRelative = coverUrl;
+    const fileUrl = storageBaseUrl ? `${storageBaseUrl}${videoPathRelative}` : videoPathRelative;
+    const fullCoverUrl = storageBaseUrl ? `${storageBaseUrl}${coverPathRelative}` : coverPathRelative;
 
     res.json({
       code: 200,
       message: '上传成功',
       data: {
         url: fileUrl,
-        cover: coverUrl,
+        cover: fullCoverUrl,
         duration,
         filename,
         size: req.file.size,

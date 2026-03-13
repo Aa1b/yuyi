@@ -92,8 +92,11 @@ Page({
         userInfo,
       });
 
-      if (res && res.data && res.data.token) {
-        wx.setStorageSync('access_token', res.data.token);
+      // 后端返回结构：{ code, message, data: { token, user } }
+      const token = res && res.data && res.data.token ? res.data.token : res.data?.token || res.data?.data?.token;
+
+      if (token) {
+        wx.setStorageSync('access_token', token);
         wx.showToast({ title: '登录成功', icon: 'success' });
         wx.switchTab({
           url: '/pages/my/index',

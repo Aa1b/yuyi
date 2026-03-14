@@ -53,8 +53,8 @@ const generateToken = (userId) => {
  * 文档: https://developers.weixin.qq.com/miniprogram/dev/OpenApiDoc/user-login/code2Session.html
  */
 function wechatCode2Session(code) {
-  const appId = process.env.WECHAT_APPID;
-  const appSecret = process.env.WECHAT_APP_SECRET;
+  const appId = process.env.WECHAT_APPID || process.env.WX_APPID;
+  const appSecret = process.env.WECHAT_APP_SECRET || process.env.WECHAT_SECRET || process.env.WX_SECRET;
   if (!appId || !appSecret) {
     return Promise.resolve(null);
   }
@@ -94,17 +94,12 @@ exports.login = async (req, res, next) => {
       });
     }
 
-    // 调用微信接口用 code 换取 openid
     const session = await wechatCode2Session(code);
-    let openid;
-    if (session && session.openid) {
-      openid = session.openid;
-    } else {
-      // 未配置 AppID/Secret 或接口失败
-      if (!process.env.WECHAT_APPID || !process.env.WECHAT_APP_SECRET) {
+    if (!session || !session.openid) {
+      if (!(process.env.WECHAT_APPID || process.env.WX_APPID) || !(process.env.WECHAT_APP_SECRET || process.env.WECHAT_SECRET || process.env.WX_SECRET)) {
         return res.status(503).json({
           code: 503,
-          message: '微信登录未配置：请在服务端设置环境变量 WECHAT_APPID 和 WECHAT_APP_SECRET',
+          message: '微信登录未配置：请设置 WECHAT_APPID/WECHAT_APP_SECRET 或 WX_APPID/WX_SECRET',
         });
       }
       return res.status(401).json({
@@ -112,25 +107,23 @@ exports.login = async (req, res, next) => {
         message: '微信登录失败，请重试',
       });
     }
+    const openid = session.openid;
+    const unionid = session.unionid || null;
 
     // 查询或创建用户
     let [users] = await pool.execute(
-      'SELECT id, openid, nickname, avatar FROM users WHERE openid = ?',
+      'SELECT id, openid, nickname, avatar, is_admin FROM users WHERE openid = ?',
       [openid]
     );
 
     let user;
     if (users.length === 0) {
       const [result] = await pool.execute(
-        'INSERT INTO users (openid, nickname, avatar) VALUES (?, ?, ?)',
-        [
-          openid,
-          userInfo?.nickName || '微信用户',
-          userInfo?.avatarUrl || '',
-        ]
+        'INSERT INTO users (openid, unionid, nickname, avatar) VALUES (?, ?, ?, ?)',
+        [openid, unionid, userInfo?.nickName || '微信用户', userInfo?.avatarUrl || '']
       );
       [users] = await pool.execute(
-        'SELECT id, openid, nickname, avatar FROM users WHERE id = ?',
+        'SELECT id, openid, nickname, avatar, is_admin FROM users WHERE id = ?',
         [result.insertId]
       );
       user = users[0];
@@ -147,7 +140,6 @@ exports.login = async (req, res, next) => {
     }
 
     const token = generateToken(user.id);
-
     res.json({
       code: 200,
       message: '登录成功',
@@ -157,6 +149,7 @@ exports.login = async (req, res, next) => {
           id: user.id,
           nickname: user.nickname,
           avatar: user.avatar,
+          isAdmin: !!user.is_admin,
         },
       },
     });

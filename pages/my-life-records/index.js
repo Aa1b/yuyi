@@ -15,8 +15,9 @@ Page({
   },
   
   onLoad(options) {
-    const { filter = 'all' } = options || {};
-    this.setData({ filter });
+    const { filter, publishStatus } = options || {};
+    const resolvedFilter = filter || (publishStatus === 'draft' ? 'draft' : publishStatus === 'pending' ? 'pending' : 'all');
+    this.setData({ filter: resolvedFilter });
     this.loadCategories();
     this.loadMyRecords(true);
   },
@@ -26,7 +27,7 @@ Page({
     try {
       const res = await request('/life/categories');
       this.setData({
-        categories: res.data.data || [],
+        categories: res.data || [],
       });
     } catch (error) {
       console.error('加载分类失败', error);
@@ -48,12 +49,14 @@ Page({
         category: selectedCategory || '',
       };
 
-      // 根据不同入口设置状态筛选
+      // 根据不同入口设置状态筛选（与后端 publish_status 一致）
       if (filter === 'pending') {
         params.status = 'pending';
+      } else if (filter === 'draft') {
+        params.status = 'draft';
       } else if (filter === 'published') {
         params.status = 1;
-      } else if (filter === 'all') {
+      } else {
         params.status = 'all';
       }
       

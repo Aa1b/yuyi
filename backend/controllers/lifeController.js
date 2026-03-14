@@ -87,9 +87,11 @@ exports.getList = async (req, res, next) => {
 
     // 发布状态筛选：使用 publish_status 字段
     if (status === 'all') {
-      whereConditions.push("r.publish_status IN ('pending', 'published')");
+      whereConditions.push("r.publish_status IN ('pending', 'published', 'draft')");
     } else if (status === 'pending') {
       whereConditions.push("r.publish_status = 'pending'");
+    } else if (status === 'draft') {
+      whereConditions.push("r.publish_status = 'draft'");
     } else {
       // 默认或 status=1：仅已发布
       whereConditions.push("r.publish_status = 'published'");
@@ -148,6 +150,7 @@ exports.getList = async (req, res, next) => {
         r.user_id as userId,
         u.nickname as userName,
         u.avatar,
+        r.title,
         r.content,
         r.type,
         r.privacy,
@@ -272,6 +275,7 @@ exports.getLikedList = async (req, res, next) => {
         r.user_id as userId,
         u.nickname as userName,
         u.avatar,
+        r.title,
         r.content,
         r.type,
         r.privacy,
@@ -372,6 +376,7 @@ exports.getDetail = async (req, res, next) => {
         r.user_id as userId,
         u.nickname as userName,
         u.avatar,
+        r.title,
         r.content,
         r.type,
         r.privacy,
@@ -462,21 +467,39 @@ exports.getDetail = async (req, res, next) => {
 };
 
 /**
- * 创建生活记录
+ * 创建生活记录（支持标题、草稿/待审核/直接发布）
  */
 exports.createRecord = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { content, type, privacy, category, tags, location, images, video } = req.body;
+    const {
+      title,
+      content,
+      type,
+      privacy,
+      category,
+      tags,
+      location,
+      images,
+      video,
+      publishStatus: bodyPublishStatus,
+    } = req.body;
 
-    if (!content || !type) {
+    const hasTitle = title != null && String(title).trim() !== '';
+    const hasContent = content != null && String(content).trim() !== '';
+    if (!hasTitle && !hasContent) {
       return res.status(400).json({
         code: 400,
-        message: '内容和类型不能为空',
+        message: '请填写标题或内容',
+      });
+    }
+    if (!type) {
+      return res.status(400).json({
+        code: 400,
+        message: '类型不能为空',
       });
     }
 
-    // 验证类型
     if (!['image', 'video'].includes(type)) {
       return res.status(400).json({
         code: 400,
@@ -484,7 +507,6 @@ exports.createRecord = async (req, res, next) => {
       });
     }
 
-    // 验证隐私设置
     if (privacy && !['public', 'private', 'friends'].includes(privacy)) {
       return res.status(400).json({
         code: 400,
@@ -492,20 +514,25 @@ exports.createRecord = async (req, res, next) => {
       });
     }
 
-    // 创建记录：默认正常(status=1)且发布状态为待审核(pending)
+    const publishStatus =
+      bodyPublishStatus === 'draft' || bodyPublishStatus === 'pending' || bodyPublishStatus === 'published'
+        ? bodyPublishStatus
+        : 'pending';
+
     const [result] = await pool.execute(
       `INSERT INTO life_records 
-       (user_id, content, type, privacy, category, location, status, publish_status) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+       (user_id, title, content, type, privacy, category, location, status, publish_status) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         userId,
-        content,
+        hasTitle ? String(title).trim() : '',
+        content != null ? String(content).trim() : '',
         type,
         privacy || 'public',
         category || null,
         location || null,
-        1, // 正常
-        'pending', // 待审核
+        1,
+        publishStatus,
       ]
     );
 

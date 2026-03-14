@@ -1,352 +1,281 @@
 // pages/release/index.js
 import request from '~/api/request';
 import Message from 'tdesign-miniprogram/message/index';
-
-// 腾讯地图 WebService Key
-const TENCENT_MAP_KEY = 'LITBZ-IDMWA-5D3KD-CURMW-MHJ4J-2SFMX';
+import { getSetting, SETTING_KEYS } from '~/utils/settings';
 
 Page({
-  /**
-   * 页面的初始数据
-   */
   data: {
-    // 媒体文件
     imageFiles: [],
     videoFile: null,
-    mediaType: 'image', // image | video
-    
-    // 上传配置
-    imageGridConfig: {
-      column: 4,
-      width: 160,
-      height: 160,
-    },
-    imageConfig: {
-      count: 9, // 最多9张图片
-    },
-    
-    // 内容
+    mediaType: 'image',
+    imageGridConfig: { column: 4, width: 160, height: 160 },
+    imageConfig: { count: 9 },
+    title: '',
     content: '',
-    
-    // 隐私设置: public | private | friends
-    privacy: 'public',
+    privacy: getSetting(SETTING_KEYS.DEFAULT_PRIVACY) || 'public',
     privacyOptions: [
       { label: '公开', value: 'public', icon: 'globe' },
       { label: '好友可见', value: 'friends', icon: 'user' },
       { label: '私密', value: 'private', icon: 'lock-on' },
     ],
-    
-    // 分类
     category: '',
-    categories: [],
-    categoryVisible: false,
-    categoryIndex: [],
-    
-    // 标签
-    allTags: [],
+    categoryList: ['日常', '旅行', '美食', '心情', '运动', '学习', '工作', '其他'],
+    categoryIndex: 0,
+    tagOptions: ['日常', '旅行', '美食', '心情', '运动', '学习', '记录'],
     selectedTags: [],
-    
-    // 位置
     location: '',
+    tagInput: '',
+    isAdmin: false,
   },
-  
+
   async onLoad() {
-    // 加载分类和标签数据
     await this.loadCategories();
     await this.loadTags();
+    await this.checkAdmin();
   },
-  
-  // 加载分类
+
+  async checkAdmin() {
+    try {
+      const res = await request('/auth/profile');
+      this.setData({ isAdmin: !!res?.data?.isAdmin });
+    } catch (e) {
+      this.setData({ isAdmin: false });
+    }
+  },
+
+  getDefaultCategories() {
+    return ['日常', '旅行', '美食', '心情', '运动', '学习', '工作', '其他'];
+  },
+  getDefaultTags() {
+    return ['日常', '旅行', '美食', '心情', '运动', '学习', '记录'];
+  },
+
   async loadCategories() {
     try {
       const res = await request('/life/categories');
-      const categories = res.data.data || [];
-      // 转换为picker需要的格式
-      const categoryOptions = categories.map(item => ({ label: item, value: item }));
+      const list = res?.data ?? [];
+      let names = Array.isArray(list) ? list : [];
+      if (names.length === 0) names = this.getDefaultCategories();
+      const category = this.data.category;
+      const categoryIndex = names.indexOf(category);
       this.setData({
-        categories: categoryOptions,
+        categoryList: names,
+        categoryIndex: categoryIndex >= 0 ? categoryIndex : 0,
       });
     } catch (error) {
       console.error('加载分类失败', error);
+      this.setData({ categoryList: this.getDefaultCategories(), categoryIndex: 0 });
     }
   },
-  
-  // 加载标签
+
   async loadTags() {
     try {
       const res = await request('/life/tags');
-      this.setData({
-        allTags: (res.data.data || []).map(item => item.name),
+      const list = res?.data ?? [];
+      const raw = Array.isArray(list) ? list : [];
+      const fromApi = raw.map(item => (item && item.name ? item.name : item)).filter(Boolean);
+      const defaults = this.getDefaultTags();
+      const merged = [...defaults];
+      fromApi.forEach(name => {
+        if (merged.indexOf(name) === -1) merged.push(name);
       });
+      this.setData({ tagOptions: merged });
     } catch (error) {
       console.error('加载标签失败', error);
+      this.setData({ tagOptions: this.getDefaultTags() });
     }
   },
-  
-  // 选择媒体类型
+
   onMediaTypeChange(e) {
     const { value } = e.detail;
-    this.setData({
-      mediaType: value,
-      imageFiles: [],
-      videoFile: null,
-    });
+    this.setData({ mediaType: value, imageFiles: [], videoFile: null });
   },
-  
-  // 图片上传成功
+
   handleImageSuccess(e) {
-    const { files } = e.detail;
-    this.setData({
-      imageFiles: files,
-    });
+    this.setData({ imageFiles: e.detail.files || [] });
   },
-  
-  // 移除图片
+
   handleImageRemove(e) {
     const { index } = e.detail;
     const { imageFiles } = this.data;
     imageFiles.splice(index, 1);
-    this.setData({
-      imageFiles,
-    });
+    this.setData({ imageFiles });
   },
-  
-  // 视频上传成功
+
   handleVideoSuccess(e) {
-    const { files } = e.detail;
-    if (files && files.length > 0) {
-      this.setData({
-        videoFile: files[0],
-      });
-    }
+    const files = e.detail.files;
+    this.setData({ videoFile: files && files.length > 0 ? files[0] : null });
   },
-  
-  // 移除视频
+
   handleVideoRemove() {
-    this.setData({
-      videoFile: null,
-    });
+    this.setData({ videoFile: null });
   },
-  
-  // 内容输入
+
   onContentInput(e) {
-    this.setData({
-      content: e.detail.value,
-    });
+    const v = (e.detail && e.detail.value) !== undefined ? e.detail.value : e.detail;
+    this.setData({ content: v != null ? String(v) : '' });
   },
-  
-  // 选择隐私设置
+
   onPrivacyChange(e) {
-    const { value } = e.detail;
-    this.setData({
-      privacy: value,
-    });
+    this.setData({ privacy: e.detail.value });
   },
-  
-  // 显示分类选择器
-  showCategoryPicker() {
-    this.setData({
-      categoryVisible: true,
-    });
-  },
-  
-  // 隐藏分类选择器
-  hideCategoryPicker() {
-    this.setData({
-      categoryVisible: false,
-    });
-  },
-  
-  // 选择分类
+
   onCategoryChange(e) {
-    const { value } = e.detail;
-    const { categories } = this.data;
-    if (value && value[0] !== undefined) {
-      this.setData({
-        category: categories[value[0]].label,
-        categoryIndex: value,
-        categoryVisible: false,
-      });
-    }
+    const idx = e.detail && e.detail.value != null ? Number(e.detail.value) : 0;
+    const list = this.data.categoryList && this.data.categoryList.length ? this.data.categoryList : this.getDefaultCategories();
+    const category = list[idx];
+    this.setData({ categoryIndex: idx, category: category || '' });
   },
-  
-  // 切换标签选择
-  onTagToggle(e) {
-    const { checked } = e.detail;
-    const { tag } = e.currentTarget.dataset;
+
+  onTagTap(e) {
+    const tag = e.currentTarget?.dataset?.tag;
+    if (tag == null) return;
     let { selectedTags } = this.data;
-    
-    if (checked) {
+    const idx = selectedTags.indexOf(tag);
+    if (idx === -1) {
       if (selectedTags.length >= 5) {
-        Message.warning({
-          context: this,
-          offset: [120, 32],
-          duration: 2000,
-          content: '最多只能选择5个标签',
-        });
-        // 阻止选中
-        this.setData({
-          [`tagChecked_${tag}`]: false,
-        });
+        Message.warning({ context: this, offset: [120, 32], duration: 2000, content: '最多选择5个标签' });
         return;
       }
-      if (selectedTags.indexOf(tag) === -1) {
-        selectedTags.push(tag);
-      }
+      selectedTags = [...selectedTags, tag];
     } else {
-      const index = selectedTags.indexOf(tag);
-      if (index > -1) {
-        selectedTags.splice(index, 1);
-      }
+      selectedTags = selectedTags.filter((_, i) => i !== idx);
     }
-    
-    this.setData({
-      selectedTags: [...selectedTags],
-    });
+    this.setData({ selectedTags });
   },
-  
-  // 获取位置（腾讯地图逆地理编码 + 备用地图选点）
-  async gotoMap() {
-    const that = this;
-    try {
-      const locRes = await wx.getLocation({
-        type: 'gcj02',
-      });
-      const { latitude, longitude } = locRes;
 
-      wx.request({
-        url: 'https://apis.map.qq.com/ws/geocoder/v1/',
-        method: 'GET',
-        data: {
-          location: `${latitude},${longitude}`,
-          key: TENCENT_MAP_KEY,
-          get_poi: 1,
-        },
-        success(res) {
-          if (res.data && res.data.status === 0) {
-            const result = res.data.result;
-            const recommend = result.formatted_addresses
-              ? (result.formatted_addresses.recommend || result.address)
-              : result.address;
+  onRemoveTag(e) {
+    const tag = e.currentTarget?.dataset?.tag;
+    if (tag == null) return;
+    this.setData({ selectedTags: this.data.selectedTags.filter(t => t !== tag) });
+  },
 
-            that.setData({
-              location: recommend,
-            });
-          } else {
-            that.useChooseLocationFallback();
-          }
-        },
-        fail() {
-          that.useChooseLocationFallback();
-        },
-      });
-    } catch (error) {
-      if (error.errMsg && error.errMsg.includes('auth deny')) {
+  onTagInputChange(e) {
+    const v = (e.detail && e.detail.value) != null ? e.detail.value : e.detail;
+    this.setData({ tagInput: String(v || '').trim() });
+  },
+
+  onAddTagConfirm() {
+    const tag = String(this.data.tagInput || '').trim().replace(/^#/, '');
+    if (!tag) {
+      Message.warning({ context: this, offset: [120, 32], duration: 2000, content: '请输入标签' });
+      return;
+    }
+    let { selectedTags, tagOptions } = this.data;
+    if (selectedTags.length >= 5) {
+      Message.warning({ context: this, offset: [120, 32], duration: 2000, content: '最多选择5个标签' });
+      return;
+    }
+    if (selectedTags.indexOf(tag) === -1) selectedTags = [...selectedTags, tag];
+    if (tagOptions.indexOf(tag) === -1) tagOptions = [...tagOptions, tag];
+    this.setData({ selectedTags, tagOptions, tagInput: '' });
+  },
+
+  onLocationTap() {
+    if (typeof wx.chooseLocation !== 'function') {
+      Message.warning({ context: this, offset: [120, 32], duration: 2000, content: '请在下方的输入框中填写位置' });
+      return;
+    }
+    wx.chooseLocation({
+      success: (res) => this.setData({ location: res.name || res.address || '' }),
+      fail: (err) => {
+        if ((err && err.errMsg || '').includes('cancel')) return;
         Message.warning({
           context: this,
           offset: [120, 32],
-          duration: 2000,
-          content: '请在设置中打开定位权限',
-        });
-      } else {
-        this.useChooseLocationFallback();
-      }
-    }
-  },
-
-  // 微信内置地图选点备用方案
-  useChooseLocationFallback() {
-    wx.chooseLocation({
-      success: (result) => {
-        this.setData({
-          location: result.name || result.address,
+          duration: 2500,
+          content: '选点失败（需真机或授权），请在下方的输入框中填写位置',
         });
       },
     });
   },
-  
-  // 验证表单
+
+  onLocationInput(e) {
+    const v = e.detail;
+    const location = (v && (v.value !== undefined ? v.value : v)) ?? '';
+    this.setData({ location: String(location).trim() });
+  },
+
+  onTitleInput(e) {
+    const v = e.detail && e.detail.value;
+    this.setData({ title: v != null ? String(v) : '' });
+  },
+
   validateForm() {
-    const { content, mediaType, imageFiles, videoFile, category } = this.data;
-    
-    if (!content.trim()) {
-      Message.warning({
-        context: this,
-        offset: [120, 32],
-        duration: 2000,
-        content: '请输入内容描述',
-      });
+    const { title, content, mediaType, imageFiles, videoFile, category } = this.data;
+    if (!(title && title.trim()) && !(content && content.trim())) {
+      Message.warning({ context: this, offset: [120, 32], duration: 2000, content: '请填写标题或内容' });
       return false;
     }
-    
     if (mediaType === 'image' && imageFiles.length === 0) {
-      Message.warning({
-        context: this,
-        offset: [120, 32],
-        duration: 2000,
-        content: '请至少上传一张图片',
-      });
+      Message.warning({ context: this, offset: [120, 32], duration: 2000, content: '请至少上传一张图片' });
       return false;
     }
-    
     if (mediaType === 'video' && !videoFile) {
-      Message.warning({
-        context: this,
-        offset: [120, 32],
-        duration: 2000,
-        content: '请上传视频',
-      });
+      Message.warning({ context: this, offset: [120, 32], duration: 2000, content: '请上传视频' });
       return false;
     }
-    
     if (!category) {
-      Message.warning({
-        context: this,
-        offset: [120, 32],
-        duration: 2000,
-        content: '请选择分类',
-      });
+      Message.warning({ context: this, offset: [120, 32], duration: 2000, content: '请选择分类' });
       return false;
     }
-    
     return true;
   },
-  
-  // 保存草稿
-  saveDraft() {
-    // 保存到本地存储
-    const draft = {
-      content: this.data.content,
-      imageFiles: this.data.imageFiles,
-      videoFile: this.data.videoFile,
-      mediaType: this.data.mediaType,
-      privacy: this.data.privacy,
-      category: this.data.category,
-      selectedTags: this.data.selectedTags,
-      location: this.data.location,
-    };
-    
-    wx.setStorageSync('life_record_draft', draft);
-    
-    Message.success({
-      context: this,
-      offset: [120, 32],
-      duration: 2000,
-      content: '草稿已保存',
-    });
-  },
-  
-  // 发布
-  async release() {
-    if (!this.validateForm()) {
+
+  async saveDraft() {
+    const { title, content, mediaType, imageFiles, videoFile, privacy, category, selectedTags, location } = this.data;
+    const hasContent = (title && title.trim()) || (content && content.trim()) || (mediaType === 'image' && imageFiles.length > 0) || (mediaType === 'video' && videoFile);
+    if (!hasContent) {
+      Message.warning({ context: this, offset: [120, 32], duration: 2000, content: '请至少填写内容或添加一张图片/视频' });
       return;
     }
-    
-    const { content, mediaType, imageFiles, videoFile, privacy, category, selectedTags, location } = this.data;
-    
-    // 准备数据
     const recordData = {
-      content: content.trim(),
+      title: (title || '').trim(),
+      content: (content || '').trim(),
+      type: mediaType,
+      images: mediaType === 'image' ? imageFiles.map(f => f.url) : [],
+      video: mediaType === 'video' && videoFile ? { url: videoFile.url, cover: videoFile.thumb || videoFile.url, duration: videoFile.duration || 0 } : null,
+      privacy: privacy || 'public',
+      category: category || null,
+      tags: selectedTags || [],
+      location: location || null,
+      publishStatus: 'draft',
+    };
+    try {
+      wx.showLoading({ title: '保存中...', mask: true });
+      if (mediaType === 'image' && imageFiles.length > 0) {
+        recordData.images = await this.uploadImages(imageFiles);
+      } else if (mediaType === 'video' && videoFile) {
+        recordData.video = await this.uploadVideo(videoFile);
+      }
+      await request('/life/record', 'POST', recordData);
+      wx.hideLoading();
+      wx.removeStorageSync('life_record_draft');
+      Message.success({ context: this, offset: [120, 32], duration: 2000, content: '草稿已保存' });
+      setTimeout(() => {
+        wx.navigateTo({ url: '/pages/my-life-records/index?publishStatus=draft' });
+      }, 800);
+    } catch (e) {
+      wx.hideLoading();
+      Message.error({ context: this, offset: [120, 32], duration: 2000, content: '保存草稿失败，请重试' });
+    }
+  },
+
+  async release() {
+    if (!this.validateForm()) return;
+    await this.submitPublish('pending', '提交中...', '已提交审核，通过后将在首页展示', '/pages/my-life-records/index?publishStatus=pending');
+  },
+
+  async releaseDirect() {
+    if (!this.validateForm()) return;
+    await this.submitPublish('published', '发布中...', '已发布', '/pages/home/index?oper=release');
+  },
+
+  async submitPublish(publishStatus, loadingText, successText, navigateUrl) {
+    const { title, content, mediaType, imageFiles, videoFile, privacy, category, selectedTags, location } = this.data;
+    const recordData = {
+      title: (title || '').trim(),
+      content: (content || '').trim(),
       type: mediaType,
       images: mediaType === 'image' ? imageFiles.map(file => file.url) : [],
       video: mediaType === 'video' && videoFile ? {
@@ -358,120 +287,37 @@ Page({
       category,
       tags: selectedTags,
       location: location || null,
+      publishStatus,
     };
-    
     try {
-      wx.showLoading({
-        title: '发布中...',
-        mask: true,
-      });
-      
-      // 如果有媒体文件需要上传，先上传到云存储
+      wx.showLoading({ title: loadingText, mask: true });
       if (mediaType === 'image' && imageFiles.length > 0) {
         recordData.images = await this.uploadImages(imageFiles);
       } else if (mediaType === 'video' && videoFile) {
-        const uploadedVideo = await this.uploadVideo(videoFile);
-        recordData.video = uploadedVideo;
+        recordData.video = await this.uploadVideo(videoFile);
       }
-      
-      // 提交到服务器
       await request('/life/record', 'POST', recordData);
-      
       wx.hideLoading();
-      
-      // 清除草稿
       wx.removeStorageSync('life_record_draft');
-      
-      Message.success({
-        context: this,
-        offset: [120, 32],
-        duration: 2000,
-        content: '发布成功',
-      });
-      
-      // 延迟跳转，让用户看到成功提示
+      Message.success({ context: this, offset: [120, 32], duration: 2000, content: successText });
       setTimeout(() => {
-        wx.reLaunch({
-          url: '/pages/home/index?oper=release',
-        });
+        if (navigateUrl.startsWith('/pages/home')) {
+          wx.reLaunch({ url: navigateUrl });
+        } else {
+          wx.navigateTo({ url: navigateUrl });
+        }
       }, 1500);
     } catch (error) {
       wx.hideLoading();
-      console.error('发布失败', error);
-      Message.error({
-        context: this,
-        offset: [120, 32],
-        duration: 2000,
-        content: '发布失败，请重试',
-      });
+      Message.error({ context: this, offset: [120, 32], duration: 2000, content: '提交失败，请重试' });
     }
   },
-  
-  // 上传图片到云存储
+
   async uploadImages(files) {
-    /**
-     * 实际项目中使用云存储的示例代码：
-     * 
-     * 1. 首先需要在 app.js 中初始化云开发：
-     *    wx.cloud.init({
-     *      env: 'your-env-id',
-     *      traceUser: true,
-     *    });
-     * 
-     * 2. 上传图片：
-     *    const uploadPromises = files.map(file => {
-     *      const filePath = file.url || file.tempFilePath;
-     *      const cloudPath = `images/${Date.now()}-${Math.random().toString(36).substr(2, 9)}.jpg`;
-     *      return wx.cloud.uploadFile({
-     *        cloudPath,
-     *        filePath,
-     *      }).then(res => res.fileID);
-     *    });
-     *    return await Promise.all(uploadPromises);
-     * 
-     * 3. 或者使用后端API上传：
-     *    const formData = new FormData();
-     *    files.forEach(file => formData.append('files', file));
-     *    const res = await request('/upload/images', 'POST', formData);
-     *    return res.data.urls;
-     */
-    
-    // 模拟实现：直接返回临时路径或已有URL
     return files.map(file => file.url || file.tempFilePath);
   },
-  
-  // 上传视频到云存储
+
   async uploadVideo(file) {
-    /**
-     * 实际项目中使用云存储的示例代码：
-     * 
-     * 1. 上传视频文件：
-     *    const filePath = file.url || file.tempFilePath;
-     *    const cloudPath = `videos/${Date.now()}-${Math.random().toString(36).substr(2, 9)}.mp4`;
-     *    const uploadRes = await wx.cloud.uploadFile({
-     *      cloudPath,
-     *      filePath,
-     *    });
-     * 
-     * 2. 获取视频封面（如果需要）：
-     *    const coverPath = `video-covers/${Date.now()}.jpg`;
-     *    // 使用 wx.getVideoInfo 获取视频信息，然后截图生成封面
-     * 
-     * 3. 返回视频信息：
-     *    return {
-     *      url: uploadRes.fileID,
-     *      cover: coverFileID,
-     *      duration: file.duration || 0,
-     *    };
-     * 
-     * 4. 或者使用后端API上传：
-     *    const formData = new FormData();
-     *    formData.append('video', file);
-     *    const res = await request('/upload/video', 'POST', formData);
-     *    return res.data;
-     */
-    
-    // 模拟实现：直接返回临时路径或已有URL
     return {
       url: file.url || file.tempFilePath,
       cover: file.thumb || file.url || file.tempFilePath,

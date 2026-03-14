@@ -391,6 +391,7 @@ exports.getProfile = async (req, res, next) => {
 
     user.ip = displayIp;
     user.role = user.is_admin === 1 ? 'admin' : 'user';
+    user.isAdmin = !!user.is_admin;
 
     // 根据 IP 解析城市（前端显示为当前城市）
     try {

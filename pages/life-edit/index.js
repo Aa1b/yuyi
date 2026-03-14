@@ -1,6 +1,14 @@
 // pages/life-edit/index.js
+import config from '~/config';
 import request from '~/api/request';
 import Message from 'tdesign-miniprogram/message/index';
+
+function resolveMediaUrl(url) {
+  if (!url || typeof url !== 'string') return url || '';
+  if (/^https?:\/\//i.test(url)) return url;
+  const base = (config.baseUrl || '').replace(/\/api\/?$/, '');
+  return base + (url.startsWith('/') ? url : '/' + url);
+}
 
 // 腾讯地图 WebService Key（与发布页保持一致）
 const TENCENT_MAP_KEY = 'LITBZ-IDMWA-5D3KD-CURMW-MHJ4J-2SFMX';
@@ -78,9 +86,16 @@ Page({
     try {
       this.setData({ loading: true });
       const res = await request(`/life/detail?id=${this.data.recordId}`);
-      const record = res.data.data;
-      
-      // 填充表单数据
+      const record = res.data || res.data?.data || {};
+      const images = (record.images || []).map(resolveMediaUrl);
+      const video = record.video
+        ? {
+            url: resolveMediaUrl(record.video.url),
+            cover: resolveMediaUrl(record.video.cover),
+            type: 'video',
+          }
+        : null;
+      // 填充表单数据（图片/视频用完整 URL 以便预览）
       this.setData({
         content: record.content || '',
         privacy: record.privacy || 'public',
@@ -88,8 +103,8 @@ Page({
         location: record.location || '',
         selectedTags: record.tags || [],
         mediaType: record.type || 'image',
-        imageFiles: record.images ? record.images.map(url => ({ url, type: 'image' })) : [],
-        videoFile: record.video ? { url: record.video.url, cover: record.video.cover, type: 'video' } : null,
+        imageFiles: images.length ? images.map(url => ({ url, type: 'image' })) : [],
+        videoFile: video,
         loading: false,
       });
     } catch (error) {

@@ -25,8 +25,8 @@ function request(url, method = 'GET', data = {}) {
       timeout: 10000, // 10秒超时
       success(res) {
         setTimeout(() => {
-          // 检查HTTP状态码
-          if (res.statusCode === 200) {
+          // 检查HTTP状态码（200 成功 / 201 创建成功）
+          if (res.statusCode === 200 || res.statusCode === 201) {
             // 检查业务状态码
             if (res.data && res.data.code === 200) {
               resolve(res.data);

@@ -9,6 +9,20 @@ Page({
 
   timer: null,
 
+  onUnload() {
+    if (this.timer) {
+      clearInterval(this.timer);
+      this.timer = null;
+    }
+  },
+
+  onHide() {
+    if (this.timer) {
+      clearInterval(this.timer);
+      this.timer = null;
+    }
+  },
+
   onLoad(options) {
     const { phoneNumber } = options;
     if (phoneNumber) {

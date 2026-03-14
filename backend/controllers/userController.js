@@ -106,12 +106,15 @@ exports.unfollow = async (req, res, next) => {
  */
 exports.getFollowing = async (req, res, next) => {
   try {
-    const currentUserId = req.user.id;
+    const currentUserId = req.user?.id != null ? Number(req.user.id) : null;
+    if (currentUserId == null || !Number.isInteger(currentUserId)) {
+      return res.status(401).json({ code: 401, message: '请先登录' });
+    }
     const { page = 1, pageSize = 20, userId: targetUserId } = req.query;
-    const ownerId = targetUserId ? parseInt(targetUserId) : currentUserId;
+    const ownerId = targetUserId ? parseInt(targetUserId, 10) : currentUserId;
 
-    const limit = parseInt(pageSize);
-    const offset = (parseInt(page) - 1) * limit;
+    const limit = Math.min(100, Math.max(1, parseInt(pageSize, 10) || 20));
+    const offset = Math.max(0, (parseInt(page, 10) || 1) - 1) * limit;
 
     const [follows] = await pool.execute(
       `SELECT 
@@ -128,15 +131,17 @@ exports.getFollowing = async (req, res, next) => {
     );
 
     if (ownerId !== currentUserId && follows.length > 0) {
-      const ids = follows.map((f) => f.id).join(',');
-      const [followed] = await pool.execute(
-        `SELECT following_id FROM user_follows WHERE follower_id = ? AND following_id IN (${ids})`,
-        [currentUserId]
-      );
-      const followedSet = new Set(followed.map((r) => r.following_id));
-      follows.forEach((u) => {
-        u.isFollowing = followedSet.has(u.id);
-      });
+      const ids = follows.map((f) => f.id).filter((id) => id != null).join(',');
+      if (ids) {
+        const [followed] = await pool.execute(
+          `SELECT following_id FROM user_follows WHERE follower_id = ? AND following_id IN (${ids})`,
+          [currentUserId]
+        );
+        const followedSet = new Set(followed.map((r) => r.following_id));
+        follows.forEach((u) => {
+          u.isFollowing = u.id != null && followedSet.has(u.id);
+        });
+      }
     } else if (ownerId === currentUserId) {
       follows.forEach((u) => {
         u.isFollowing = true;
@@ -147,14 +152,15 @@ exports.getFollowing = async (req, res, next) => {
       'SELECT COUNT(*) as total FROM user_follows WHERE follower_id = ?',
       [ownerId]
     );
+    const total = Number(countResult[0]?.total) || 0;
 
     res.json({
       code: 200,
       message: '获取成功',
       data: {
         list: follows,
-        total: countResult[0].total,
-        page: parseInt(page),
+        total,
+        page: parseInt(page, 10) || 1,
         pageSize: limit,
       },
     });
@@ -168,12 +174,15 @@ exports.getFollowing = async (req, res, next) => {
  */
 exports.getFollowers = async (req, res, next) => {
   try {
-    const currentUserId = req.user.id;
+    const currentUserId = req.user?.id != null ? Number(req.user.id) : null;
+    if (currentUserId == null || !Number.isInteger(currentUserId)) {
+      return res.status(401).json({ code: 401, message: '请先登录' });
+    }
     const { page = 1, pageSize = 20, userId: targetUserId } = req.query;
-    const ownerId = targetUserId ? parseInt(targetUserId) : currentUserId;
+    const ownerId = targetUserId ? parseInt(targetUserId, 10) : currentUserId;
 
-    const limit = parseInt(pageSize);
-    const offset = (parseInt(page) - 1) * limit;
+    const limit = Math.min(100, Math.max(1, parseInt(pageSize, 10) || 20));
+    const offset = Math.max(0, (parseInt(page, 10) || 1) - 1) * limit;
 
     const [followers] = await pool.execute(
       `SELECT 
@@ -190,29 +199,32 @@ exports.getFollowers = async (req, res, next) => {
     );
 
     if (followers.length > 0) {
-      const ids = followers.map((f) => f.id).join(',');
-      const [followed] = await pool.execute(
-        `SELECT following_id FROM user_follows WHERE follower_id = ? AND following_id IN (${ids})`,
-        [currentUserId]
-      );
-      const followedSet = new Set(followed.map((r) => r.following_id));
-      followers.forEach((u) => {
-        u.isFollowing = followedSet.has(u.id);
-      });
+      const ids = followers.map((f) => f.id).filter((id) => id != null).join(',');
+      if (ids) {
+        const [followed] = await pool.execute(
+          `SELECT following_id FROM user_follows WHERE follower_id = ? AND following_id IN (${ids})`,
+          [currentUserId]
+        );
+        const followedSet = new Set(followed.map((r) => r.following_id));
+        followers.forEach((u) => {
+          u.isFollowing = u.id != null && followedSet.has(u.id);
+        });
+      }
     }
 
     const [countResult] = await pool.execute(
       'SELECT COUNT(*) as total FROM user_follows WHERE following_id = ?',
       [ownerId]
     );
+    const total = Number(countResult[0]?.total) || 0;
 
     res.json({
       code: 200,
       message: '获取成功',
       data: {
         list: followers,
-        total: countResult[0].total,
-        page: parseInt(page),
+        total,
+        page: parseInt(page, 10) || 1,
         pageSize: limit,
       },
     });

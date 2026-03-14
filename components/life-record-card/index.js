@@ -1,5 +1,14 @@
+import config from '~/config';
 import request from '~/api/request';
 import Message from 'tdesign-miniprogram/message/index';
+
+/** 将后端返回的相对路径转为小程序可用的完整 URL */
+function resolveMediaUrl(url) {
+  if (!url || typeof url !== 'string') return url || '';
+  if (/^https?:\/\//i.test(url)) return url;
+  const base = (config.baseUrl || '').replace(/\/api\/?$/, '');
+  return base + (url.startsWith('/') ? url : '/' + url);
+}
 
 Component({
   properties: {
@@ -8,15 +17,36 @@ Component({
       value: {},
     },
   },
-  data: {},
-  methods: {
-    // 阻止事件冒泡
-    stopPropagation(e) {
-      // 空方法，仅用于阻止冒泡
+  data: {
+    displayImageUrl: '',
+    displayVideo: null,
+  },
+  observers: {
+    // 防重入：同一 record.id 只处理一次，避免重复 setData 导致开发者工具卡死
+    record(record) {
+      if (!record || !record.id) {
+        this._lastRecordId = null;
+        this.setData({ displayImageUrl: '', displayVideo: null });
+        return;
+      }
+      if (this._lastRecordId === record.id) return;
+      this._lastRecordId = record.id;
+      const images = (record.images || []).map(resolveMediaUrl);
+      const displayImageUrl = images[0] || '';
+      const video = record.video
+        ? {
+            url: resolveMediaUrl(record.video.url),
+            cover: resolveMediaUrl(record.video.cover),
+            duration: record.video.duration,
+          }
+        : null;
+      this.setData({ record, displayImageUrl, displayVideo: video });
     },
-    // 跳转到详情页
+  },
+  methods: {
+    stopPropagation(e) {},
     goToDetail() {
-      const { record } = this.data;
+      const record = this.properties.record || this.data.record;
       if (record && record.id) {
         wx.navigateTo({
           url: `/pages/life-detail/index?id=${record.id}`,
@@ -43,24 +73,22 @@ Component({
       if (e) {
         e.stopPropagation();
       }
-      const { record } = this.data;
+      const record = this.properties.record || this.data.record;
       if (!record || !record.id) return;
       const { id, isLiked } = record;
 
       try {
         if (isLiked) {
-          // 取消点赞
           await request(`/life/like?recordId=${id}`, 'DELETE');
           this.setData({
             'record.isLiked': false,
-            'record.likeCount': record.likeCount - 1,
+            'record.likeCount': (record.likeCount || 0) - 1,
           });
         } else {
-          // 点赞
           await request('/life/like', 'POST', { recordId: id });
           this.setData({
             'record.isLiked': true,
-            'record.likeCount': record.likeCount + 1,
+            'record.likeCount': (record.likeCount || 0) + 1,
           });
         }
       } catch (error) {
@@ -84,9 +112,8 @@ Component({
       if (e) {
         e.stopPropagation();
       }
-      const { record } = this.data;
+      const record = this.properties.record || this.data.record;
       if (record && record.video && record.video.url) {
-        // 跳转到详情页播放视频
         this.goToDetail();
       }
     },

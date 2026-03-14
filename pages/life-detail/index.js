@@ -1,6 +1,14 @@
 // pages/life-detail/index.js
+import config from '~/config';
 import request from '~/api/request';
 import Message from 'tdesign-miniprogram/message/index';
+
+function resolveMediaUrl(url) {
+  if (!url || typeof url !== 'string') return url || '';
+  if (/^https?:\/\//i.test(url)) return url;
+  const base = (config.baseUrl || '').replace(/\/api\/?$/, '');
+  return base + (url.startsWith('/') ? url : '/' + url);
+}
 
 Page({
   data: {
@@ -31,7 +39,18 @@ Page({
     try {
       this.setData({ loading: true });
       const res = await request(`/life/detail?id=${this.data.recordId}`);
-      const record = res.data || {};
+      const raw = res.data || {};
+      const record = { ...raw };
+      if (record.images && record.images.length) {
+        record.images = record.images.map(resolveMediaUrl);
+      }
+      if (record.video) {
+        record.video = {
+          ...record.video,
+          url: resolveMediaUrl(record.video.url),
+          cover: resolveMediaUrl(record.video.cover),
+        };
+      }
       const comments = record.comments || [];
       const commentTotal = comments.reduce((s, c) => s + 1 + (c.replies ? c.replies.length : 0), 0);
       this.setData({
@@ -82,18 +101,16 @@ Page({
     
     try {
       if (isLiked) {
-        // 取消点赞
         const res = await request(`/life/like?recordId=${id}`, 'DELETE');
         this.setData({
           'record.isLiked': false,
-          'record.likeCount': res.data.data.likeCount,
+          'record.likeCount': (res.data && res.data.likeCount) != null ? res.data.likeCount : (record.likeCount || 0) - 1,
         });
       } else {
-        // 点赞
         const res = await request('/life/like', 'POST', { recordId: id });
         this.setData({
           'record.isLiked': true,
-          'record.likeCount': res.data.data.likeCount,
+          'record.likeCount': (res.data && res.data.likeCount) != null ? res.data.likeCount : (record.likeCount || 0) + 1,
         });
       }
     } catch (error) {
@@ -123,6 +140,18 @@ Page({
     });
   },
 
+  // 弹层显示/隐藏（仅关闭时清空，避免误触遮罩清掉已输入内容）
+  onCommentPopupChange(e) {
+    const { visible } = e.detail || {};
+    if (visible === false) {
+      this.setData({
+        showCommentInput: false,
+        commentContent: '',
+        replyingTo: null,
+      });
+    }
+  },
+
   // 隐藏评论输入框
   hideCommentInput() {
     this.setData({
@@ -131,19 +160,23 @@ Page({
       replyingTo: null,
     });
   },
-  
-  // 评论内容输入
+
+  // 评论内容输入（原生 textarea：e.detail.value）
   onCommentInput(e) {
+    const v = e.detail && e.detail.value;
     this.setData({
-      commentContent: e.detail.value,
+      commentContent: v != null ? String(v) : '',
     });
   },
-  
+
   // 提交评论
   async submitComment() {
-    const { commentContent, recordId, comments, record, replyingTo } = this.data;
+    const { recordId, comments, record, replyingTo } = this.data;
+    let commentContent = this.data.commentContent;
+    if (commentContent == null) commentContent = '';
+    const content = String(commentContent).trim();
 
-    if (!commentContent.trim()) {
+    if (!content) {
       Message.warning({
         context: this,
         offset: [120, 32],
@@ -153,12 +186,12 @@ Page({
       return;
     }
 
-    const payload = { recordId, content: commentContent.trim() };
+    const payload = { recordId, content };
     if (replyingTo && replyingTo.id) payload.parentId = replyingTo.id;
 
     try {
       const res = await request('/life/comment', 'POST', payload);
-      const newComment = res.data.data || {};
+      const newComment = (res.data && res.data.id != null ? res.data : res.data?.data) || {};
 
       if (replyingTo && replyingTo.id) {
         const list = (comments || []).map((c) => {

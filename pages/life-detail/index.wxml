@@ -25,9 +25,10 @@
 
       <!-- 内容 -->
       <view class="life-detail-body">
-        <text class="life-detail-text">{{record.content}}</text>
+        <text wx:if="{{record.title}}" class="life-detail-title">{{record.title}}</text>
+        <text wx:if="{{record.content}}" class="life-detail-text">{{record.content}}</text>
 
-        <!-- 图片展示 -->
+        <!-- 图片展示（全部照片） -->
         <view wx:if="{{record.type === 'image' && record.images && record.images.length > 0}}" class="life-detail-media">
           <view class="life-detail-images">
             <t-image
@@ -117,9 +118,9 @@
     </view>
   </view>
 
-  <!-- 底部操作栏 -->
+  <!-- 底部操作栏：用 catchtap 避免被上层拦截 -->
   <view class="life-detail-actions">
-    <view class="life-detail-action-item" bindtap="handleLike">
+    <view class="life-detail-action-item" catchtap="handleLike">
       <t-icon
         name="{{record.isLiked ? 'heart-filled' : 'heart'}}"
         size="48rpx"
@@ -127,27 +128,28 @@
       />
       <text class="{{record.isLiked ? 'life-detail-action-text--active' : ''}}">点赞</text>
     </view>
-    <view class="life-detail-action-item" bindtap="showCommentInput">
+    <view class="life-detail-action-item" catchtap="showCommentInput">
       <t-icon name="chat" size="48rpx" color="#666" />
       <text>评论</text>
     </view>
   </view>
 </view>
 
-<!-- 评论输入框 -->
-<t-popup visible="{{showCommentInput}}" placement="bottom" bind:visible-change="hideCommentInput">
+<!-- 评论输入框：用原生 textarea 避免 TDesign 在 popup 内 value 不同步 -->
+<t-popup visible="{{showCommentInput}}" placement="bottom" bind:visible-change="onCommentPopupChange">
   <view class="life-detail-comment-input">
-    <t-textarea
+    <textarea
+      class="life-detail-comment-textarea"
       placeholder="{{replyingTo ? '回复 ' + replyingTo.userName + '...' : '输入评论...'}}"
       maxlength="200"
       value="{{commentContent}}"
-      bind:input="onCommentInput"
-      indicator
-      autofocus
+      bindinput="onCommentInput"
+      focus="{{showCommentInput}}"
+      auto-height
     />
     <view class="life-detail-comment-buttons">
-      <t-button theme="light" size="small" bindtap="hideCommentInput">取消</t-button>
-      <t-button theme="primary" size="small" bindtap="submitComment">发送</t-button>
+      <view class="life-detail-comment-btn" catchtap="hideCommentInput">取消</view>
+      <view class="life-detail-comment-btn life-detail-comment-btn--primary" catchtap="submitComment">发送</view>
     </view>
   </view>
 </t-popup>

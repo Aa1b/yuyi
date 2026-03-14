@@ -51,25 +51,51 @@ exports.getNotifications = async (req, res, next) => {
     const whereClause = type === 'all' ? 'n.user_id = ?' : 'n.user_id = ? AND n.type = ?';
     if (type !== 'all') queryParams.push(type);
 
-    const [rows] = await pool.execute(
-      `SELECT 
-        n.id,
-        n.type,
-        n.record_id as recordId,
-        n.comment_id as commentId,
-        n.from_user_id as fromUserId,
-        u.nickname as fromUserName,
-        u.avatar as fromUserAvatar,
-        n.content,
-        n.is_read as isRead,
-        n.created_at as createdAt
-      FROM notifications n
-      LEFT JOIN users u ON n.from_user_id = u.id
-      WHERE ${whereClause}
-      ORDER BY n.created_at DESC
-      LIMIT ${limitNum} OFFSET ${offsetNum}`,
-      queryParams
-    );
+    let rows;
+    try {
+      [rows] = await pool.execute(
+        `SELECT 
+          n.id,
+          n.type,
+          n.record_id as recordId,
+          n.comment_id as commentId,
+          n.from_user_id as fromUserId,
+          u.nickname as fromUserName,
+          u.avatar as fromUserAvatar,
+          n.content,
+          n.is_read as isRead,
+          n.created_at as createdAt
+        FROM notifications n
+        LEFT JOIN users u ON n.from_user_id = u.id
+        WHERE ${whereClause}
+        ORDER BY n.created_at DESC
+        LIMIT ${limitNum} OFFSET ${offsetNum}`,
+        queryParams
+      );
+    } catch (err) {
+      if (err.code === 'ER_BAD_FIELD_ERROR' && err.message && err.message.includes('comment_id')) {
+        [rows] = await pool.execute(
+          `SELECT 
+            n.id,
+            n.type,
+            n.record_id as recordId,
+            n.from_user_id as fromUserId,
+            u.nickname as fromUserName,
+            u.avatar as fromUserAvatar,
+            n.content,
+            n.is_read as isRead,
+            n.created_at as createdAt
+          FROM notifications n
+          LEFT JOIN users u ON n.from_user_id = u.id
+          WHERE ${whereClause}
+          ORDER BY n.created_at DESC
+          LIMIT ${limitNum} OFFSET ${offsetNum}`,
+          queryParams
+        );
+      } else {
+        throw err;
+      }
+    }
 
     const [countRows] = await pool.execute(
       `SELECT COUNT(*) as total FROM notifications n WHERE ${whereClause}`,

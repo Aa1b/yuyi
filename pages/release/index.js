@@ -1,4 +1,5 @@
 // pages/release/index.js
+import config from '~/config';
 import request from '~/api/request';
 import Message from 'tdesign-miniprogram/message/index';
 import { getSetting, SETTING_KEYS } from '~/utils/settings';
@@ -257,7 +258,13 @@ Page({
       }, 800);
     } catch (e) {
       wx.hideLoading();
-      Message.error({ context: this, offset: [120, 32], duration: 2000, content: '保存草稿失败，请重试' });
+      const msg = (e && e.message) || (e && e.data && e.data.message);
+      Message.error({
+        context: this,
+        offset: [120, 32],
+        duration: 2500,
+        content: msg && msg !== '请求失败' ? msg : '保存草稿失败，请重试',
+      });
     }
   },
 
@@ -309,19 +316,93 @@ Page({
       }, 1500);
     } catch (error) {
       wx.hideLoading();
-      Message.error({ context: this, offset: [120, 32], duration: 2000, content: '提交失败，请重试' });
+      const msg = (error && error.message) || (error && error.data && error.data.message);
+      Message.error({
+        context: this,
+        offset: [120, 32],
+        duration: 2500,
+        content: msg && msg !== '请求失败' ? `${msg}` : '发布失败，请重试',
+      });
     }
   },
 
+  /** 将本地图片上传到服务器，返回 URL 数组 */
   async uploadImages(files) {
-    return files.map(file => file.url || file.tempFilePath);
+    const token = wx.getStorageSync('access_token');
+    const baseUrl = (config.baseUrl || '').replace(/\/+$/, '');
+    const urls = [];
+    for (const file of files) {
+      const filePath = file.tempFilePath || file.url;
+      if (!filePath) continue;
+      const res = await new Promise((resolve, reject) => {
+        wx.uploadFile({
+          url: `${baseUrl}/upload/image`,
+          filePath,
+          name: 'image',
+          header: token ? { Authorization: `Bearer ${token}` } : {},
+          success: resolve,
+          fail: reject,
+        });
+      });
+      if (res.statusCode !== 200) {
+        let errMsg = '图片上传失败';
+        try {
+          const data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+          if (data && data.message) errMsg = data.message;
+        } catch (_) {}
+        throw new Error(errMsg);
+      }
+      let data;
+      try {
+        data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+      } catch (_) {
+        throw new Error('图片上传响应异常');
+      }
+      if (data.code !== 200 || !data.data || !data.data.url) {
+        throw new Error((data && data.message) || '图片上传失败');
+      }
+      urls.push(data.data.url);
+    }
+    return urls;
   },
 
+  /** 将本地视频上传到服务器，返回 { url, cover, duration } */
   async uploadVideo(file) {
+    const token = wx.getStorageSync('access_token');
+    const baseUrl = (config.baseUrl || '').replace(/\/+$/, '');
+    const filePath = file.tempFilePath || file.url;
+    if (!filePath) throw new Error('请先选择视频');
+    const res = await new Promise((resolve, reject) => {
+      wx.uploadFile({
+        url: `${baseUrl}/upload/video`,
+        filePath,
+        name: 'video',
+        header: token ? { Authorization: `Bearer ${token}` } : {},
+        success: resolve,
+        fail: reject,
+      });
+    });
+    if (res.statusCode !== 200) {
+      let errMsg = '视频上传失败';
+      try {
+        const data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+        if (data && data.message) errMsg = data.message;
+      } catch (_) {}
+      throw new Error(errMsg);
+    }
+    let data;
+    try {
+      data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+    } catch (_) {
+      throw new Error('视频上传响应异常');
+    }
+    if (data.code !== 200 || !data.data || !data.data.url) {
+      throw new Error((data && data.message) || '视频上传失败');
+    }
     return {
-      url: file.url || file.tempFilePath,
-      cover: file.thumb || file.url || file.tempFilePath,
-      duration: file.duration || 0,
+      url: data.data.url,
+      cover: data.data.cover || data.data.url,
+      duration: data.data.duration != null ? data.data.duration : (file.duration || 0),
     };
   },
 });

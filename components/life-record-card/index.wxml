@@ -15,32 +15,32 @@
     </view>
   </view>
 
-  <!-- 内容区域 -->
+  <!-- 内容区域：首页只展示标题（或内容首行）+ 一张图，正文进详情看 -->
   <view class="life-record-card__content">
-    <text class="life-record-card__text">{{record.content}}</text>
+    <text wx:if="{{record.title || record.content}}" class="life-record-card__title">{{record.title || record.content}}</text>
 
-    <!-- 图片展示：至少显示一张（第一张或占位图） -->
+    <!-- 图片展示：仅显示第一张图，点击进详情看全部 -->
     <view wx:if="{{record.type === 'image'}}" class="life-record-card__media">
       <t-image
-        src="{{record.images && record.images[0] ? record.images[0] : '/static/home/card0.png'}}"
+        src="{{displayImageUrl || '/static/home/card0.png'}}"
         mode="aspectFill"
         class="life-record-card__image"
       />
     </view>
 
     <!-- 视频展示 -->
-    <view wx:if="{{record.type === 'video' && record.video}}" class="life-record-card__media" catchtap="handleVideoPlay">
+    <view wx:if="{{record.type === 'video' && displayVideo}}" class="life-record-card__media" catchtap="handleVideoPlay">
       <video
         id="life-video-{{record.id}}"
-        src="{{record.video.url}}"
-        poster="{{record.video.cover}}"
+        src="{{displayVideo.url}}"
+        poster="{{displayVideo.cover}}"
         controls="{{false}}"
         class="life-record-card__video"
       />
       <view class="life-record-card__video-play">
         <t-icon name="play-circle" size="80rpx" color="#fff" />
       </view>
-      <text class="life-record-card__video-duration">{{record.video.duration}}s</text>
+      <text class="life-record-card__video-duration">{{displayVideo.duration}}s</text>
     </view>
 
     <!-- 位置信息 -->

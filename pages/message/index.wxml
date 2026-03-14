@@ -19,13 +19,22 @@
 
   <!-- 通知列表 -->
   <view class="message-list">
-    <view wx:if="{{notifications.length === 0 && !loading}}" class="message-empty">
+    <view wx:if="{{needLogin}}" class="message-empty">
+      <t-empty
+        icon="notification"
+        description="请先登录后查看消息"
+      />
+      <view class="message-login-hint">
+        <t-button theme="primary" size="medium" bindtap="goToLogin">去登录</t-button>
+      </view>
+    </view>
+    <view wx:elif="{{notifications.length === 0 && !loading}}" class="message-empty">
       <t-empty
         icon="notification"
         description="暂无通知"
       />
     </view>
-    
+
     <view wx:else class="notification-list">
       <view
         wx:for="{{notifications}}"
@@ -34,17 +43,18 @@
         class="notification-item {{notification.isRead ? '' : 'notification-item--unread'}}"
         bindtap="goToDetail"
         data-record-id="{{notification.recordId}}"
+        data-from-user-id="{{notification.fromUserId}}"
       >
         <view class="notification-content">
           <t-avatar
             image="{{notification.fromUserAvatar}}"
             size="small"
-            bindtap="goToUserProfile"
+            catchtap="goToUserProfile"
             data-user-id="{{notification.fromUserId}}"
           />
           <view class="notification-info">
             <view class="notification-header">
-              <text class="notification-user" bindtap="goToUserProfile" data-user-id="{{notification.fromUserId}}">
+              <text class="notification-user" catchtap="goToUserProfile" data-user-id="{{notification.fromUserId}}">
                 {{notification.fromUserName}}
               </text>
               <text class="notification-type">
@@ -57,7 +67,7 @@
               </text>
             </view>
             <text class="notification-text">{{notification.content}}</text>
-            <text class="notification-time">{{notification.createdAt}}</text>
+            <text class="notification-time">{{notification.displayTime || notification.createdAt}}</text>
           </view>
         </view>
         <view class="notification-actions">
@@ -65,14 +75,14 @@
             wx:if="{{!notification.isRead}}"
             class="notification-mark-read"
             data-id="{{notification.id}}"
-            bindtap="markAsRead"
+            catchtap="markAsRead"
           >
             <t-icon name="check" size="32rpx" color="#999" />
           </view>
           <view
             class="notification-delete"
             data-id="{{notification.id}}"
-            bindtap="deleteNotification"
+            catchtap="deleteNotification"
           >
             <t-icon name="close" size="32rpx" color="#999" />
           </view>

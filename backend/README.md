@@ -174,7 +174,8 @@ Authorization: Bearer <token>
 1. 设置 `NODE_ENV=production`
 2. 配置数据库连接
 3. 设置安全的 JWT_SECRET
-4. 配置云存储（如使用）
+4. **微信小程序登录**：设置 `WECHAT_APPID`（小程序 AppID）和 `WECHAT_APP_SECRET`（小程序 AppSecret），后端会用前端传来的 `code` 调用微信 `jscode2session` 换取真实 openid，实现真实微信登录。未配置时接口会返回 503。
+5. 配置云存储（如使用）
 5. 使用 PM2 或类似工具管理进程
 
 ### 使用 PM2

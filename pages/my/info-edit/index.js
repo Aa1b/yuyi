@@ -47,20 +47,24 @@ Page({
     this.getPersonalInfo();
   },
 
-  getPersonalInfo() {
-    request('/api/genPersonalInfo').then((res) => {
-      this.setData(
-        {
-          personInfo: res.data.data,
-        },
-        () => {
-          const { personInfo } = this.data;
-          this.setData({
-            addressText: `${areaList.provinces[personInfo.address[0]]} ${areaList.cities[personInfo.address[1]]}`,
-          });
-        },
-      );
-    });
+  async getPersonalInfo() {
+    try {
+      const res = await request('/auth/profile');
+      const data = res?.data ?? {};
+      const personInfo = {
+        ...this.data.personInfo,
+        name: data.nickname || '',
+        gender: data.gender === 1 ? 0 : data.gender === 2 ? 1 : 2,
+      };
+      this.setData({ personInfo });
+      if (personInfo.address && Array.isArray(personInfo.address) && personInfo.address.length >= 2) {
+        this.setData({
+          addressText: `${areaList.provinces[personInfo.address[0]] || ''} ${areaList.cities[personInfo.address[1]] || ''}`,
+        });
+      }
+    } catch (e) {
+      wx.showToast({ title: '获取信息失败', icon: 'none' });
+    }
   },
 
   getAreaOptions(data, filter) {
@@ -167,7 +171,24 @@ Page({
     });
   },
 
-  onSaveInfo() {
-    // console.log(this.data.personInfo);
+  async onSaveInfo() {
+    const { personInfo } = this.data;
+    const nickname = (personInfo.name || '').trim();
+    if (!nickname) {
+      wx.showToast({ title: '请填写用户名', icon: 'none' });
+      return;
+    }
+    try {
+      wx.showLoading({ title: '保存中...', mask: true });
+      await request('/auth/profile', 'PUT', {
+        nickname,
+        gender: personInfo.gender === 0 ? 1 : personInfo.gender === 1 ? 2 : 0,
+      });
+      wx.hideLoading();
+      wx.showToast({ title: '保存成功', icon: 'success' });
+    } catch (e) {
+      wx.hideLoading();
+      wx.showToast({ title: e?.message || '保存失败', icon: 'none' });
+    }
   },
 });

@@ -64,15 +64,8 @@ Page({
           fail: reject,
         });
       });
-      let userInfo = null;
-      try {
-        const userRes = await wx.getUserProfile({ desc: '用于完善会员资料' });
-        userInfo = userRes.userInfo;
-      } catch (e) {
-        wx.showToast({ title: '已取消授权', icon: 'none' });
-        return;
-      }
-      const res = await request('/auth/login', 'POST', { code, userInfo });
+      // 仅用 code 换取 token，不弹昵称/头像授权，点击即自动登录（与之前一致）
+      const res = await request('/auth/login', 'POST', { code });
       const token = res && res.data && res.data.token ? res.data.token : res.data?.token;
       if (token) {
         wx.setStorageSync('access_token', token);

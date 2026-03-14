@@ -7,35 +7,15 @@ Page({
   data: {
     isLoad: false,
     isLoggedIn: false,
-    service: [],
     personalInfo: {},
     userIp: '',
     isAdmin: false,
     gridList: [
-      {
-        name: '全部发布',
-        icon: 'root-list',
-        type: 'all',
-        url: '',
-      },
-      {
-        name: '已发布',
-        icon: 'upload',
-        type: 'published',
-        url: '',
-      },
-      {
-        name: '草稿箱',
-        icon: 'file-copy',
-        type: 'draft',
-        url: '',
-      },
-      {
-        name: '内容审核',
-        icon: 'search',
-        type: 'reviewCenter',
-        url: '',
-      },
+      { name: '全部发布', icon: 'root-list', type: 'all', url: '' },
+      { name: '审核中', icon: 'time', type: 'pending', url: '' },
+      { name: '已发布', icon: 'upload', type: 'published', url: '' },
+      { name: '草稿箱', icon: 'file-copy', type: 'draft', url: '' },
+      { name: '内容审核', icon: 'search', type: 'reviewCenter', url: '' },
     ],
 
     settingList: [
@@ -84,15 +64,6 @@ Page({
       userIp,
       settingList,
     });
-
-    this.getServiceList();
-  },
-
-  getServiceList() {
-    request('/api/getServiceList').then((res) => {
-      const { service } = res.data.data;
-      this.setData({ service });
-    });
   },
 
   async getPersonalInfo() {
@@ -108,7 +79,8 @@ Page({
         city: p.city || '',
         isAdmin: p.role === 'admin' || !!p.isAdmin || p.is_admin === 1,
         id: p.id,
-        userIp: p.ipMasked || p.ip || '',
+        // 优先显示 IP 解析出的城市，无则不再显示
+        userIp: p.cityFromIp || '',
       };
 
       if (!p.id) return base;
@@ -167,6 +139,10 @@ Page({
     // 根据类型跳转到不同的记录列表视图（新版）
     if (type === 'all') {
       wx.navigateTo({ url: '/pages/my-life-records/index?filter=all' });
+      return;
+    }
+    if (type === 'pending') {
+      wx.navigateTo({ url: '/pages/my-life-records/index?filter=pending' });
       return;
     }
     if (type === 'published') {

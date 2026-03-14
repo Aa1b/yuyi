@@ -1,6 +1,41 @@
 const pool = require('../config/database');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const https = require('https');
+
+const TENCENT_MAP_KEY = process.env.TENCENT_MAP_KEY || 'LITBZ-IDMWA-5D3KD-CURMW-MHJ4J-2SFMX';
+
+/**
+ * 根据 IP 调用腾讯地图 API 解析城市名称
+ */
+function getCityByIp(ip) {
+  if (!ip || ip === '127.0.0.1' || ip === '::1' || ip.startsWith('192.168.') || ip.startsWith('10.')) {
+    return Promise.resolve(null);
+  }
+  const cleanIp = ip.replace(/^::ffff:/, '');
+  return new Promise((resolve) => {
+    const url = `https://apis.map.qq.com/ws/location/v1/ip?ip=${encodeURIComponent(cleanIp)}&key=${encodeURIComponent(TENCENT_MAP_KEY)}`;
+    https
+      .get(url, (res) => {
+        let body = '';
+        res.on('data', (chunk) => (body += chunk));
+        res.on('end', () => {
+          try {
+            const data = JSON.parse(body);
+            if (data.status === 0 && data.result && data.result.ad_info) {
+              const city = data.result.ad_info.city || data.result.ad_info.province || data.result.ad_info.nation;
+              resolve(city || null);
+            } else {
+              resolve(null);
+            }
+          } catch {
+            resolve(null);
+          }
+        });
+      })
+      .on('error', () => resolve(null));
+  });
+}
 
 /**
  * 生成 JWT Token
@@ -14,7 +49,39 @@ const generateToken = (userId) => {
 };
 
 /**
+ * 调用微信 jscode2session 用 code 换取 openid
+ * 文档: https://developers.weixin.qq.com/miniprogram/dev/OpenApiDoc/user-login/code2Session.html
+ */
+function wechatCode2Session(code) {
+  const appId = process.env.WECHAT_APPID;
+  const appSecret = process.env.WECHAT_APP_SECRET;
+  if (!appId || !appSecret) {
+    return Promise.resolve(null);
+  }
+  return new Promise((resolve) => {
+    const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${encodeURIComponent(appId)}&secret=${encodeURIComponent(appSecret)}&js_code=${encodeURIComponent(code)}&grant_type=authorization_code`;
+    https.get(url, (res) => {
+      let body = '';
+      res.on('data', (chunk) => (body += chunk));
+      res.on('end', () => {
+        try {
+          const data = JSON.parse(body);
+          if (data.openid && !data.errcode) {
+            resolve({ openid: data.openid, session_key: data.session_key, unionid: data.unionid });
+          } else {
+            resolve(null);
+          }
+        } catch {
+          resolve(null);
+        }
+      });
+    }).on('error', () => resolve(null));
+  });
+}
+
+/**
  * 用户登录（微信小程序登录）
+ * 使用前端传来的 code 调用微信 code2session 获取真实 openid，再查库/建用户
  */
 exports.login = async (req, res, next) => {
   try {
@@ -27,10 +94,24 @@ exports.login = async (req, res, next) => {
       });
     }
 
-    // TODO: 调用微信API获取openid和session_key
-    // 这里使用模拟数据
-    const openid = `mock_openid_${Date.now()}`;
-    const sessionKey = `mock_session_key_${Date.now()}`;
+    // 调用微信接口用 code 换取 openid
+    const session = await wechatCode2Session(code);
+    let openid;
+    if (session && session.openid) {
+      openid = session.openid;
+    } else {
+      // 未配置 AppID/Secret 或接口失败
+      if (!process.env.WECHAT_APPID || !process.env.WECHAT_APP_SECRET) {
+        return res.status(503).json({
+          code: 503,
+          message: '微信登录未配置：请在服务端设置环境变量 WECHAT_APPID 和 WECHAT_APP_SECRET',
+        });
+      }
+      return res.status(401).json({
+        code: 401,
+        message: '微信登录失败，请重试',
+      });
+    }
 
     // 查询或创建用户
     let [users] = await pool.execute(
@@ -40,7 +121,6 @@ exports.login = async (req, res, next) => {
 
     let user;
     if (users.length === 0) {
-      // 创建新用户
       const [result] = await pool.execute(
         'INSERT INTO users (openid, nickname, avatar) VALUES (?, ?, ?)',
         [
@@ -49,7 +129,6 @@ exports.login = async (req, res, next) => {
           userInfo?.avatarUrl || '',
         ]
       );
-      
       [users] = await pool.execute(
         'SELECT id, openid, nickname, avatar FROM users WHERE id = ?',
         [result.insertId]
@@ -57,8 +136,6 @@ exports.login = async (req, res, next) => {
       user = users[0];
     } else {
       user = users[0];
-      
-      // 更新用户信息（如果提供）
       if (userInfo) {
         await pool.execute(
           'UPDATE users SET nickname = ?, avatar = ? WHERE id = ?',
@@ -69,7 +146,6 @@ exports.login = async (req, res, next) => {
       }
     }
 
-    // 生成 token
     const token = generateToken(user.id);
 
     res.json({
@@ -299,26 +375,22 @@ exports.getProfile = async (req, res, next) => {
     const user = users[0];
 
     // 尝试获取客户端 IP（考虑反向代理场景）
-    let ip =
-      (req.headers['x-forwarded-for'] && req.headers['x-forwarded-for'].split(',')[0]) ||
+    const rawIp =
+      (req.headers['x-forwarded-for'] && req.headers['x-forwarded-for'].split(',')[0].trim()) ||
       req.ip ||
       (req.connection && req.connection.remoteAddress) ||
       '';
 
-    // 仅显示到“省份级”——这里用掩码的方式只保留 IPv4 前两段
-    let displayIp = ip;
-    if (ip) {
-      // 处理形如 ::ffff:127.0.0.1 的情况
-      if (ip.startsWith('::ffff:')) {
-        ip = ip.substring(7);
-      }
+    // 掩码 IP 用于兼容
+    let displayIp = rawIp;
+    if (rawIp) {
+      const ip = rawIp.replace(/^::ffff:/, '');
       if (ip.includes('.')) {
         const parts = ip.split('.');
         if (parts.length >= 4) {
           displayIp = `${parts[0]}.${parts[1]}.x.x`;
         }
       } else if (ip.includes(':')) {
-        // IPv6 简单脱敏
         const segs = ip.split(':');
         displayIp = `${segs[0]}::`;
       }
@@ -326,6 +398,14 @@ exports.getProfile = async (req, res, next) => {
 
     user.ip = displayIp;
     user.role = user.is_admin === 1 ? 'admin' : 'user';
+
+    // 根据 IP 解析城市（前端显示为当前城市）
+    try {
+      const cityFromIp = await getCityByIp(rawIp);
+      user.cityFromIp = cityFromIp || null;
+    } catch {
+      user.cityFromIp = null;
+    }
 
     res.json({
       code: 200,

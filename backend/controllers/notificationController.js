@@ -43,19 +43,29 @@ exports.getNotifications = async (req, res, next) => {
       [...queryParams, limit, offset]
     );
 
-    // 查询总数
+    // 查询总数（转为 Number 避免 BigInt 导致 res.json 序列化报 500）
     const [countResult] = await pool.execute(
       `SELECT COUNT(*) as total FROM notifications n WHERE ${whereCondition}`,
       queryParams
     );
+    const total = Number(countResult[0].total);
+
+    // 确保列表中的数值为普通 number，避免 BigInt 序列化错误
+    const list = (notifications || []).map((row) => ({
+      ...row,
+      id: row.id != null ? Number(row.id) : row.id,
+      recordId: row.recordId != null ? Number(row.recordId) : row.recordId,
+      fromUserId: row.fromUserId != null ? Number(row.fromUserId) : row.fromUserId,
+      isRead: row.isRead != null ? Number(row.isRead) : row.isRead,
+    }));
 
     res.json({
       code: 200,
       message: '获取成功',
       data: {
-        list: notifications,
-        total: countResult[0].total,
-        page: parseInt(page),
+        list,
+        total,
+        page: parseInt(page, 10),
         pageSize: limit,
       },
     });
@@ -112,13 +122,12 @@ exports.getUnreadCount = async (req, res, next) => {
       'SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = 0',
       [userId]
     );
+    const count = Number(result[0].count);
 
     res.json({
       code: 200,
       message: '获取成功',
-      data: {
-        count: result[0].count,
-      },
+      data: { count },
     });
   } catch (error) {
     next(error);

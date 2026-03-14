@@ -11,6 +11,13 @@ const { authenticate, optionalAuth } = require('../middleware/auth');
 router.get('/list', optionalAuth, lifeController.getList);
 
 /**
+ * @route GET /api/life/liked
+ * @desc 获取某用户赞过的记录（不传 userId 为当前用户）
+ * @access Public (查看他人需可选认证；本人需登录)
+ */
+router.get('/liked', optionalAuth, lifeController.getLikedList);
+
+/**
  * @route GET /api/life/detail
  * @desc 获取生活记录详情
  * @access Public (支持可选认证)

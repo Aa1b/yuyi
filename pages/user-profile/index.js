@@ -62,7 +62,7 @@ Page({
         isSelf,
         loading: false,
       });
-      if (isSelf) this.loadLikedRecords(true);
+      if (isSelf) this.loadLikedRecords(true); // 本人进入时预加载「我赞过的」
     } catch (error) {
       this.setData({ loading: false });
       console.error('加载用户信息失败', error);
@@ -225,21 +225,22 @@ Page({
   },
 
   onTabChange(e) {
-    const tab = e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.tab;
-    if (!tab || (tab !== 'records' && tab !== 'liked')) return;
+    const tab = e.currentTarget?.dataset?.tab;
+    if (tab !== 'records' && tab !== 'liked') return;
     this.setData({ activeTab: tab });
     if (tab === 'liked') this.loadLikedRecords(true);
   },
 
   async loadLikedRecords(refresh = false) {
-    if (!this.data.isSelf) return;
-    const { pageLiked, pageSize } = this.data;
+    const { userId, isSelf, pageLiked, pageSize } = this.data;
     if (this.data.loadingLiked) return;
 
     try {
       this.setData({ loadingLiked: true });
       const page = refresh ? 1 : pageLiked;
-      const res = await request(`/life/liked?page=${page}&pageSize=${pageSize || 10}`);
+      let url = `/life/liked?page=${page}&pageSize=${pageSize || 10}`;
+      if (!isSelf && userId) url += `&userId=${encodeURIComponent(userId)}`;
+      const res = await request(url);
       const data = res?.data ?? {};
       const list = data.list ?? [];
       const total = data.total ?? 0;
@@ -261,22 +262,22 @@ Page({
       }
     } catch (err) {
       this.setData({ loadingLiked: false });
-      console.error('加载我赞过的失败', err);
+      console.error('加载赞过的记录失败', err);
     }
   },
 
   async onPullDownRefresh() {
     await this.loadUserProfile();
     await this.loadUserRecords(true);
-    if (this.data.isSelf) await this.loadLikedRecords(true);
+    if (this.data.activeTab === 'liked') await this.loadLikedRecords(true);
     wx.stopPullDownRefresh();
   },
 
   onReachBottom() {
-    const { activeTab, hasMore, hasMoreLiked, loading, loadingLiked, isSelf } = this.data;
-    if (activeTab === 'liked' && isSelf && hasMoreLiked && !loadingLiked) {
+    const { activeTab, hasMore, hasMoreLiked, loading, loadingLiked } = this.data;
+    if (activeTab === 'liked' && hasMoreLiked && !loadingLiked) {
       this.loadLikedRecords();
-    } else if (hasMore && !loading) {
+    } else if (activeTab === 'records' && hasMore && !loading) {
       this.loadUserRecords();
     }
   },

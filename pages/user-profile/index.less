@@ -67,6 +67,41 @@
   align-items: center;
 }
 
+/* 并列两个 Tab，等宽横向排列 */
+.user-profile-tabs {
+  display: flex;
+  flex-direction: row;
+  background: @bg-color-white;
+  margin-bottom: 24rpx;
+  padding: 0 24rpx;
+}
+
+.tab-item {
+  flex: 1;
+  text-align: center;
+  padding: 24rpx 0;
+  font-size: @font-size-medium;
+  color: @text-color-secondary;
+  position: relative;
+}
+
+.tab-item--active {
+  font-weight: 500;
+  color: @brand7-normal;
+}
+
+.tab-item--active::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 48rpx;
+  height: 4rpx;
+  background: @brand7-normal;
+  border-radius: 2rpx;
+  transform: translateX(-50%);
+}
+
 .user-profile-records {
   padding: 0 24rpx;
 }

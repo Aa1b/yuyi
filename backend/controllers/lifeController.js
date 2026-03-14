@@ -234,6 +234,114 @@ exports.getList = async (req, res, next) => {
 };
 
 /**
+ * 获取「赞过的」记录列表（本人或他人个人主页的“我赞过的/他赞过的”）
+ * GET /life/liked?page=1&pageSize=10&userId=xxx（userId 不传则取当前用户）
+ */
+exports.getLikedList = async (req, res, next) => {
+  try {
+    const currentUserId = req.user?.id || null;
+    const { page = 1, pageSize = 10, userId: targetUserId } = req.query;
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const pageSizeNum = Math.min(100, Math.max(1, parseInt(pageSize, 10) || 10));
+    const limit = pageSizeNum;
+    const offset = (pageNum - 1) * limit;
+
+    const ownerId = targetUserId ? parseInt(targetUserId) : currentUserId;
+    if (!ownerId) {
+      return res.status(401).json({ code: 401, message: '请先登录' });
+    }
+
+    const isSelf = currentUserId && currentUserId === ownerId;
+    const whereConditions = [
+      'l.user_id = ?',
+      'r.status = 1',
+      "r.publish_status = 'published'",
+    ];
+    const queryParams = [ownerId];
+
+    if (!isSelf) {
+      whereConditions.push('r.privacy = "public"');
+    } else {
+      whereConditions.push('(r.privacy = "public" OR r.privacy = "private" OR r.privacy = "friends")');
+    }
+
+    const whereClause = `WHERE ${whereConditions.join(' AND ')}`;
+    const [rows] = await pool.execute(
+      `SELECT 
+        r.id,
+        r.user_id as userId,
+        u.nickname as userName,
+        u.avatar,
+        r.content,
+        r.type,
+        r.privacy,
+        r.category,
+        r.location,
+        r.publish_status as publishStatus,
+        r.like_count as likeCount,
+        r.comment_count as commentCount,
+        r.created_at as createdAt
+      FROM life_likes l
+      INNER JOIN life_records r ON l.record_id = r.id
+      LEFT JOIN users u ON r.user_id = u.id
+      ${whereClause}
+      ORDER BY l.created_at DESC
+      LIMIT ? OFFSET ?`,
+      [...queryParams, limit, offset]
+    );
+
+    const [countRows] = await pool.execute(
+      `SELECT COUNT(*) as total
+       FROM life_likes l
+       INNER JOIN life_records r ON l.record_id = r.id
+       ${whereClause}`,
+      queryParams
+    );
+    const total = Number(countRows[0]?.total) || 0;
+    const records = rows || [];
+
+    const recordIds = records.map((r) => r.id);
+    if (recordIds.length > 0) {
+      const placeholders = recordIds.map(() => '?').join(',');
+      const [media] = await pool.execute(
+        `SELECT record_id, media_type as type, url, thumbnail_url as cover, duration
+         FROM life_media WHERE record_id IN (${placeholders}) ORDER BY sort_order, id`,
+        recordIds
+      );
+      const [tags] = await pool.execute(
+        `SELECT rrt.record_id, t.name FROM life_record_tags rrt
+         LEFT JOIN life_tags t ON rrt.tag_id = t.id
+         WHERE rrt.record_id IN (${placeholders})`,
+        recordIds
+      );
+      let likes = [];
+      if (currentUserId) {
+        const [likesData] = await pool.execute(
+          `SELECT record_id FROM life_likes WHERE record_id IN (${placeholders}) AND user_id = ?`,
+          [...recordIds, currentUserId]
+        );
+        likes = likesData.map((l) => l.record_id);
+      }
+      records.forEach((record) => {
+        record.images = media.filter((m) => m.record_id === record.id && m.type === 'image').map((m) => m.url);
+        const videoMedia = media.find((m) => m.record_id === record.id && m.type === 'video');
+        record.video = videoMedia ? { url: videoMedia.url, cover: videoMedia.cover, duration: videoMedia.duration } : null;
+        record.tags = tags.filter((t) => t.record_id === record.id).map((t) => t.name);
+        record.isLiked = likes.includes(record.id);
+      });
+    }
+
+    res.json({
+      code: 200,
+      message: '获取成功',
+      data: { list: records, total, page: pageNum, pageSize: limit },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * 获取生活记录详情
  */
 exports.getDetail = async (req, res, next) => {

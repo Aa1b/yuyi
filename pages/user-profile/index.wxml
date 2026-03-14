@@ -62,23 +62,22 @@
       </view>
     </view>
 
-    <!-- 本人时显示 Tab：我的记录 | 我赞过的 -->
-    <view class="user-profile-tabs" wx:if="{{isSelf}}">
+    <!-- 并列两个 Tab：本人「我的记录|我赞过的」，他人「他的记录|他赞过的」 -->
+    <view class="user-profile-tabs">
       <view
         class="tab-item {{activeTab === 'records' ? 'tab-item--active' : ''}}"
         data-tab="records"
         bindtap="onTabChange"
-      >我的记录</view>
+      >{{isSelf ? '我的记录' : '他的记录'}}</view>
       <view
         class="tab-item {{activeTab === 'liked' ? 'tab-item--active' : ''}}"
         data-tab="liked"
         bindtap="onTabChange"
-      >我赞过的</view>
+      >{{isSelf ? '我赞过的' : '他赞过的'}}</view>
     </view>
 
-    <!-- 用户记录列表 -->
-    <view class="user-profile-records" wx:if="{{activeTab === 'records' || !isSelf}}">
-      <view class="records-title">{{isSelf ? '我的记录' : '他的记录'}}</view>
+    <!-- 记录列表（Tab 为 records） -->
+    <view class="user-profile-records" wx:if="{{activeTab === 'records'}}">
       <view wx:if="{{records.length === 0 && !loading}}" class="records-empty">
         <t-empty
           icon="file-image"
@@ -102,13 +101,12 @@
       </view>
     </view>
 
-    <!-- 我赞过的（仅本人可见） -->
-    <view class="user-profile-records" wx:if="{{isSelf && activeTab === 'liked'}}">
-      <view class="records-title">我赞过的</view>
+    <!-- 赞过的列表（Tab 为 liked） -->
+    <view class="user-profile-records" wx:if="{{activeTab === 'liked'}}">
       <view wx:if="{{likedRecords.length === 0 && !loadingLiked}}" class="records-empty">
         <t-empty
           icon="heart"
-          description="还没有点赞过任何记录"
+          description="{{isSelf ? '还没有点赞过任何记录' : 'TA 还没有点赞过任何记录'}}"
         />
       </view>
       <view wx:else class="records-list">

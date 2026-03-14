@@ -23,15 +23,20 @@ Component({
         });
       }
     },
-    // 跳转到用户主页
+    // 跳转到用户主页（点击自己头像则直接进入「我的」Tab）
     goToUserProfile(e) {
       e.stopPropagation();
       const { userId } = e.currentTarget.dataset;
-      if (userId) {
-        wx.navigateTo({
-          url: `/pages/user-profile/index?userId=${userId}`,
-        });
+      if (!userId) return;
+      const me = wx.getStorageSync('user_info');
+      const myId = me && (me.id != null) ? String(me.id) : null;
+      if (myId && String(userId) === myId) {
+        wx.switchTab({ url: '/pages/my/index' });
+        return;
       }
+      wx.navigateTo({
+        url: `/pages/user-profile/index?userId=${userId}`,
+      });
     },
     // 点赞/取消点赞
     async handleLike(e) {

@@ -13,9 +13,20 @@ Page({
     pageSize: 10,
     isFollowing: false,
     isSelf: false,
+    activeTab: 'records', // records | liked（仅本人）
+    likedRecords: [],
+    loadingLiked: false,
+    hasMoreLiked: true,
+    pageLiked: 1,
   },
-  
+
   onLoad(options) {
+    const token = wx.getStorageSync('access_token');
+    if (!token) {
+      wx.showToast({ title: '请先登录', icon: 'none' });
+      wx.redirectTo({ url: '/pages/login/login' });
+      return;
+    }
     const { userId } = options;
     if (!userId) {
       Message.error({
@@ -27,25 +38,31 @@ Page({
       wx.navigateBack();
       return;
     }
-    
-    this.setData({ userId });
-    this.loadUserProfile();
-    this.loadUserRecords(true);
+
+    this.setData({ userId }, () => {
+      this.loadUserProfile();
+      this.loadUserRecords(true);
+    });
   },
-  
+
   // 加载用户信息
   async loadUserProfile() {
     try {
       this.setData({ loading: true });
       const res = await request(`/user/profile/${this.data.userId}`);
-      const userInfo = res.data.data;
-      
+      const userInfo = res?.data ?? null;
+      if (!userInfo) {
+        this.setData({ loading: false });
+        return;
+      }
+      const isSelf = userInfo.isSelf || false;
       this.setData({
         userInfo,
         isFollowing: userInfo.isFollowing || false,
-        isSelf: userInfo.isSelf || false,
+        isSelf,
         loading: false,
       });
+      if (isSelf) this.loadLikedRecords(true);
     } catch (error) {
       this.setData({ loading: false });
       console.error('加载用户信息失败', error);
@@ -58,29 +75,31 @@ Page({
       wx.navigateBack();
     }
   },
-  
-  // 加载用户的记录
+
+  // 加载用户的记录（与 loadUserProfile 并行时也会执行，不因 loading 为 true 而跳过）
   async loadUserRecords(refresh = false) {
-    if (this.data.loading) return;
-    
+    const { userId, page, pageSize } = this.data;
+    if (!userId) return;
+
     try {
       this.setData({ loading: true });
-      
-      const { userId, page, pageSize } = this.data;
+
       const params = {
         page: refresh ? 1 : page,
         pageSize,
-        userId,
-        privacy: 'all', // 显示所有公开和好友可见的记录
+        userId: String(userId),
+        privacy: 'all', // 显示该用户公开及（若已关注）好友可见的记录
       };
-      
+
       const queryString = Object.keys(params)
-        .map(key => `${key}=${encodeURIComponent(params[key])}`)
+        .map((key) => `${key}=${encodeURIComponent(params[key])}`)
         .join('&');
-      
+
       const res = await request(`/life/list?${queryString}`);
-      const { list = [], total = 0 } = res.data || {};
-      
+      const data = res?.data ?? {};
+      const list = data.list ?? [];
+      const total = data.total ?? 0;
+
       if (refresh) {
         this.setData({
           records: list,
@@ -107,11 +126,11 @@ Page({
       });
     }
   },
-  
+
   // 关注/取消关注
   async toggleFollow() {
     const { isFollowing, userId, isSelf } = this.data;
-    
+
     if (isSelf) {
       Message.warning({
         context: this,
@@ -121,7 +140,7 @@ Page({
       });
       return;
     }
-    
+
     try {
       if (isFollowing) {
         // 取消关注
@@ -148,7 +167,7 @@ Page({
           content: '关注成功',
         });
       }
-      
+
       // 更新用户信息中的粉丝数
       if (this.data.userInfo) {
         const followerCount = this.data.userInfo.followerCount || 0;
@@ -166,7 +185,7 @@ Page({
       });
     }
   },
-  
+
   // 查看详情
   viewDetail(e) {
     let id = null;
@@ -175,50 +194,89 @@ Page({
     } else if (e.currentTarget && e.currentTarget.dataset) {
       id = e.currentTarget.dataset.id;
     }
-    
+
     if (id) {
       wx.navigateTo({
         url: `/pages/life-detail/index?id=${id}`,
       });
     }
   },
-  
-  // 查看记录（跳转到我的记录页面）
+
   viewRecords() {
     if (this.data.isSelf) {
-      wx.switchTab({
-        url: '/pages/my/index',
-      });
+      wx.switchTab({ url: '/pages/my/index' });
     }
   },
-  
-  // 查看粉丝列表
+
   viewFollowers() {
-    // TODO: 实现粉丝列表页面
-    wx.showToast({
-      title: '功能开发中',
-      icon: 'none',
-    });
+    const { userId, isSelf } = this.data;
+    const url = isSelf
+      ? '/pages/following/index?type=followers'
+      : `/pages/following/index?type=followers&userId=${userId}`;
+    wx.navigateTo({ url });
   },
-  
-  // 查看关注列表
+
   viewFollowing() {
-    wx.navigateTo({
-      url: '/pages/following/index',
-    });
+    const { userId, isSelf } = this.data;
+    const url = isSelf
+      ? '/pages/following/index?type=following'
+      : `/pages/following/index?type=following&userId=${userId}`;
+    wx.navigateTo({ url });
   },
-  
-  // 下拉刷新
-  onPullDownRefresh() {
-    this.loadUserProfile();
-    this.loadUserRecords(true).then(() => {
-      wx.stopPullDownRefresh();
-    });
+
+  onTabChange(e) {
+    const tab = e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.tab;
+    if (!tab || (tab !== 'records' && tab !== 'liked')) return;
+    this.setData({ activeTab: tab });
+    if (tab === 'liked') this.loadLikedRecords(true);
   },
-  
-  // 上拉加载更多
+
+  async loadLikedRecords(refresh = false) {
+    if (!this.data.isSelf) return;
+    const { pageLiked, pageSize } = this.data;
+    if (this.data.loadingLiked) return;
+
+    try {
+      this.setData({ loadingLiked: true });
+      const page = refresh ? 1 : pageLiked;
+      const res = await request(`/life/liked?page=${page}&pageSize=${pageSize || 10}`);
+      const data = res?.data ?? {};
+      const list = data.list ?? [];
+      const total = data.total ?? 0;
+
+      if (refresh) {
+        this.setData({
+          likedRecords: list,
+          pageLiked: 1,
+          hasMoreLiked: list.length < total,
+          loadingLiked: false,
+        });
+      } else {
+        this.setData({
+          likedRecords: [...this.data.likedRecords, ...list],
+          pageLiked: page + 1,
+          hasMoreLiked: this.data.likedRecords.length + list.length < total,
+          loadingLiked: false,
+        });
+      }
+    } catch (err) {
+      this.setData({ loadingLiked: false });
+      console.error('加载我赞过的失败', err);
+    }
+  },
+
+  async onPullDownRefresh() {
+    await this.loadUserProfile();
+    await this.loadUserRecords(true);
+    if (this.data.isSelf) await this.loadLikedRecords(true);
+    wx.stopPullDownRefresh();
+  },
+
   onReachBottom() {
-    if (this.data.hasMore && !this.data.loading) {
+    const { activeTab, hasMore, hasMoreLiked, loading, loadingLiked, isSelf } = this.data;
+    if (activeTab === 'liked' && isSelf && hasMoreLiked && !loadingLiked) {
+      this.loadLikedRecords();
+    } else if (hasMore && !loading) {
       this.loadUserRecords();
     }
   },

@@ -40,6 +40,11 @@ Page({
           icon: 'secured',
         },
         {
+          title: '修改密码',
+          url: '/pages/setting/change-password/index',
+          icon: 'lock',
+        },
+        {
           title: '隐私',
           url: '',
           icon: 'info-circle',
@@ -50,7 +55,10 @@ Page({
 
   onEleClick(e) {
     const { title, url } = e.currentTarget.dataset.data;
-    if (url) return;
+    if (url) {
+      wx.navigateTo({ url });
+      return;
+    }
     this.onShowToast('#t-toast', title);
   },
 });

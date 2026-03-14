@@ -102,12 +102,13 @@ exports.unfollow = async (req, res, next) => {
 };
 
 /**
- * 获取关注列表
+ * 获取关注列表（支持查看他人：传入 userId）
  */
 exports.getFollowing = async (req, res, next) => {
   try {
-    const userId = req.user.id;
-    const { page = 1, pageSize = 20 } = req.query;
+    const currentUserId = req.user.id;
+    const { page = 1, pageSize = 20, userId: targetUserId } = req.query;
+    const ownerId = targetUserId ? parseInt(targetUserId) : currentUserId;
 
     const limit = parseInt(pageSize);
     const offset = (parseInt(page) - 1) * limit;
@@ -123,12 +124,28 @@ exports.getFollowing = async (req, res, next) => {
       WHERE uf.follower_id = ?
       ORDER BY uf.created_at DESC
       LIMIT ? OFFSET ?`,
-      [userId, limit, offset]
+      [ownerId, limit, offset]
     );
+
+    if (ownerId !== currentUserId && follows.length > 0) {
+      const ids = follows.map((f) => f.id).join(',');
+      const [followed] = await pool.execute(
+        `SELECT following_id FROM user_follows WHERE follower_id = ? AND following_id IN (${ids})`,
+        [currentUserId]
+      );
+      const followedSet = new Set(followed.map((r) => r.following_id));
+      follows.forEach((u) => {
+        u.isFollowing = followedSet.has(u.id);
+      });
+    } else if (ownerId === currentUserId) {
+      follows.forEach((u) => {
+        u.isFollowing = true;
+      });
+    }
 
     const [countResult] = await pool.execute(
       'SELECT COUNT(*) as total FROM user_follows WHERE follower_id = ?',
-      [userId]
+      [ownerId]
     );
 
     res.json({
@@ -147,12 +164,13 @@ exports.getFollowing = async (req, res, next) => {
 };
 
 /**
- * 获取粉丝列表
+ * 获取粉丝列表（支持查看他人：传入 userId）
  */
 exports.getFollowers = async (req, res, next) => {
   try {
-    const userId = req.user.id;
-    const { page = 1, pageSize = 20 } = req.query;
+    const currentUserId = req.user.id;
+    const { page = 1, pageSize = 20, userId: targetUserId } = req.query;
+    const ownerId = targetUserId ? parseInt(targetUserId) : currentUserId;
 
     const limit = parseInt(pageSize);
     const offset = (parseInt(page) - 1) * limit;
@@ -168,12 +186,24 @@ exports.getFollowers = async (req, res, next) => {
       WHERE uf.following_id = ?
       ORDER BY uf.created_at DESC
       LIMIT ? OFFSET ?`,
-      [userId, limit, offset]
+      [ownerId, limit, offset]
     );
+
+    if (followers.length > 0) {
+      const ids = followers.map((f) => f.id).join(',');
+      const [followed] = await pool.execute(
+        `SELECT following_id FROM user_follows WHERE follower_id = ? AND following_id IN (${ids})`,
+        [currentUserId]
+      );
+      const followedSet = new Set(followed.map((r) => r.following_id));
+      followers.forEach((u) => {
+        u.isFollowing = followedSet.has(u.id);
+      });
+    }
 
     const [countResult] = await pool.execute(
       'SELECT COUNT(*) as total FROM user_follows WHERE following_id = ?',
-      [userId]
+      [ownerId]
     );
 
     res.json({
@@ -237,6 +267,11 @@ exports.getUserProfile = async (req, res, next) => {
       [userId]
     );
 
+    const [likeCountResult] = await pool.execute(
+      'SELECT COALESCE(SUM(like_count), 0) as count FROM life_records WHERE user_id = ? AND status = 1',
+      [userId]
+    );
+
     // 查询是否已关注
     let isFollowing = false;
     if (currentUserId && currentUserId !== parseInt(userId)) {
@@ -255,6 +290,7 @@ exports.getUserProfile = async (req, res, next) => {
         recordCount: recordCount[0].count,
         followerCount: followerCount[0].count,
         followingCount: followingCount[0].count,
+        likeCount: likeCountResult[0].count,
         isFollowing,
         isSelf: currentUserId === parseInt(userId),
       },

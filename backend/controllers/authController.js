@@ -90,39 +90,46 @@ exports.login = async (req, res, next) => {
 };
 
 /**
- * 用户注册（备用方案）
+ * 用户注册（邮箱 + 密码 + 昵称）
  */
 exports.register = async (req, res, next) => {
   try {
-    const { phone, password, nickname } = req.body;
+    const { email, password, nickname } = req.body;
+    const emailTrim = (email || '').trim();
 
-    if (!phone || !password) {
+    if (!emailTrim || !password) {
       return res.status(400).json({
         code: 400,
-        message: '手机号和密码不能为空',
+        message: '邮箱和密码不能为空',
       });
     }
 
-    // 检查手机号是否已注册
+    if (password.length < 6) {
+      return res.status(400).json({
+        code: 400,
+        message: '密码至少6位',
+      });
+    }
+
+    // 检查邮箱是否已注册
     const [existing] = await pool.execute(
-      'SELECT id FROM users WHERE phone = ?',
-      [phone]
+      'SELECT id FROM users WHERE email = ?',
+      [emailTrim]
     );
 
     if (existing.length > 0) {
       return res.status(400).json({
         code: 400,
-        message: '该手机号已注册',
+        message: '该邮箱已注册',
       });
     }
 
-    // 加密密码
     const hashedPassword = await bcrypt.hash(password, 10);
+    const openid = `email_${emailTrim}`;
 
-    // 创建用户
     const [result] = await pool.execute(
-      'INSERT INTO users (phone, password, nickname) VALUES (?, ?, ?)',
-      [phone, hashedPassword, nickname || '用户']
+      'INSERT INTO users (openid, email, password, nickname) VALUES (?, ?, ?, ?)',
+      [openid, emailTrim, hashedPassword, nickname || '用户']
     );
 
     const token = generateToken(result.insertId);
@@ -137,6 +144,133 @@ exports.register = async (req, res, next) => {
           nickname: nickname || '用户',
         },
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * 邮箱 + 密码登录
+ */
+exports.passwordLogin = async (req, res, next) => {
+  try {
+    const { account, password } = req.body;
+    const email = (account || '').trim();
+
+    if (!email || !password) {
+      return res.status(400).json({
+        code: 400,
+        message: '邮箱和密码不能为空',
+      });
+    }
+
+    const [users] = await pool.execute(
+      'SELECT id, nickname, avatar, password FROM users WHERE email = ?',
+      [email]
+    );
+
+    if (users.length === 0) {
+      return res.status(401).json({
+        code: 401,
+        message: '邮箱或密码错误',
+      });
+    }
+
+    const user = users[0];
+    if (!user.password) {
+      return res.status(401).json({
+        code: 401,
+        message: '该账号未设置密码，请使用微信登录',
+      });
+    }
+
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) {
+      return res.status(401).json({
+        code: 401,
+        message: '邮箱或密码错误',
+      });
+    }
+
+    const token = generateToken(user.id);
+    res.json({
+      code: 200,
+      message: '登录成功',
+      data: {
+        token,
+        user: {
+          id: user.id,
+          nickname: user.nickname,
+          avatar: user.avatar,
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * 修改密码（仅邮箱注册用户）
+ */
+exports.changePassword = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { oldPassword, newPassword } = req.body;
+
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({
+        code: 400,
+        message: '原密码和新密码不能为空',
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        code: 400,
+        message: '新密码至少6位',
+      });
+    }
+
+    const [users] = await pool.execute(
+      'SELECT id, password FROM users WHERE id = ?',
+      [userId]
+    );
+
+    if (users.length === 0) {
+      return res.status(404).json({
+        code: 404,
+        message: '用户不存在',
+      });
+    }
+
+    const user = users[0];
+    if (!user.password) {
+      return res.status(400).json({
+        code: 400,
+        message: '当前账号为微信登录，无法修改密码',
+      });
+    }
+
+    const match = await bcrypt.compare(oldPassword, user.password);
+    if (!match) {
+      return res.status(401).json({
+        code: 401,
+        message: '原密码错误',
+      });
+    }
+
+    const hashedNew = await bcrypt.hash(newPassword, 10);
+    await pool.execute('UPDATE users SET password = ? WHERE id = ?', [
+      hashedNew,
+      userId,
+    ]);
+
+    res.json({
+      code: 200,
+      message: '密码修改成功',
+      data: null,
     });
   } catch (error) {
     next(error);

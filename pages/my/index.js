@@ -6,6 +6,7 @@ Page({
 
   data: {
     isLoad: false,
+    isLoggedIn: false,
     service: [],
     personalInfo: {},
     userIp: '',
@@ -43,33 +44,48 @@ Page({
     ],
   },
 
-  onLoad() {
-    this.getServiceList();
-  },
+  onLoad() {},
 
   async onShow() {
-    const Token = wx.getStorageSync('access_token');
-    const personalInfo = await this.getPersonalInfo();
-
-    if (Token) {
+    const token = wx.getStorageSync('access_token');
+    if (!token) {
       this.setData({
         isLoad: true,
-        personalInfo,
+        isLoggedIn: false,
+        personalInfo: {},
+        userIp: '',
+        isAdmin: false,
+        settingList: [
+          { name: '联系客服', icon: 'service', type: 'service' },
+          { name: '设置', icon: 'setting', type: 'setting', url: '/pages/setting/index' },
+        ],
       });
-
-      // 额外获取一次真实后端的用户信息，用于展示IP和角色
-      try {
-        const profileRes = await request('/auth/profile').then((res) => res.data);
-        if (profileRes.code === 200 && profileRes.data) {
-          this.setData({
-            userIp: profileRes.data.ip || '',
-            isAdmin: profileRes.data.role === 'admin',
-          });
-        }
-      } catch (e) {
-        // 忽略IP获取失败，不影响其他功能
-      }
+      return;
     }
+
+    const personalInfo = await this.getPersonalInfo();
+    const isLoggedIn = !!(personalInfo && personalInfo.name);
+    const isAdmin = !!(personalInfo && personalInfo.isAdmin);
+    const userIp = (personalInfo && personalInfo.userIp) || '';
+
+    let settingList = [
+      { name: '联系客服', icon: 'service', type: 'service', url: '' },
+      { name: '设置', icon: 'setting', type: 'setting', url: '/pages/setting/index' },
+    ];
+    if (isLoggedIn) {
+      settingList.push({ name: '退出登录', icon: 'logout', type: 'logout', url: '' });
+    }
+
+    this.setData({
+      isLoad: true,
+      personalInfo: personalInfo || {},
+      isLoggedIn,
+      isAdmin,
+      userIp,
+      settingList,
+    });
+
+    this.getServiceList();
   },
 
   getServiceList() {
@@ -80,8 +96,38 @@ Page({
   },
 
   async getPersonalInfo() {
-    const info = await request('/api/genPersonalInfo').then((res) => res.data.data);
-    return info;
+    try {
+      const res = await request('/auth/profile');
+      const p = res?.data;
+      if (!p) return null;
+
+      const base = {
+        name: p.nickname || '用户',
+        image: p.avatar || '',
+        star: p.star || '',
+        city: p.city || '',
+        isAdmin: p.role === 'admin' || !!p.isAdmin || p.is_admin === 1,
+        id: p.id,
+        userIp: p.ipMasked || p.ip || '',
+      };
+
+      if (!p.id) return base;
+
+      try {
+        const profileRes = await request(`/user/profile/${p.id}`);
+        const profile = profileRes?.data;
+        if (profile) {
+          base.recordCount = profile.recordCount ?? 0;
+          base.followingCount = profile.followingCount ?? 0;
+          base.followerCount = profile.followerCount ?? 0;
+          base.likeCount = profile.likeCount ?? 0;
+        }
+      } catch (_) {}
+
+      return base;
+    } catch (e) {
+      return null;
+    }
   },
 
   onLogin(e) {
@@ -95,10 +141,30 @@ Page({
   },
 
   onEleClick(e) {
-    const { type, url } = e.currentTarget.dataset.data;
-    if (url) return;
+    const item = e.currentTarget.dataset.data || {};
+    const { url, type } = item;
 
-    // 根据类型跳转到不同的记录列表视图
+    if (type === 'logout') {
+      wx.showModal({
+        title: '退出登录',
+        content: '确定要退出登录吗？',
+        success: (res) => {
+          if (res.confirm) {
+            wx.removeStorageSync('access_token');
+            wx.removeStorageSync('user_info');
+            wx.reLaunch({ url: '/pages/login/login' });
+          }
+        },
+      });
+      return;
+    }
+
+    if (url) {
+      wx.navigateTo({ url });
+      return;
+    }
+
+    // 根据类型跳转到不同的记录列表视图（新版）
     if (type === 'all') {
       wx.navigateTo({ url: '/pages/my-life-records/index?filter=all' });
       return;
@@ -116,7 +182,17 @@ Page({
       return;
     }
 
-    // 其他类型暂时仍然使用 toast
-    this.onShowToast('#t-toast', type);
+    this.onShowToast('#t-toast', item.name || '');
+  },
+
+  onGoProfile() {
+    const id = this.data.personalInfo?.id;
+    if (id) wx.navigateTo({ url: `/pages/user-profile/index?userId=${id}` });
+  },
+  onGoFollowing() {
+    wx.navigateTo({ url: '/pages/following/index?type=following' });
+  },
+  onGoFollowers() {
+    wx.navigateTo({ url: '/pages/following/index?type=followers' });
   },
 });

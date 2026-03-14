@@ -1,12 +1,13 @@
 import request from '~/api/request';
 
+function isValidEmail(str) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(str).trim());
+}
+
 Page({
   data: {
-    phoneNumber: '',
-    isPhoneNumber: false,
     isCheck: false,
     isSubmit: false,
-    isPasswordLogin: false,
     passwordInfo: {
       account: '',
       password: '',
@@ -14,32 +15,15 @@ Page({
     radioValue: '',
   },
 
-  /* 自定义功能函数 */
   changeSubmit() {
-    if (this.data.isPasswordLogin) {
-      if (this.data.passwordInfo.account !== '' && this.data.passwordInfo.password !== '' && this.data.isCheck) {
-        this.setData({ isSubmit: true });
-      } else {
-        this.setData({ isSubmit: false });
-      }
-    } else if (this.data.isPhoneNumber && this.data.isCheck) {
-      this.setData({ isSubmit: true });
-    } else {
-      this.setData({ isSubmit: false });
-    }
+    const { account, password } = this.data.passwordInfo;
+    const ok =
+      isValidEmail((account || '').trim()) &&
+      (password || '').length > 0 &&
+      this.data.isCheck;
+    this.setData({ isSubmit: !!ok });
   },
 
-  // 手机号变更
-  onPhoneInput(e) {
-    const isPhoneNumber = /^[1][3,4,5,7,8,9][0-9]{9}$/.test(e.detail.value);
-    this.setData({
-      isPhoneNumber,
-      phoneNumber: e.detail.value,
-    });
-    this.changeSubmit();
-  },
-
-  // 用户协议选择变更
   onCheckChange(e) {
     const { value } = e.detail;
     this.setData({
@@ -50,82 +34,105 @@ Page({
   },
 
   onAccountChange(e) {
-    this.setData({ passwordInfo: { ...this.data.passwordInfo, account: e.detail.value } });
+    this.setData({
+      passwordInfo: { ...this.data.passwordInfo, account: e.detail.value },
+    });
     this.changeSubmit();
   },
 
   onPasswordChange(e) {
-    this.setData({ passwordInfo: { ...this.data.passwordInfo, password: e.detail.value } });
+    this.setData({
+      passwordInfo: { ...this.data.passwordInfo, password: e.detail.value },
+    });
     this.changeSubmit();
   },
 
-  // 切换登录方式
-  changeLogin() {
-    this.setData({ isPasswordLogin: !this.data.isPasswordLogin, isSubmit: false });
+  goRegister() {
+    wx.navigateTo({ url: '/pages/login/register' });
   },
 
-  // 微信登录（真实后端）
+  /** 微信登录 */
   async loginWithWeChat() {
+    if (!this.data.isCheck) {
+      wx.showToast({ title: '请先同意《协议条款》', icon: 'none' });
+      return;
+    }
     try {
-      // 1. 调用 wx.login 获取临时登录凭证 code
-      const loginRes = await wx.login();
-      if (!loginRes.code) {
-        wx.showToast({ title: '微信登录失败，请重试', icon: 'none' });
-        return;
-      }
-
-      // 2. 获取微信用户信息（用于后端创建/更新用户资料）
+      const { code } = await new Promise((resolve, reject) => {
+        wx.login({
+          success: (res) => (res.code ? resolve(res) : reject(new Error('获取 code 失败'))),
+          fail: reject,
+        });
+      });
       let userInfo = null;
       try {
-        const userRes = await wx.getUserProfile({
-          desc: '用于完善会员资料',
-        });
+        const userRes = await wx.getUserProfile({ desc: '用于完善会员资料' });
         userInfo = userRes.userInfo;
       } catch (e) {
         wx.showToast({ title: '已取消授权', icon: 'none' });
         return;
       }
-
-      // 3. 调用后端 /auth/login 接口换取业务 token
-      const res = await request('/auth/login', 'POST', {
-        code: loginRes.code,
-        userInfo,
-      });
-
-      // 后端返回结构：{ code, message, data: { token, user } }
-      const token = res && res.data && res.data.token ? res.data.token : res.data?.token || res.data?.data?.token;
-
+      const res = await request('/auth/login', 'POST', { code, userInfo });
+      const token = res && res.data && res.data.token ? res.data.token : res.data?.token;
       if (token) {
         wx.setStorageSync('access_token', token);
+        if (res.data && res.data.user) {
+          wx.setStorageSync('user_info', res.data.user);
+        }
         wx.showToast({ title: '登录成功', icon: 'success' });
-        wx.switchTab({
-          url: '/pages/my/index',
-        });
+        wx.switchTab({ url: '/pages/my/index' });
       } else {
-        wx.showToast({ title: '登录失败，请重试', icon: 'none' });
+        wx.showToast({ title: (res && res.message) || '微信登录失败', icon: 'none' });
       }
-    } catch (error) {
-      wx.showToast({ title: '登录异常，请稍后再试', icon: 'none' });
-      console.error('微信登录失败', error);
+    } catch (err) {
+      const msg =
+        (err && err.message) ||
+        (err && err.code === 503 && '微信登录未配置') ||
+        '网络错误，请重试';
+      wx.showToast({ title: msg, icon: 'none' });
     }
   },
 
+  /** 邮箱 + 密码登录 */
   async login() {
-    if (this.data.isPasswordLogin) {
-      const res = await request('/login/postPasswordLogin', 'post', { data: this.data.passwordInfo });
-      if (res.success) {
-        await wx.setStorageSync('access_token', res.data.token);
-        wx.switchTab({
-          url: `/pages/my/index`,
-        });
+    const { passwordInfo } = this.data;
+    const account = (passwordInfo.account || '').trim();
+    const password = (passwordInfo.password || '').trim();
+
+    if (!isValidEmail(account)) {
+      wx.showToast({ title: '请输入正确邮箱', icon: 'none' });
+      return;
+    }
+    if (!password) {
+      wx.showToast({ title: '请输入密码', icon: 'none' });
+      return;
+    }
+    if (!this.data.isCheck) {
+      wx.showToast({ title: '请先同意《协议条款》', icon: 'none' });
+      return;
+    }
+
+    try {
+      const res = await request('/auth/password-login', 'POST', {
+        account,
+        password,
+      });
+      if (res.code === 200 && res.data && res.data.token) {
+        wx.setStorageSync('access_token', res.data.token);
+        if (res.data.user) {
+          wx.setStorageSync('user_info', res.data.user);
+        }
+        wx.showToast({ title: '登录成功', icon: 'success' });
+        wx.switchTab({ url: '/pages/my/index' });
+      } else {
+        wx.showToast({ title: (res && res.message) || '登录失败', icon: 'none' });
       }
-    } else {
-      const res = await request('/login/getSendMessage', 'get');
-      if (res.success) {
-        wx.navigateTo({
-          url: `/pages/loginCode/loginCode?phoneNumber=${this.data.phoneNumber}`,
-        });
-      }
+    } catch (err) {
+      const msg =
+        (err && err.message) ||
+        (err && err.code === 401 && '邮箱或密码错误') ||
+        '网络错误，请重试';
+      wx.showToast({ title: msg, icon: 'none' });
     }
   },
 });

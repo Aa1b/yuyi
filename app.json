@@ -22,7 +22,7 @@
     {
       "root": "pages/login",
       "name": "login",
-      "pages": ["login"]
+      "pages": ["login", "register"]
     },
     {
       "root": "pages/loginCode",
@@ -37,7 +37,7 @@
     {
       "root": "pages/setting",
       "name": "setting",
-      "pages": ["index"]
+      "pages": ["index", "change-password/index"]
     },
     {
       "root": "pages/release",

@@ -18,6 +18,13 @@ router.post('/login', authController.login);
 router.post('/register', authController.register);
 
 /**
+ * @route POST /api/auth/password-login
+ * @desc 邮箱+密码登录
+ * @access Public
+ */
+router.post('/password-login', authController.passwordLogin);
+
+/**
  * @route GET /api/auth/profile
  * @desc 获取当前用户信息
  * @access Private
@@ -30,5 +37,12 @@ router.get('/profile', authenticate, authController.getProfile);
  * @access Private
  */
 router.put('/profile', authenticate, authController.updateProfile);
+
+/**
+ * @route PUT /api/auth/password
+ * @desc 修改密码（仅邮箱注册用户）
+ * @access Private
+ */
+router.put('/password', authenticate, authController.changePassword);
 
 module.exports = router;

@@ -227,6 +227,9 @@ exports.getList = async (req, res, next) => {
         record.isLiked = likes.includes(record.id);
       });
     }
+    records.forEach(record => {
+      if (!Array.isArray(record.images)) record.images = [];
+    });
 
     res.json({
       code: 200,

@@ -1,27 +1,54 @@
 const pool = require('../config/database');
 
+const ALLOWED_TYPES = ['all', 'like', 'comment', 'follow'];
+
+/**
+ * 安全序列化单条通知（避免 BigInt/Date 导致 JSON 报错）
+ */
+function serializeNotification(row) {
+  if (!row || typeof row !== 'object') return null;
+  const createdAt = row.createdAt;
+  return {
+    id: safeNumber(row.id),
+    type: typeof row.type === 'string' ? row.type : null,
+    recordId: safeNumber(row.recordId),
+    fromUserId: safeNumber(row.fromUserId),
+    fromUserName: row.fromUserName != null ? String(row.fromUserName) : null,
+    fromUserAvatar: row.fromUserAvatar != null ? String(row.fromUserAvatar) : null,
+    content: row.content != null ? String(row.content) : null,
+    isRead: safeNumber(row.isRead) ? 1 : 0,
+    createdAt: createdAt instanceof Date ? createdAt.toISOString() : (createdAt != null ? String(createdAt) : null),
+  };
+}
+
+function safeNumber(v) {
+  if (v == null) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
 /**
  * 获取通知列表
  */
 exports.getNotifications = async (req, res, next) => {
   try {
-    const userId = Number(req.user.id);
+    const userId = Number(req.user?.id);
     if (!Number.isInteger(userId) || userId < 1) {
       return res.status(401).json({ code: 401, message: '用户未登录或无效' });
     }
-    const { page = 1, pageSize = 20, type = 'all' } = req.query;
-    const limit = Math.min(Math.max(parseInt(pageSize, 10) || 20, 1), 100);
-    const pageNum = Math.max(parseInt(page, 10) || 1, 1);
-    const offset = (pageNum - 1) * limit;
 
-    let whereCondition = 'n.user_id = ?';
+    let type = (req.query.type || 'all').toLowerCase();
+    if (!ALLOWED_TYPES.includes(type)) type = 'all';
+
+    const pageNum = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const pageSize = Math.min(Math.max(parseInt(req.query.pageSize, 10) || 20, 1), 100);
+    const offset = (pageNum - 1) * pageSize;
+
     const queryParams = [userId];
-    if (type !== 'all') {
-      whereCondition += ' AND n.type = ?';
-      queryParams.push(type);
-    }
+    const whereClause = type === 'all' ? 'n.user_id = ?' : 'n.user_id = ? AND n.type = ?';
+    if (type !== 'all') queryParams.push(type);
 
-    const [notifications] = await pool.execute(
+    const [rows] = await pool.execute(
       `SELECT 
         n.id,
         n.type,
@@ -31,53 +58,30 @@ exports.getNotifications = async (req, res, next) => {
         u.avatar as fromUserAvatar,
         n.content,
         n.is_read as isRead,
-        n.created_at as createdAt,
-        r.content as recordContent,
-        r.type as recordType
+        n.created_at as createdAt
       FROM notifications n
       LEFT JOIN users u ON n.from_user_id = u.id
-      LEFT JOIN life_records r ON n.record_id = r.id
-      WHERE ${whereCondition}
+      WHERE ${whereClause}
       ORDER BY n.created_at DESC
       LIMIT ? OFFSET ?`,
-      [...queryParams, limit, offset]
+      [...queryParams, pageSize, offset]
     );
 
-    const [countResult] = await pool.execute(
-      `SELECT COUNT(*) as total FROM notifications n WHERE ${whereCondition}`,
+    const [countRows] = await pool.execute(
+      `SELECT COUNT(*) as total FROM notifications n WHERE ${whereClause}`,
       queryParams
     );
-    const total = Number(countResult[0].total);
+    const total = Number(countRows[0]?.total) || 0;
 
-    const list = (notifications || []).map((row) => {
-      const createdAt = row.createdAt;
-      return {
-        id: row.id != null ? Number(row.id) : null,
-        type: row.type || null,
-        recordId: row.recordId != null ? Number(row.recordId) : null,
-        fromUserId: row.fromUserId != null ? Number(row.fromUserId) : null,
-        fromUserName: row.fromUserName ?? null,
-        fromUserAvatar: row.fromUserAvatar ?? null,
-        content: row.content ?? null,
-        isRead: row.isRead != null ? Number(row.isRead) : 0,
-        createdAt: createdAt instanceof Date ? createdAt.toISOString() : (createdAt ?? null),
-        recordContent: row.recordContent ?? null,
-        recordType: row.recordType ?? null,
-      };
-    });
+    const list = (rows || []).map(serializeNotification).filter(Boolean);
 
-    res.json({
+    return res.json({
       code: 200,
       message: '获取成功',
-      data: {
-        list,
-        total,
-        page: pageNum,
-        pageSize: limit,
-      },
+      data: { list, total, page: pageNum, pageSize },
     });
-  } catch (error) {
-    next(error);
+  } catch (err) {
+    next(err);
   }
 };
 
@@ -86,58 +90,43 @@ exports.getNotifications = async (req, res, next) => {
  */
 exports.markAsRead = async (req, res, next) => {
   try {
-    const userId = req.user.id;
-    const { id } = req.body; // 单个通知ID，或'all'表示全部
+    const userId = Number(req.user?.id);
+    if (!Number.isInteger(userId) || userId < 1) {
+      return res.status(401).json({ code: 401, message: '用户未登录或无效' });
+    }
+    const id = req.body?.id;
 
     if (id === 'all') {
-      // 标记所有通知为已读
-      await pool.execute(
-        'UPDATE notifications SET is_read = 1 WHERE user_id = ?',
-        [userId]
-      );
-    } else if (id) {
-      // 标记单个通知为已读
-      await pool.execute(
-        'UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?',
-        [id, userId]
-      );
+      await pool.execute('UPDATE notifications SET is_read = 1 WHERE user_id = ?', [userId]);
+    } else if (id != null && id !== '') {
+      await pool.execute('UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?', [Number(id), userId]);
     } else {
-      return res.status(400).json({
-        code: 400,
-        message: '缺少通知ID',
-      });
+      return res.status(400).json({ code: 400, message: '缺少通知ID' });
     }
 
-    res.json({
-      code: 200,
-      message: '标记成功',
-      data: null,
-    });
-  } catch (error) {
-    next(error);
+    res.json({ code: 200, message: '标记成功', data: null });
+  } catch (err) {
+    next(err);
   }
 };
 
 /**
- * 获取未读通知数量
+ * 获取未读数量
  */
 exports.getUnreadCount = async (req, res, next) => {
   try {
-    const userId = req.user.id;
-
-    const [result] = await pool.execute(
+    const userId = Number(req.user?.id);
+    if (!Number.isInteger(userId) || userId < 1) {
+      return res.status(401).json({ code: 401, message: '用户未登录或无效' });
+    }
+    const [r] = await pool.execute(
       'SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = 0',
       [userId]
     );
-    const count = Number(result[0].count);
-
-    res.json({
-      code: 200,
-      message: '获取成功',
-      data: { count },
-    });
-  } catch (error) {
-    next(error);
+    const count = Number(r[0]?.count) || 0;
+    res.json({ code: 200, message: '获取成功', data: { count } });
+  } catch (err) {
+    next(err);
   }
 };
 
@@ -146,27 +135,17 @@ exports.getUnreadCount = async (req, res, next) => {
  */
 exports.deleteNotification = async (req, res, next) => {
   try {
-    const userId = req.user.id;
-    const { id } = req.query;
-
-    if (!id) {
-      return res.status(400).json({
-        code: 400,
-        message: '缺少通知ID',
-      });
+    const userId = Number(req.user?.id);
+    if (!Number.isInteger(userId) || userId < 1) {
+      return res.status(401).json({ code: 401, message: '用户未登录或无效' });
     }
-
-    await pool.execute(
-      'DELETE FROM notifications WHERE id = ? AND user_id = ?',
-      [id, userId]
-    );
-
-    res.json({
-      code: 200,
-      message: '删除成功',
-      data: null,
-    });
-  } catch (error) {
-    next(error);
+    const id = req.query?.id;
+    if (id == null || id === '') {
+      return res.status(400).json({ code: 400, message: '缺少通知ID' });
+    }
+    await pool.execute('DELETE FROM notifications WHERE id = ? AND user_id = ?', [Number(id), userId]);
+    res.json({ code: 200, message: '删除成功', data: null });
+  } catch (err) {
+    next(err);
   }
 };

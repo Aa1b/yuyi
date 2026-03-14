@@ -60,6 +60,13 @@ router.post('/like', authenticate, lifeController.like);
 router.delete('/like', authenticate, lifeController.unlike);
 
 /**
+ * @route GET /api/life/liked
+ * @desc 获取我赞过的生活记录列表
+ * @access Private
+ */
+router.get('/liked', authenticate, lifeController.getLikedList);
+
+/**
  * @route GET /api/life/comments
  * @desc 获取评论列表
  * @access Public

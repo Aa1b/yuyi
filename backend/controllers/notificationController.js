@@ -44,6 +44,8 @@ exports.getNotifications = async (req, res, next) => {
     const pageNum = Math.max(parseInt(req.query.page, 10) || 1, 1);
     const pageSize = Math.min(Math.max(parseInt(req.query.pageSize, 10) || 20, 1), 100);
     const offset = (pageNum - 1) * pageSize;
+    const limitNum = Math.floor(Number(pageSize)) || 20;
+    const offsetNum = Math.floor(Number(offset)) || 0;
 
     const queryParams = [userId];
     const whereClause = type === 'all' ? 'n.user_id = ?' : 'n.user_id = ? AND n.type = ?';
@@ -65,8 +67,8 @@ exports.getNotifications = async (req, res, next) => {
       LEFT JOIN users u ON n.from_user_id = u.id
       WHERE ${whereClause}
       ORDER BY n.created_at DESC
-      LIMIT ? OFFSET ?`,
-      [...queryParams, pageSize, offset]
+      LIMIT ${limitNum} OFFSET ${offsetNum}`,
+      queryParams
     );
 
     const [countRows] = await pool.execute(

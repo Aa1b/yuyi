@@ -589,7 +589,7 @@ exports.createRecord = async (req, res, next) => {
     if (type === 'image' && images && images.length > 0) {
       const mediaValues = images.map((url, index) => [recordId, 'image', url, null, null, index]);
       await pool.query(
-        `INSERT INTO life_media (record_id, media_type, url, sort_order) VALUES ?`,
+        `INSERT INTO life_media (record_id, media_type, url, thumbnail_url, duration, sort_order) VALUES ?`,
         [mediaValues]
       );
     } else if (type === 'video' && video) {
@@ -959,6 +959,96 @@ exports.unlike = async (req, res, next) => {
       message: '取消点赞成功',
       data: {
         likeCount: countResult[0].likeCount,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * 获取我赞过的生活记录列表
+ */
+exports.getLikedList = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { page = 1, pageSize = 10 } = req.query;
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const pageSizeNum = Math.min(100, Math.max(1, parseInt(pageSize, 10) || 10));
+    const limitNum = Math.floor(Number(pageSizeNum)) || 10;
+    const offsetNum = Math.floor(Number((pageNum - 1) * pageSizeNum)) || 0;
+
+    const [records] = await pool.execute(
+      `SELECT 
+        r.id,
+        r.user_id as userId,
+        u.nickname as userName,
+        u.avatar,
+        r.content,
+        r.type,
+        r.privacy,
+        r.category,
+        r.location,
+        r.publish_status as publishStatus,
+        r.like_count as likeCount,
+        r.comment_count as commentCount,
+        r.created_at as createdAt
+      FROM life_likes lk
+      INNER JOIN life_records r ON lk.record_id = r.id AND r.status = 1 AND r.publish_status = 'published'
+      LEFT JOIN users u ON r.user_id = u.id
+      WHERE lk.user_id = ?
+      ORDER BY lk.created_at DESC
+      LIMIT ${limitNum} OFFSET ${offsetNum}`,
+      [userId]
+    );
+
+    const [countResult] = await pool.execute(
+      `SELECT COUNT(*) as total
+       FROM life_likes lk
+       INNER JOIN life_records r ON lk.record_id = r.id AND r.status = 1 AND r.publish_status = 'published'
+       WHERE lk.user_id = ?`,
+      [userId]
+    );
+    const total = countResult[0].total;
+
+    const recordIds = records.map(r => r.id);
+    if (recordIds.length > 0) {
+      const placeholders = recordIds.map(() => '?').join(',');
+      const [media] = await pool.execute(
+        `SELECT record_id, media_type as type, url, thumbnail_url as cover, duration 
+         FROM life_media 
+         WHERE record_id IN (${placeholders}) 
+         ORDER BY sort_order, id`,
+        recordIds
+      );
+      const [tags] = await pool.execute(
+        `SELECT rrt.record_id, t.name 
+         FROM life_record_tags rrt
+         LEFT JOIN life_tags t ON rrt.tag_id = t.id
+         WHERE rrt.record_id IN (${placeholders})`,
+        recordIds
+      );
+      records.forEach(record => {
+        record.images = media.filter(m => m.record_id === record.id && m.type === 'image').map(m => m.url);
+        const videoMedia = media.find(m => m.record_id === record.id && m.type === 'video');
+        record.video = videoMedia ? {
+          url: videoMedia.url,
+          cover: videoMedia.cover,
+          duration: videoMedia.duration,
+        } : null;
+        record.tags = tags.filter(t => t.record_id === record.id).map(t => t.name);
+        record.isLiked = true;
+      });
+    }
+
+    res.json({
+      code: 200,
+      message: '获取成功',
+      data: {
+        list: records,
+        total,
+        page: pageNum,
+        pageSize: pageSizeNum,
       },
     });
   } catch (error) {

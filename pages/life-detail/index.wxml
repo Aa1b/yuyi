@@ -86,21 +86,31 @@
       </view>
     </view>
 
-    <!-- 评论列表 -->
+    <!-- 评论列表（楼中楼） -->
     <view class="life-detail-comments">
-      <view class="life-detail-comments-title">评论 ({{comments.length}})</view>
+      <view class="life-detail-comments-title">评论 ({{commentTotal}})</view>
       <view wx:if="{{comments.length === 0}}" class="life-detail-comments-empty">
-        <text>暂无评论，快来发表第一条评论吧~</text>
+        <t-empty icon="chat" description="暂无评论" />
       </view>
       <view wx:else class="life-detail-comments-list">
-        <view wx:for="{{comments}}" wx:key="id" wx:for-item="comment" class="life-detail-comment">
-          <t-avatar image="{{comment.avatar}}" size="small" />
-          <view class="life-detail-comment-content">
-            <view class="life-detail-comment-header">
-              <text class="life-detail-comment-username">{{comment.userName}}</text>
-              <text class="life-detail-comment-time">{{comment.createdAt}}</text>
+        <view wx:for="{{comments}}" wx:key="id" wx:for-item="comment" id="comment-{{comment.id}}" class="life-detail-comment-block">
+          <view class="life-detail-comment">
+            <t-avatar image="{{comment.avatar}}" size="small" />
+            <view class="life-detail-comment-content">
+              <view class="life-detail-comment-header">
+                <text class="life-detail-comment-username">{{comment.userName}}</text>
+                <text class="life-detail-comment-time">{{comment.createdAt}}</text>
+                <text class="life-detail-comment-reply-btn" data-id="{{comment.id}}" data-name="{{comment.userName}}" bindtap="onReplyTap">回复</text>
+              </view>
+              <text class="life-detail-comment-text">{{comment.content}}</text>
             </view>
-            <text class="life-detail-comment-text">{{comment.content}}</text>
+          </view>
+          <view wx:if="{{comment.replies && comment.replies.length}}" class="life-detail-replies">
+            <view wx:for="{{comment.replies}}" wx:key="id" wx:for-item="reply" id="comment-{{reply.id}}" class="life-detail-reply">
+              <text class="life-detail-reply-label">回复 {{reply.replyToUserName}}：</text>
+              <text class="life-detail-reply-text">{{reply.content}}</text>
+              <text class="life-detail-reply-time">{{reply.createdAt}}</text>
+            </view>
           </view>
         </view>
       </view>
@@ -128,7 +138,7 @@
 <t-popup visible="{{showCommentInput}}" placement="bottom" bind:visible-change="hideCommentInput">
   <view class="life-detail-comment-input">
     <t-textarea
-      placeholder="输入评论..."
+      placeholder="{{replyingTo ? '回复 ' + replyingTo.userName + '...' : '输入评论...'}}"
       maxlength="200"
       value="{{commentContent}}"
       bind:input="onCommentInput"

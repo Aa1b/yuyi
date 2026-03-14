@@ -11,7 +11,7 @@ Page({
     lifeRecords: [],
     focusRecords: [], // 关注的记录
     // 筛选条件
-    activeTab: 'recommend', // recommend | follow | category
+    activeTab: 'recommend', // recommend=最新 | hot=最热 | sameCity | follow
     categories: [],
     selectedCategory: '',
     // 位置筛选 / 同城
@@ -22,8 +22,15 @@ Page({
     pageSize: 10,
     hasMore: true,
     loading: false,
+    loadingFollow: false,
   },
-  
+
+  onPullDownRefresh() {
+    const { activeTab } = this.data;
+    const p = activeTab === 'follow' ? this.loadFollowRecords() : this.loadLifeRecords(true);
+    Promise.resolve(p).finally(() => wx.stopPullDownRefresh());
+  },
+
   onLoad(option) {
     if (option.oper) {
       let content = '';
@@ -73,9 +80,10 @@ Page({
       const params = {
         page: refresh ? 1 : page,
         pageSize,
-        // 推荐和同城只展示公开内容，关注列表使用全部可见内容
-        privacy: (activeTab === 'recommend' || activeTab === 'sameCity') ? 'public' : 'all',
+        // 最新/最热/同城只展示公开内容
+        privacy: (activeTab === 'recommend' || activeTab === 'hot' || activeTab === 'sameCity') ? 'public' : 'all',
         category: selectedCategory || '',
+        sort: activeTab === 'hot' ? 'hot' : 'latest',
       };
 
       // 同城筛选：在 sameCity 标签下按当前城市过滤
@@ -128,12 +136,11 @@ Page({
       hasMore: true,
     });
     if (value === 'follow') {
-      // 加载关注的记录
       this.loadFollowRecords();
     } else if (value === 'sameCity') {
-      // 加载同城记录：先获取当前城市，再加载列表
       this.fetchCurrentCityAndFilter();
     } else {
+      // recommend（最新）或 hot（最热）
       this.loadLifeRecords(true);
     }
   },
@@ -141,56 +148,40 @@ Page({
   // 加载关注的记录
   async loadFollowRecords() {
     try {
-      this.setData({ loading: true });
-      
-      // 获取关注列表
+      this.setData({ loadingFollow: true });
       const followRes = await request('/user/following?page=1&pageSize=20');
       const followingList = (followRes.data && followRes.data.list) || [];
-      
+
       if (followingList.length === 0) {
-        this.setData({
-          focusRecords: [],
-          loading: false,
-        });
+        this.setData({ focusRecords: [], loadingFollow: false });
         return;
       }
-      
-      // 获取关注用户的记录
-      const followingIds = followingList.map(u => u.id).join(',');
-      const params = {
-        page: 1,
-        pageSize: 20,
-        privacy: 'all', // 显示公开和好友可见的记录
-      };
-      
+
+      const params = { page: 1, pageSize: 20, privacy: 'all' };
       const queryString = Object.keys(params)
-        .map(key => `${key}=${encodeURIComponent(params[key])}`)
+        .map((key) => `${key}=${encodeURIComponent(params[key])}`)
         .join('&');
-      
-      // 获取所有关注用户的记录
-      const recordsPromises = followingList.map(user => 
-        request(`/life/list?${queryString}&userId=${user.id}`).then(res => res.data.data.list || [])
+
+      const recordsPromises = followingList.map((user) =>
+        request(`/life/list?${queryString}&userId=${user.id}`).then((res) => res.data?.list || res.data?.data?.list || [])
       );
-      
       const recordsArrays = await Promise.all(recordsPromises);
       const allRecords = recordsArrays.flat();
-      
-      // 按时间排序
-      allRecords.sort((a, b) => {
-        return new Date(b.createdAt) - new Date(a.createdAt);
-      });
-      
+      allRecords.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
       this.setData({
-        focusRecords: allRecords.slice(0, 20), // 取前20条
-        loading: false,
+        focusRecords: allRecords.slice(0, 20),
+        loadingFollow: false,
       });
     } catch (error) {
       console.error('加载关注记录失败', error);
-      this.setData({
-        focusRecords: [],
-        loading: false,
-      });
+      this.setData({ focusRecords: [], loadingFollow: false });
     }
+  },
+
+  onRefreshFollow() {
+    this.setData({ enable: true });
+    this.loadFollowRecords().then(() => this.setData({ enable: false }));
   },
   
   // 分类筛选

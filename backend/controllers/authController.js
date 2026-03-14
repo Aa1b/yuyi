@@ -2,6 +2,7 @@ const pool = require('../config/database');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const https = require('https');
+const { validateProfile } = require('../utils/validate');
 
 const TENCENT_MAP_KEY = process.env.TENCENT_MAP_KEY || 'LITBZ-IDMWA-5D3KD-CURMW-MHJ4J-2SFMX';
 
@@ -419,12 +420,15 @@ exports.updateProfile = async (req, res, next) => {
     const userId = req.user.id;
     const { nickname, avatar, gender } = req.body;
 
+    const err = validateProfile(req.body);
+    if (err) return res.status(400).json(err);
+
     const updateFields = [];
     const updateValues = [];
 
     if (nickname !== undefined) {
       updateFields.push('nickname = ?');
-      updateValues.push(nickname);
+      updateValues.push(String(nickname).trim());
     }
     if (avatar !== undefined) {
       updateFields.push('avatar = ?');

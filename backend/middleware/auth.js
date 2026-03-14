@@ -21,9 +21,9 @@ const authenticate = async (req, res, next) => {
     // 验证 token
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret_key');
 
-    // 查询用户信息
+    // 查询用户信息（含 is_admin，供审核等接口使用）
     const [users] = await pool.execute(
-      'SELECT id, openid, nickname, avatar FROM users WHERE id = ?',
+      'SELECT id, openid, nickname, avatar, is_admin FROM users WHERE id = ?',
       [decoded.userId]
     );
 
@@ -40,6 +40,7 @@ const authenticate = async (req, res, next) => {
       openid: user.openid,
       nickname: user.nickname,
       avatar: user.avatar,
+      isAdmin: !!user.is_admin,
     };
     next();
   } catch (error) {
@@ -93,7 +94,22 @@ const optionalAuth = async (req, res, next) => {
   }
 };
 
+/**
+ * 管理员权限中间件（需在 authenticate 之后使用）
+ * 仅 is_admin=1 的用户可访问，否则返回 403
+ */
+const requireAdmin = (req, res, next) => {
+  if (!req.user || !req.user.isAdmin) {
+    return res.status(403).json({
+      code: 403,
+      message: '无权限，仅管理员可操作',
+    });
+  }
+  next();
+};
+
 module.exports = {
   authenticate,
   optionalAuth,
+  requireAdmin,
 };

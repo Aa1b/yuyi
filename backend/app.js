@@ -14,6 +14,8 @@ const userRoutes = require('./routes/user');
 const uploadRoutes = require('./routes/upload');
 const notificationRoutes = require('./routes/notification');
 const homeRoutes = require('./routes/home');
+const statsRoutes = require('./routes/stats');
+const messageRoutes = require('./routes/message');
 
 // 导入中间件
 const errorHandler = require('./middleware/errorHandler');
@@ -64,6 +66,8 @@ app.use('/api/user', userRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/notification', notificationRoutes);
 app.use('/api/home', homeRoutes);
+app.use('/api/stats', statsRoutes);
+app.use('/api/message', messageRoutes);
 
 // 404 处理
 app.use(notFound);

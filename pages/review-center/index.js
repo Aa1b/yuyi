@@ -95,11 +95,12 @@ Page({
           });
         } catch (err) {
           wx.hideLoading();
+          const isForbidden = err && (err.code === 403 || (err.data && err.data.code === 403));
           Message.error({
             context: this,
             offset: [120, 32],
             duration: 2000,
-            content: `${actionText}失败，请重试`,
+            content: isForbidden ? (err.data && err.data.message) || '无权限，仅管理员可操作' : `${actionText}失败，请重试`,
           });
         }
       },

@@ -1,53 +1,77 @@
-<t-navbar title="数据中心" left-arrow />
-<view class="data-center">
-  <view class="card first">
-    <view class="card-header">
-      <view class="card-header__title"> 整体情况 </view>
-      <view class="card-header__desc"> 截止12:00累计数值 </view>
-    </view>
-    <view class="card-content">
-      <view class="card-content__item" wx:for="{{totalSituationDataList}}" wx:for-item="item" wx:key="index">
-        <view class="card-content__item--desc"> {{item.name}} </view>
-        <view class="card-content__item--count"> {{item.number}} </view>
-      </view>
-    </view>
+<t-navbar title="管理看板" left-arrow />
+<view class="data-center" wx:if="{{isAdmin}}">
+  <view wx:if="{{loading}}" class="data-center-loading">
+    <t-loading theme="circular" size="40rpx" text="加载中..." />
   </view>
 
-  <view class="card second">
-    <view class="card-header">
-      <view class="card-header__title"> 互动情况 </view>
-    </view>
-    <view class="card-content">
-      <view class="card-content__item" wx:for="{{interactionSituationDataList}}" wx:for-item="item" wx:key="*this">
-        <view class="card-content__item--desc"> {{item.name}} </view>
-        <view class="card-content__item--count">
-          <text>{{item.number}}</text>
-          <text class="unit">次</text>
+  <block wx:else>
+    <!-- 整体情况 -->
+    <view class="card card-overview">
+      <view class="card-header">
+        <text class="card-header__title">整体情况</text>
+        <text class="card-header__desc">截止当前累计</text>
+      </view>
+      <view class="card-content overview-grid" wx:if="{{overview}}">
+        <view class="overview-item">
+          <text class="overview-item__label">用户数</text>
+          <text class="overview-item__value">{{overview.userCount}}</text>
+        </view>
+        <view class="overview-item">
+          <text class="overview-item__label">已发布</text>
+          <text class="overview-item__value">{{overview.publishedCount}}</text>
+        </view>
+        <view class="overview-item">
+          <text class="overview-item__label">待审核</text>
+          <text class="overview-item__value">{{overview.pendingCount}}</text>
+        </view>
+        <view class="overview-item">
+          <text class="overview-item__label">草稿</text>
+          <text class="overview-item__value">{{overview.draftCount}}</text>
+        </view>
+        <view class="overview-item">
+          <text class="overview-item__label">总点赞</text>
+          <text class="overview-item__value">{{overview.likeCount}}</text>
+        </view>
+        <view class="overview-item">
+          <text class="overview-item__label">总评论</text>
+          <text class="overview-item__value">{{overview.commentCount}}</text>
         </view>
       </view>
     </view>
-  </view>
 
-  <view class="card third">
-    <view class="card-header">
-      <view class="card-header__title"> 完播率 </view>
+    <!-- 近 7 天趋势 -->
+    <view class="card card-trend">
+      <view class="card-header">
+        <text class="card-header__title">近{{trendDays}}天趋势</text>
+        <text class="card-header__desc">发布 / 点赞</text>
+      </view>
+      <view class="chart-wrap">
+        <canvas type="2d" id="trendCanvas" class="chart-canvas trend-canvas" style="width: {{canvasWidth}}px; height: 280px;"></canvas>
+      </view>
+      <view class="chart-legend" wx:if="{{trend && trend.dates && trend.dates.length}}">
+        <text class="chart-legend__item"><view class="chart-legend__dot chart-legend__dot--publish"></view> 发布</text>
+        <text class="chart-legend__item"><view class="chart-legend__dot chart-legend__dot--like"></view> 点赞</text>
+      </view>
     </view>
-    <view class="card-content">
-      <view class="card-content__item" wx:for="{{completeRateDataList}}" wx:for-item="item" wx:key="index">
-        <text class="progress__label"> {{item.time}} </text>
-        <view class="progress__content">
-          <t-progress percentage="{{item.percentage}}" />
+
+    <!-- 分类占比 -->
+    <view class="card card-category">
+      <view class="card-header">
+        <text class="card-header__title">分类占比</text>
+        <text class="card-header__desc">已发布记录</text>
+      </view>
+      <view class="chart-wrap chart-wrap--pie" wx:if="{{category && category.length}}">
+        <canvas type="2d" id="categoryCanvas" class="chart-canvas category-canvas" style="width: {{pieSize}}px; height: {{pieSize}}px;"></canvas>
+      </view>
+      <view class="category-legend" wx:if="{{category && category.length}}">
+        <view class="category-legend__item" wx:for="{{category}}" wx:key="name">
+          <view class="category-legend__dot" style="background: {{item.color}};"></view>
+          <text class="category-legend__name">{{item.name}}</text>
+          <text class="category-legend__value">{{item.value}}</text>
         </view>
       </view>
     </view>
-  </view>
-
-  <view class="card forth">
-    <view class="card-header">
-      <view class="card-header__title"> 按区域统计 </view>
-    </view>
-    <view class="card-content">
-      <t-empty icon="info-circle-filled" description="Empty Data" />
-    </view>
-  </view>
+  </block>
 </view>
+
+<t-message id="t-message" />

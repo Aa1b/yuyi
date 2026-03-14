@@ -37,7 +37,7 @@
     {
       "root": "pages/setting",
       "name": "setting",
-      "pages": ["index", "change-password/index"]
+      "pages": ["index", "change-password/index", "user-agreement/index", "privacy-policy/index", "about/index"]
     },
     {
       "root": "pages/release",

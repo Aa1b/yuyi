@@ -1,5 +1,6 @@
 const pool = require('../config/database');
 const cache = require('../utils/cache');
+const { validateRecordCreate, validateRecordUpdate, validateComment } = require('../utils/validate');
 
 /**
  * 检查用户是否有权限查看记录（基于隐私设置）
@@ -70,6 +71,7 @@ exports.getList = async (req, res, next) => {
       userId = null, // 可选：获取指定用户的记录
       location = '', // 可选：按位置关键字筛选
       status = 1, // 可选：状态筛选，1=已发布，pending=待审核，all=已发布+待审核
+      sort = 'latest', // 可选：latest=按时间，hot=按点赞数
     } = req.query;
 
     const currentUserId = req.user?.id || null;
@@ -142,6 +144,10 @@ exports.getList = async (req, res, next) => {
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
     const limitNum = Math.floor(Number(limit)) || 10;
     const offsetNum = Math.floor(Number(offset)) || 0;
+    const orderBy =
+      sort === 'hot'
+        ? 'ORDER BY r.like_count DESC, r.created_at DESC'
+        : 'ORDER BY r.created_at DESC';
 
     // 查询记录列表（LIMIT/OFFSET 使用已校验整数拼接，避免预编译参数类型报错）
     const [records] = await pool.execute(
@@ -157,13 +163,14 @@ exports.getList = async (req, res, next) => {
         r.category,
         r.location,
         r.publish_status as publishStatus,
+        r.rejected_reason as rejectedReason,
         r.like_count as likeCount,
         r.comment_count as commentCount,
         r.created_at as createdAt
       FROM life_records r
       LEFT JOIN users u ON r.user_id = u.id
       ${whereClause}
-      ORDER BY r.created_at DESC
+      ${orderBy}
       LIMIT ${limitNum} OFFSET ${offsetNum}`,
       queryParams
     );
@@ -439,14 +446,15 @@ exports.getDetail = async (req, res, next) => {
       record.isLiked = false;
     }
 
-    // 查询评论
-    const [comments] = await pool.execute(
+    // 查询评论（楼中楼：顶级 + 回复）
+    const [topComments] = await pool.execute(
       `SELECT 
         c.id,
         c.user_id as userId,
         u.nickname as userName,
         u.avatar,
         c.content,
+        c.parent_id as parentId,
         c.created_at as createdAt
       FROM life_comments c
       LEFT JOIN users u ON c.user_id = u.id
@@ -454,7 +462,43 @@ exports.getDetail = async (req, res, next) => {
       ORDER BY c.created_at ASC`,
       [id]
     );
-    record.comments = comments;
+
+    if (topComments.length > 0) {
+      const topIds = topComments.map((c) => c.id);
+      const placeholders = topIds.map(() => '?').join(',');
+      const [replies] = await pool.execute(
+        `SELECT 
+          c.id,
+          c.user_id as userId,
+          u.nickname as userName,
+          u.avatar,
+          c.content,
+          c.parent_id as parentId,
+          c.created_at as createdAt
+        FROM life_comments c
+        LEFT JOIN users u ON c.user_id = u.id
+        WHERE c.record_id = ? AND c.status = 1 AND c.parent_id IN (${placeholders})
+        ORDER BY c.created_at ASC`,
+        [id, ...topIds]
+      );
+
+      const topMap = {};
+      topComments.forEach((c) => {
+        topMap[c.id] = { ...c, replies: [] };
+      });
+      replies.forEach((r) => {
+        const parent = topMap[r.parentId];
+        if (parent) {
+          parent.replies.push({
+            ...r,
+            replyToUserName: parent.userName,
+          });
+        }
+      });
+      record.comments = topComments.map((c) => topMap[c.id]);
+    } else {
+      record.comments = [];
+    }
 
     res.json({
       code: 200,
@@ -484,6 +528,9 @@ exports.createRecord = async (req, res, next) => {
       video,
       publishStatus: bodyPublishStatus,
     } = req.body;
+
+    const err = validateRecordCreate(req.body);
+    if (err) return res.status(400).json(err);
 
     const hasTitle = title != null && String(title).trim() !== '';
     const hasContent = content != null && String(content).trim() !== '';
@@ -636,13 +683,16 @@ exports.updateRecord = async (req, res, next) => {
       });
     }
 
+    const err = validateRecordUpdate(req.body);
+    if (err) return res.status(400).json(err);
+
     // 构建更新字段
     const updateFields = [];
     const updateValues = [];
 
     if (content !== undefined) {
       updateFields.push('content = ?');
-      updateValues.push(content);
+      updateValues.push(String(content).trim());
     }
     if (privacy !== undefined) {
       updateFields.push('privacy = ?');
@@ -650,11 +700,11 @@ exports.updateRecord = async (req, res, next) => {
     }
     if (category !== undefined) {
       updateFields.push('category = ?');
-      updateValues.push(category || null);
+      updateValues.push(category != null ? String(category).trim() || null : null);
     }
     if (location !== undefined) {
       updateFields.push('location = ?');
-      updateValues.push(location || null);
+      updateValues.push(location != null ? String(location).trim() || null : null);
     }
 
     if (updateFields.length > 0) {
@@ -775,7 +825,7 @@ exports.reviewRecord = async (req, res, next) => {
       });
     }
 
-    // TODO: 这里可以根据 req.user 判断是否为管理员
+    // 管理员权限已由 requireAdmin 中间件校验
     const publishStatus = action === 'approve' ? 'published' : 'draft';
     const rejectedReason = action === 'reject' ? (reason || '不符合发布要求') : null;
 
@@ -975,14 +1025,20 @@ exports.getComments = async (req, res, next) => {
 exports.createComment = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { recordId, content } = req.body;
+    const { recordId, content, parentId } = req.body;
 
-    if (!recordId || !content) {
+    if (!recordId) {
       return res.status(400).json({
         code: 400,
-        message: '记录ID和评论内容不能为空',
+        message: '记录ID不能为空',
       });
     }
+
+    const err = validateComment(req.body);
+    if (err) return res.status(400).json(err);
+
+    const contentTrimmed = String(content).trim();
+    const parentIdNum = parentId != null ? parseInt(parentId, 10) : 0;
 
     // 检查记录是否存在
     const [records] = await pool.execute(
@@ -997,13 +1053,42 @@ exports.createComment = async (req, res, next) => {
       });
     }
 
-    // 创建评论（触发器会自动更新评论数和创建通知）
+    // 若有 parentId，校验父评论存在且属于该记录
+    let parentCommentUserId = null;
+    if (parentIdNum > 0) {
+      const [parentRows] = await pool.execute(
+        'SELECT user_id FROM life_comments WHERE id = ? AND record_id = ? AND status = 1',
+        [parentIdNum, recordId]
+      );
+      if (parentRows.length === 0) {
+        return res.status(400).json({ code: 400, message: '父评论不存在' });
+      }
+      parentCommentUserId = parentRows[0].user_id;
+    }
+
+    // 创建评论（触发器仅对 parent_id=0 更新评论数和发通知给记录作者）
     const [result] = await pool.execute(
-      'INSERT INTO life_comments (record_id, user_id, content) VALUES (?, ?, ?)',
-      [recordId, userId, content]
+      'INSERT INTO life_comments (record_id, user_id, content, parent_id) VALUES (?, ?, ?, ?)',
+      [recordId, userId, contentTrimmed, parentIdNum]
     );
 
-    // 查询评论详情
+    const newCommentId = result.insertId;
+
+    // 回复时：给被回复人发一条「xxx 回复了你的评论」通知（类型 comment，与现有逻辑共用）
+    if (parentIdNum > 0 && parentCommentUserId && parentCommentUserId !== userId) {
+      const [fromUser] = await pool.execute(
+        'SELECT nickname FROM users WHERE id = ?',
+        [userId]
+      );
+      const fromName = (fromUser[0] && fromUser[0].nickname) || '有人';
+      await pool.execute(
+        `INSERT INTO notifications (user_id, type, record_id, from_user_id, content, comment_id)
+         VALUES (?, 'comment', ?, ?, ?, ?)`,
+        [parentCommentUserId, recordId, userId, `${fromName} 回复了你的评论`, newCommentId]
+      );
+    }
+
+    // 查询评论详情（含 parent_id 供前端区分）
     const [comments] = await pool.execute(
       `SELECT 
         c.id,
@@ -1011,11 +1096,12 @@ exports.createComment = async (req, res, next) => {
         u.nickname as userName,
         u.avatar,
         c.content,
+        c.parent_id as parentId,
         c.created_at as createdAt
       FROM life_comments c
       LEFT JOIN users u ON c.user_id = u.id
       WHERE c.id = ?`,
-      [result.insertId]
+      [newCommentId]
     );
 
     res.status(201).json({

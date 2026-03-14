@@ -1,84 +1,139 @@
-// pages/chat/index.js
-const app = getApp();
-const { socket } = app.globalData; // 获取已连接的socketTask
+import request from '~/api/request';
+import Message from 'tdesign-miniprogram/message/index';
 
 Page({
-  /** 页面的初始数据 */
   data: {
-    myAvatar: '/static/chat/avatar.png', // 自己的头像
-    userId: null, // 对方userId
-    avatar: '', // 对方头像
-    name: '', // 对方昵称
-    messages: [], // 消息列表 { messageId, from, content, time, read }
-    input: '', // 输入框内容
-    anchor: '', // 消息列表滚动到 id 与之相同的元素的位置
-    keyboardHeight: 0, // 键盘当前高度(px)
+    userId: null,
+    name: '留言',
+    avatar: '',
+    myAvatar: '',
+    messages: [],
+    input: '',
+    anchor: 'bottom',
+    loading: false,
+    hasMore: true,
+    page: 1,
+    pageSize: 20,
   },
 
-  /** 生命周期函数--监听页面加载 */
   onLoad(options) {
-    this.getOpenerEventChannel().on('update', this.update);
+    const userInfo = wx.getStorageSync('user_info') || {};
+    const userId = options.userId || '';
+    const name = options.name || '留言';
+    const avatar = options.avatar || '';
+    if (!userId) {
+      Message.warning({ context: this, offset: [120, 32], duration: 2000, content: '缺少对方用户' });
+      setTimeout(() => wx.navigateBack(), 1500);
+      return;
+    }
+    this.setData({
+      userId,
+      name: decodeURIComponent(name || ''),
+      avatar: decodeURIComponent(avatar || ''),
+      myAvatar: userInfo.image || userInfo.avatar || '',
+    });
+    this.loadUserAndConversation();
   },
 
-  /** 生命周期函数--监听页面初次渲染完成 */
-  onReady() {},
-
-  /** 生命周期函数--监听页面显示 */
-  onShow() {},
-
-  /** 生命周期函数--监听页面隐藏 */
-  onHide() {},
-
-  /** 生命周期函数--监听页面卸载 */
-  onUnload() {
-    app.eventBus.off('update', this.update);
+  async loadUserAndConversation() {
+    const { userId, name, avatar } = this.data;
+    if (!avatar && userId) {
+      try {
+        const res = await request(`/user/profile/${userId}`);
+        const u = res.data || {};
+        this.setData({
+          name: u.nickname || name || '留言',
+          avatar: u.avatar || '',
+        });
+      } catch (_) {}
+    }
+    this.loadConversation(true);
   },
 
-  /** 页面相关事件处理函数--监听用户下拉动作 */
-  onPullDownRefresh() {},
+  async loadConversation(refresh = false) {
+    const { userId, page, pageSize, messages, loading } = this.data;
+    if (loading || !userId) return;
 
-  /** 页面上拉触底事件的处理函数 */
-  onReachBottom() {},
+    this.setData({ loading: true });
+    const reqPage = refresh ? 1 : page;
+    try {
+      const res = await request(
+        `/message/conversation?userId=${userId}&page=${reqPage}&pageSize=${pageSize}`
+      );
+      const { list = [], total } = res.data || {};
+      const next = list.map((m) => ({
+        id: m.id,
+        content: m.content,
+        time: m.createdAt ? new Date(m.createdAt).getTime() : 0,
+        from: m.isFromMe ? 0 : 1,
+        messageId: m.id,
+        read: m.isRead,
+      }));
 
-  /** 用户点击右上角分享 */
-  onShareAppMessage() {},
-
-  /** 更新数据 */
-  update({ userId, avatar, name, messages }) {
-    this.setData({ userId, avatar, name, messages: [...messages] });
-    wx.nextTick(this.scrollToBottom);
+      if (refresh) {
+        this.setData({
+          messages: next,
+          page: 1,
+          hasMore: next.length < total,
+          loading: false,
+        });
+      } else {
+        this.setData({
+          messages: [...messages, ...next],
+          page: reqPage + 1,
+          hasMore: messages.length + next.length < total,
+          loading: false,
+        });
+      }
+      wx.nextTick(() => this.scrollToBottom());
+    } catch (e) {
+      this.setData({ loading: false });
+      Message.error({ context: this, offset: [120, 32], duration: 2000, content: '加载失败，请重试' });
+    }
   },
 
-  /** 处理唤起键盘事件 */
-  handleKeyboardHeightChange(event) {
-    const { height } = event.detail;
-    if (!height) return;
-    this.setData({ keyboardHeight: height });
-    wx.nextTick(this.scrollToBottom);
+  handleInput(e) {
+    this.setData({ input: e.detail.value || '' });
   },
 
-  /** 处理收起键盘事件 */
-  handleBlur() {
-    this.setData({ keyboardHeight: 0 });
-  },
-
-  /** 处理输入事件 */
-  handleInput(event) {
-    this.setData({ input: event.detail.value });
-  },
-
-  /** 发送消息 */
-  sendMessage() {
+  async sendMessage() {
     const { userId, messages, input: content } = this.data;
-    if (!content) return;
-    const message = { messageId: null, from: 0, content, time: Date.now(), read: true };
-    messages.push(message);
-    this.setData({ input: '', messages });
-    socket.send(JSON.stringify({ type: 'message', data: { userId, content } }));
-    wx.nextTick(this.scrollToBottom);
+    if (!content || !userId) return;
+
+    this.setData({ input: '' });
+    const temp = {
+      messageId: null,
+      from: 0,
+      content,
+      time: Date.now(),
+      read: true,
+    };
+    this.setData({ messages: [...messages, temp] });
+    wx.nextTick(() => this.scrollToBottom());
+
+    try {
+      const res = await request('/message/send', 'POST', { toUserId: userId, content: content.trim() });
+      const d = res.data || {};
+      const list = this.data.messages.slice();
+      const idx = list.findIndex((m) => m.messageId === null && m.content === content);
+      if (idx !== -1) {
+        list[idx] = {
+          id: d.id,
+          messageId: d.id,
+          content: d.content || content,
+          time: d.createdAt ? new Date(d.createdAt).getTime() : Date.now(),
+          from: 0,
+          read: true,
+        };
+        this.setData({ messages: list });
+      }
+    } catch (e) {
+      Message.error({ context: this, offset: [120, 32], duration: 2000, content: '发送失败，请重试' });
+      const list = this.data.messages.filter((m) => !(m.messageId === null && m.content === content));
+      this.setData({ messages: list, input: content });
+    }
   },
 
-  /** 消息列表滚动到底部 */
   scrollToBottom() {
     this.setData({ anchor: 'bottom' });
   },

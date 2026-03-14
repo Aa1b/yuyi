@@ -7,18 +7,56 @@
       <t-tab-panel label="点赞" value="like" />
       <t-tab-panel label="评论" value="comment" />
       <t-tab-panel label="关注" value="follow" />
+      <t-tab-panel label="留言" value="guestbook" />
     </t-tabs>
   </view>
 
-  <!-- 操作栏 -->
-  <view class="message-actions" wx:if="{{unreadCount > 0}}">
+  <!-- 操作栏（仅通知 Tab 显示） -->
+  <view class="message-actions" wx:if="{{unreadCount > 0 && selectedType !== 'guestbook'}}">
     <t-button theme="light" size="small" bindtap="markAllAsRead">
       全部已读
     </t-button>
   </view>
 
-  <!-- 通知列表 -->
-  <view class="message-list">
+  <!-- 留言 Tab：会话列表 -->
+  <view class="message-list" wx:if="{{selectedType === 'guestbook'}}">
+    <view wx:if="{{needLogin}}" class="message-empty">
+      <t-empty icon="chat" description="请先登录后查看留言" />
+      <view class="message-login-hint">
+        <t-button theme="primary" size="medium" bindtap="goToLogin">去登录</t-button>
+      </view>
+    </view>
+    <view wx:elif="{{loadingGuestbook}}" class="message-empty">
+      <t-loading theme="circular" size="40rpx" text="加载中..." />
+    </view>
+    <view wx:elif="{{guestbookList.length === 0}}" class="message-empty">
+      <t-empty icon="chat" description="暂无留言，去个人主页给TA留言吧" />
+    </view>
+    <view wx:else class="guestbook-list">
+      <view
+        wx:for="{{guestbookList}}"
+        wx:key="userId"
+        class="guestbook-item"
+        data-user-id="{{item.userId}}"
+        data-name="{{item.userName}}"
+        data-avatar="{{item.userAvatar}}"
+        bindtap="onGuestbookConversationTap"
+      >
+        <t-avatar image="{{item.userAvatar}}" size="medium" />
+        <view class="guestbook-info">
+          <view class="guestbook-name-row">
+            <text class="guestbook-name">{{item.userName}}</text>
+            <text class="guestbook-time">{{item.displayTime}}</text>
+          </view>
+          <text class="guestbook-preview">{{item.lastContent}}</text>
+        </view>
+        <view wx:if="{{item.unreadCount > 0}}" class="guestbook-unread">{{item.unreadCount}}</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 通知列表（全部/点赞/评论/关注） -->
+  <view class="message-list" wx:else>
     <view wx:if="{{needLogin}}" class="message-empty">
       <t-empty
         icon="notification"
@@ -43,6 +81,7 @@
         class="notification-item {{notification.isRead ? '' : 'notification-item--unread'}}"
         bindtap="goToDetail"
         data-record-id="{{notification.recordId}}"
+        data-comment-id="{{notification.commentId}}"
         data-from-user-id="{{notification.fromUserId}}"
       >
         <view class="notification-content">

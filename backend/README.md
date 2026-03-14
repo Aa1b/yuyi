@@ -83,6 +83,29 @@ npm start
 
 ## API 接口
 
+### 列表类接口约定
+
+所有分页列表接口统一返回格式：
+
+```json
+{
+  "code": 200,
+  "message": "获取成功",
+  "data": {
+    "list": [],
+    "total": 0,
+    "page": 1,
+    "pageSize": 20
+  }
+}
+```
+
+- `list`: 当前页数据数组
+- `total`: 总条数（用于前端判断是否还有更多、空状态）
+- `page` / `pageSize`: 可选，当前页码与每页条数
+
+涉及接口：`/life/list`、`/life/liked`、`/life/comments`、`/user/following`、`/user/followers`、`/notification/list`、`/message/conversation`、`/message/conversations`、`/stats/trend`、`/stats/category` 等。
+
 ### 认证相关
 
 - `POST /api/auth/login` - 用户登录（微信小程序）

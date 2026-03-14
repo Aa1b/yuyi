@@ -66,18 +66,27 @@ Page({
       
       const res = await request(`/life/list?${queryString}`);
       const { list, total } = res.data || {};
-      
+      const rawList = list || [];
+      const recordsWithRejected = rawList.map((r) => {
+        const reason = r.rejectedReason;
+        return {
+          ...r,
+          rejectedReasonDisplay:
+            reason && reason.length > 50 ? reason.substring(0, 50) + '…' : reason || '',
+        };
+      });
+
       if (refresh) {
         this.setData({
-          records: list || [],
+          records: recordsWithRejected,
           page: 1,
-          hasMore: list.length < total,
+          hasMore: recordsWithRejected.length < total,
         });
       } else {
         this.setData({
-          records: [...this.data.records, ...(list || [])],
+          records: [...this.data.records, ...recordsWithRejected],
           page: page + 1,
-          hasMore: this.data.records.length + list.length < total,
+          hasMore: this.data.records.length + recordsWithRejected.length < total,
         });
       }
     } catch (error) {

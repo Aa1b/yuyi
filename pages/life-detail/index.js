@@ -7,16 +7,20 @@ Page({
     recordId: null,
     record: null,
     comments: [],
+    commentTotal: 0,
     commentContent: '',
     showCommentInput: false,
+    replyingTo: null, // { id, userName } 回复某条评论时
+    scrollToCommentId: null,
     loading: false,
   },
-  
+
   onLoad(options) {
-    const { id } = options;
+    const { id, commentId } = options;
     if (id) {
       this.setData({
         recordId: id,
+        scrollToCommentId: commentId || null,
       });
       this.loadDetail();
     }
@@ -28,11 +32,15 @@ Page({
       this.setData({ loading: true });
       const res = await request(`/life/detail?id=${this.data.recordId}`);
       const record = res.data || {};
+      const comments = record.comments || [];
+      const commentTotal = comments.reduce((s, c) => s + 1 + (c.replies ? c.replies.length : 0), 0);
       this.setData({
         record,
-        comments: record.comments || [],
+        comments,
+        commentTotal,
         loading: false,
       });
+      this.scrollToCommentIfNeeded();
     } catch (error) {
       this.setData({ loading: false });
       Message.error({
@@ -42,6 +50,27 @@ Page({
         content: '加载失败，请重试',
       });
     }
+  },
+
+  // 从通知进入时滚动到指定评论
+  scrollToCommentIfNeeded() {
+    const { scrollToCommentId } = this.data;
+    if (!scrollToCommentId) return;
+    wx.nextTick(() => {
+      const query = wx.createSelectorQuery().in(this);
+      query.selectViewport().scrollOffset();
+      query.select(`#comment-${scrollToCommentId}`).boundingClientRect();
+      query.exec((res) => {
+        if (res[1] && res[1].top != null) {
+          const scrollTop = (res[0] && res[0].scrollTop) || 0;
+          wx.pageScrollTo({
+            scrollTop: scrollTop + res[1].top - 80,
+            duration: 300,
+          });
+        }
+        this.setData({ scrollToCommentId: null });
+      });
+    });
   },
   
   // 点赞/取消点赞
@@ -77,18 +106,29 @@ Page({
     }
   },
   
-  // 显示评论输入框
+  // 显示评论输入框（可带回复目标）
   showCommentInput() {
     this.setData({
+      replyingTo: null,
       showCommentInput: true,
     });
   },
-  
+
+  // 点击某条评论的「回复」
+  onReplyTap(e) {
+    const { id, name } = e.currentTarget.dataset;
+    this.setData({
+      replyingTo: id ? { id, userName: name || 'Ta' } : null,
+      showCommentInput: true,
+    });
+  },
+
   // 隐藏评论输入框
   hideCommentInput() {
     this.setData({
       showCommentInput: false,
       commentContent: '',
+      replyingTo: null,
     });
   },
   
@@ -101,8 +141,8 @@ Page({
   
   // 提交评论
   async submitComment() {
-    const { commentContent, recordId } = this.data;
-    
+    const { commentContent, recordId, comments, record, replyingTo } = this.data;
+
     if (!commentContent.trim()) {
       Message.warning({
         context: this,
@@ -112,24 +152,42 @@ Page({
       });
       return;
     }
-    
+
+    const payload = { recordId, content: commentContent.trim() };
+    if (replyingTo && replyingTo.id) payload.parentId = replyingTo.id;
+
     try {
-      const res = await request('/life/comment', 'POST', {
-        recordId,
-        content: commentContent.trim(),
-      });
-      
-      // 添加新评论到列表
-      const { comments, record } = this.data;
-      comments.push(res.data.data);
-      
-      this.setData({
-        comments: [...comments],
-        'record.commentCount': (record.commentCount || 0) + 1,
-        commentContent: '',
-        showCommentInput: false,
-      });
-      
+      const res = await request('/life/comment', 'POST', payload);
+      const newComment = res.data.data || {};
+
+      if (replyingTo && replyingTo.id) {
+        const list = (comments || []).map((c) => {
+          if (String(c.id) === String(replyingTo.id)) {
+            const replies = (c.replies || []).concat([{ ...newComment, replyToUserName: replyingTo.userName }]);
+            return { ...c, replies };
+          }
+          return c;
+        });
+        const total = list.reduce((s, c) => s + 1 + (c.replies ? c.replies.length : 0), 0);
+        this.setData({
+          comments: list,
+          commentTotal: total,
+          commentContent: '',
+          showCommentInput: false,
+          replyingTo: null,
+        });
+      } else {
+        const list = (comments || []).concat([{ ...newComment, replies: [] }]);
+        const total = list.reduce((s, c) => s + 1 + (c.replies ? c.replies.length : 0), 0);
+        this.setData({
+          comments: list,
+          commentTotal: total,
+          'record.commentCount': (record.commentCount || 0) + 1,
+          commentContent: '',
+          showCommentInput: false,
+        });
+      }
+
       Message.success({
         context: this,
         offset: [120, 32],

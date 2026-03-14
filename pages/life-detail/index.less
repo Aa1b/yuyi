@@ -191,6 +191,58 @@
 .life-detail-comment-time {
   font-size: @font-size-small;
   color: @text-color-placeholder;
+  flex: 1;
+}
+
+.life-detail-comment-reply-btn {
+  font-size: @font-size-small;
+  color: @brand7-normal;
+  margin-left: 16rpx;
+}
+
+.life-detail-comment-block {
+  margin-bottom: 24rpx;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.life-detail-replies {
+  margin-left: 72rpx;
+  margin-top: 12rpx;
+  padding-left: 16rpx;
+  border-left: 4rpx solid @border-color;
+}
+
+.life-detail-reply {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  margin-bottom: 12rpx;
+  font-size: @font-size-small;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.life-detail-reply-label {
+  color: @text-color-secondary;
+  margin-right: 8rpx;
+}
+
+.life-detail-reply-text {
+  color: @text-color-primary;
+  flex: 1;
+  word-break: break-all;
+}
+
+.life-detail-reply-time {
+  width: 100%;
+  margin-top: 4rpx;
+  font-size: 24rpx;
+  color: @text-color-placeholder;
 }
 
 .life-detail-comment-text {

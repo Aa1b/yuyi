@@ -19,7 +19,23 @@ function formatNotifyTime(str) {
   return `${y}-${m}-${d}`;
 }
 
-const VALID_TYPES = ['all', 'like', 'comment', 'follow'];
+const VALID_TYPES = ['all', 'like', 'comment', 'follow', 'guestbook'];
+
+function formatGuestbookTime(str) {
+  if (!str) return '';
+  const date = new Date(String(str).replace(/-/g, '/'));
+  if (Number.isNaN(date.getTime())) return '';
+  const now = new Date();
+  const diff = (now - date) / 1000;
+  if (diff < 60) return '刚刚';
+  if (diff < 3600) return `${Math.floor(diff / 60)}分钟前`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}小时前`;
+  if (diff < 172800) return '昨天';
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
 
 Page({
   data: {
@@ -31,14 +47,22 @@ Page({
     selectedType: 'all',
     unreadCount: 0,
     needLogin: false,
+    guestbookList: [],
+    loadingGuestbook: false,
   },
 
-  onLoad() {
+  onLoad(options) {
     if (!this.hasToken()) {
       this.setNeedLogin();
       return;
     }
-    this.loadNotifications(true);
+    const tab = options.tab || '';
+    if (tab === 'guestbook') {
+      this.setData({ selectedType: 'guestbook' });
+      this.loadGuestbookConversations(true);
+    } else {
+      this.loadNotifications(true);
+    }
     this.loadUnreadCount();
   },
 
@@ -153,7 +177,39 @@ Page({
       return;
     }
     this.setData({ selectedType: type, notifications: [], page: 1 });
-    this.loadNotifications(true);
+    if (type === 'guestbook') {
+      this.loadGuestbookConversations(true);
+    } else {
+      this.loadNotifications(true);
+    }
+  },
+
+  async loadGuestbookConversations(refresh = false) {
+    if (this.data.loadingGuestbook) return;
+    if (!this.hasToken()) return;
+    this.setData({ loadingGuestbook: true });
+    try {
+      const res = await request('/message/conversations?page=1&pageSize=50');
+      const list = (res.data?.list ?? []).map((item) => ({
+        ...item,
+        displayTime: formatGuestbookTime(item.lastTime),
+      }));
+      this.setData({ guestbookList: list, loadingGuestbook: false });
+    } catch (err) {
+      this.setData({ loadingGuestbook: false });
+      if (err && (err.code === 401 || (err.data && err.data.code === 401))) {
+        this.setNeedLogin();
+        return;
+      }
+      Message.error({ context: this, offset: [120, 32], duration: 2000, content: '加载失败，请重试' });
+    }
+  },
+
+  onGuestbookConversationTap(e) {
+    const { userId, name, avatar } = e.currentTarget.dataset;
+    if (!userId) return;
+    const q = `userId=${userId}&name=${encodeURIComponent(name || '')}&avatar=${encodeURIComponent(avatar || '')}`;
+    wx.navigateTo({ url: `/pages/chat/index?${q}` });
   },
 
   async markAsRead(e) {
@@ -228,9 +284,10 @@ Page({
   },
 
   goToDetail(e) {
-    const { recordId, fromUserId } = e.currentTarget.dataset || {};
+    const { recordId, commentId, fromUserId } = e.currentTarget.dataset || {};
     if (recordId) {
-      wx.navigateTo({ url: `/pages/life-detail/index?id=${recordId}` });
+      const q = commentId ? `&commentId=${commentId}` : '';
+      wx.navigateTo({ url: `/pages/life-detail/index?id=${recordId}${q}` });
       return;
     }
     if (fromUserId) {
@@ -252,12 +309,17 @@ Page({
       wx.stopPullDownRefresh();
       return;
     }
-    this.loadNotifications(true);
+    if (this.data.selectedType === 'guestbook') {
+      this.loadGuestbookConversations(true);
+    } else {
+      this.loadNotifications(true);
+    }
     this.loadUnreadCount();
     setTimeout(() => wx.stopPullDownRefresh(), 500);
   },
 
   onReachBottom() {
+    if (this.data.selectedType === 'guestbook') return;
     if (this.data.hasMore && !this.data.loading) this.loadNotifications();
   },
 });

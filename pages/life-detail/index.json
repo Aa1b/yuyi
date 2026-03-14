@@ -10,6 +10,7 @@
     "t-textarea": "tdesign-miniprogram/textarea/textarea",
     "t-button": "tdesign-miniprogram/button/button",
     "t-loading": "tdesign-miniprogram/loading/loading",
+    "t-empty": "tdesign-miniprogram/empty/empty",
     "t-message": "tdesign-miniprogram/message/message"
   }
 }

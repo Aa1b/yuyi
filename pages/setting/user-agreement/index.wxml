@@ -1,0 +1,6 @@
+<t-navbar title="用户协议" left-arrow />
+<scroll-view scroll-y class="agreement-scroll" enhanced show-scrollbar="{{false}}">
+  <view class="agreement-content">
+    <text class="agreement-text">{{content}}</text>
+  </view>
+</scroll-view>

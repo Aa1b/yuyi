@@ -29,6 +29,11 @@
       <view bindtap="viewDetail" data-id="{{record.id}}">
         <life-record-card record="{{record}}" />
       </view>
+      <!-- 已驳回时展示驳回原因（最多 50 字） -->
+      <view wx:if="{{record.publishStatus === 'draft' && record.rejectedReason}}" class="my-life-records-rejected">
+        <text class="my-life-records-rejected__label">驳回原因：</text>
+        <text class="my-life-records-rejected__text">{{record.rejectedReasonDisplay}}</text>
+      </view>
       <!-- 操作按钮 -->
       <view class="my-life-records-actions">
         <!-- 审核入口：仅在“审核中”视图展示 -->

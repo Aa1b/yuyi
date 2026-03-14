@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const lifeController = require('../controllers/lifeController');
-const { authenticate, optionalAuth } = require('../middleware/auth');
+const { authenticate, optionalAuth, requireAdmin } = require('../middleware/auth');
 
 /**
  * @route GET /api/life/list
@@ -97,8 +97,8 @@ router.get('/search', optionalAuth, lifeController.search);
 /**
  * @route POST /api/life/review
  * @desc 审核生活记录（通过 / 驳回）
- * @access Private
+ * @access 仅管理员（is_admin=1）
  */
-router.post('/review', authenticate, lifeController.reviewRecord);
+router.post('/review', authenticate, requireAdmin, lifeController.reviewRecord);
 
 module.exports = router;

@@ -1,0 +1,9 @@
+<t-navbar title="关于我们" left-arrow />
+<view class="about-page">
+  <view class="about-logo">
+    <t-icon name="image" size="120rpx" color="#0052d9" />
+  </view>
+  <view class="about-name">{{appName}}</view>
+  <view class="about-version">版本 {{version}}</view>
+  <view class="about-intro">{{intro}}</view>
+</view>

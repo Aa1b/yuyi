@@ -57,11 +57,20 @@
     </view>
   </view>
 
+  <view class="setting-group-title">隐私设置</view>
   <t-cell-group theme="card" t-class="cell-group-class">
     <t-cell title="新记录默认隐私" left-icon="lock-on" note="{{defaultPrivacyLabel}}" hover bindtap="onPrivacyTap" arrow />
   </t-cell-group>
 
+  <view class="setting-group-title">协议与关于</view>
   <t-cell-group theme="card" t-class="cell-group-class">
+    <t-cell title="用户协议" left-icon="file-paste" hover bindtap="onUserAgreement" arrow />
+    <t-cell title="隐私政策" left-icon="shield" hover bindtap="onPrivacyPolicy" arrow />
+    <t-cell title="关于我们" left-icon="info-circle" hover bindtap="onAbout" arrow />
+  </t-cell-group>
+
+  <t-cell-group theme="card" t-class="cell-group-class">
+    <t-cell title="清除缓存" left-icon="delete" note="清除本地缓存数据" hover bindtap="onClearCache" arrow />
     <t-cell title="修改密码" left-icon="lock" hover bindtap="onChangePassword" arrow />
   </t-cell-group>
 

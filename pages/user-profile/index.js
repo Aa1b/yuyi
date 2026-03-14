@@ -208,6 +208,15 @@ Page({
     }
   },
 
+  goGuestbook() {
+    const { userId, userInfo } = this.data;
+    if (!userId) return;
+    const name = (userInfo && userInfo.nickname) || '';
+    const avatar = (userInfo && userInfo.avatar) || '';
+    const q = `userId=${userId}&name=${encodeURIComponent(name)}&avatar=${encodeURIComponent(avatar)}`;
+    wx.navigateTo({ url: `/pages/chat/index?${q}` });
+  },
+
   viewFollowers() {
     const { userId, isSelf } = this.data;
     const url = isSelf

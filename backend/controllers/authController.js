@@ -1,6 +1,7 @@
 const pool = require('../config/database');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const https = require('https');
 
 /**
  * 生成 JWT Token
@@ -27,38 +28,62 @@ exports.login = async (req, res, next) => {
       });
     }
 
-    // TODO: 调用微信API获取openid和session_key
-    // 这里使用模拟数据
-    const openid = `mock_openid_${Date.now()}`;
-    const sessionKey = `mock_session_key_${Date.now()}`;
+    const appid = process.env.WECHAT_APPID || process.env.WX_APPID;
+    const secret = process.env.WECHAT_SECRET || process.env.WX_SECRET;
+    if (!appid || !secret) {
+      return res.status(500).json({
+        code: 500,
+        message: '服务端未配置微信登录参数，请设置 WECHAT_APPID/WECHAT_SECRET 或 WX_APPID/WX_SECRET',
+      });
+    }
+
+    const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${appid}&secret=${secret}&js_code=${code}&grant_type=authorization_code`;
+    const sessionData = await new Promise((resolve, reject) => {
+      https.get(url, (resp) => {
+        let data = '';
+        resp.on('data', (chunk) => { data += chunk; });
+        resp.on('end', () => {
+          try {
+            const json = JSON.parse(data);
+            if (json.errcode) {
+              reject(new Error(json.errmsg || '微信登录失败'));
+            } else {
+              resolve(json);
+            }
+          } catch (e) {
+            reject(e);
+          }
+        });
+      }).on('error', reject);
+    });
+
+    const { openid, unionid = null } = sessionData;
+    if (!openid) {
+      return res.status(500).json({
+        code: 500,
+        message: '微信登录失败，未获取到 openid',
+      });
+    }
 
     // 查询或创建用户
     let [users] = await pool.execute(
-      'SELECT id, openid, nickname, avatar FROM users WHERE openid = ?',
+      'SELECT id, openid, nickname, avatar, is_admin FROM users WHERE openid = ?',
       [openid]
     );
 
     let user;
     if (users.length === 0) {
-      // 创建新用户
       const [result] = await pool.execute(
-        'INSERT INTO users (openid, nickname, avatar) VALUES (?, ?, ?)',
-        [
-          openid,
-          userInfo?.nickName || '微信用户',
-          userInfo?.avatarUrl || '',
-        ]
+        'INSERT INTO users (openid, unionid, nickname, avatar) VALUES (?, ?, ?, ?)',
+        [openid, unionid, userInfo?.nickName || '微信用户', userInfo?.avatarUrl || '']
       );
-      
       [users] = await pool.execute(
-        'SELECT id, openid, nickname, avatar FROM users WHERE id = ?',
+        'SELECT id, openid, nickname, avatar, is_admin FROM users WHERE id = ?',
         [result.insertId]
       );
       user = users[0];
     } else {
       user = users[0];
-      
-      // 更新用户信息（如果提供）
       if (userInfo) {
         await pool.execute(
           'UPDATE users SET nickname = ?, avatar = ? WHERE id = ?',
@@ -69,9 +94,7 @@ exports.login = async (req, res, next) => {
       }
     }
 
-    // 生成 token
     const token = generateToken(user.id);
-
     res.json({
       code: 200,
       message: '登录成功',
@@ -81,6 +104,7 @@ exports.login = async (req, res, next) => {
           id: user.id,
           nickname: user.nickname,
           avatar: user.avatar,
+          isAdmin: !!user.is_admin,
         },
       },
     });

@@ -5,22 +5,22 @@ const pool = require('../config/database');
  */
 exports.getNotifications = async (req, res, next) => {
   try {
-    const userId = req.user.id;
+    const userId = Number(req.user.id);
+    if (!Number.isInteger(userId) || userId < 1) {
+      return res.status(401).json({ code: 401, message: '用户未登录或无效' });
+    }
     const { page = 1, pageSize = 20, type = 'all' } = req.query;
-
-    const limit = parseInt(pageSize);
-    const offset = (parseInt(page) - 1) * limit;
+    const limit = Math.min(Math.max(parseInt(pageSize, 10) || 20, 1), 100);
+    const pageNum = Math.max(parseInt(page, 10) || 1, 1);
+    const offset = (pageNum - 1) * limit;
 
     let whereCondition = 'n.user_id = ?';
     const queryParams = [userId];
-
-    // 类型筛选：like点赞，comment评论，follow关注
     if (type !== 'all') {
       whereCondition += ' AND n.type = ?';
       queryParams.push(type);
     }
 
-    // 查询通知列表
     const [notifications] = await pool.execute(
       `SELECT 
         n.id,
@@ -43,21 +43,28 @@ exports.getNotifications = async (req, res, next) => {
       [...queryParams, limit, offset]
     );
 
-    // 查询总数（转为 Number 避免 BigInt 导致 res.json 序列化报 500）
     const [countResult] = await pool.execute(
       `SELECT COUNT(*) as total FROM notifications n WHERE ${whereCondition}`,
       queryParams
     );
     const total = Number(countResult[0].total);
 
-    // 确保列表中的数值为普通 number，避免 BigInt 序列化错误
-    const list = (notifications || []).map((row) => ({
-      ...row,
-      id: row.id != null ? Number(row.id) : row.id,
-      recordId: row.recordId != null ? Number(row.recordId) : row.recordId,
-      fromUserId: row.fromUserId != null ? Number(row.fromUserId) : row.fromUserId,
-      isRead: row.isRead != null ? Number(row.isRead) : row.isRead,
-    }));
+    const list = (notifications || []).map((row) => {
+      const createdAt = row.createdAt;
+      return {
+        id: row.id != null ? Number(row.id) : null,
+        type: row.type || null,
+        recordId: row.recordId != null ? Number(row.recordId) : null,
+        fromUserId: row.fromUserId != null ? Number(row.fromUserId) : null,
+        fromUserName: row.fromUserName ?? null,
+        fromUserAvatar: row.fromUserAvatar ?? null,
+        content: row.content ?? null,
+        isRead: row.isRead != null ? Number(row.isRead) : 0,
+        createdAt: createdAt instanceof Date ? createdAt.toISOString() : (createdAt ?? null),
+        recordContent: row.recordContent ?? null,
+        recordType: row.recordType ?? null,
+      };
+    });
 
     res.json({
       code: 200,
@@ -65,7 +72,7 @@ exports.getNotifications = async (req, res, next) => {
       data: {
         list,
         total,
-        page: parseInt(page, 10),
+        page: pageNum,
         pageSize: limit,
       },
     });

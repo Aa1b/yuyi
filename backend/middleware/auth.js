@@ -34,8 +34,13 @@ const authenticate = async (req, res, next) => {
       });
     }
 
-    // 将用户信息附加到请求对象
-    req.user = users[0];
+    const user = users[0];
+    req.user = {
+      id: Number(user.id),
+      openid: user.openid,
+      nickname: user.nickname,
+      avatar: user.avatar,
+    };
     next();
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {
@@ -76,7 +81,8 @@ const optionalAuth = async (req, res, next) => {
       );
 
       if (users.length > 0) {
-        req.user = users[0];
+        const u = users[0];
+        req.user = { id: Number(u.id), openid: u.openid, nickname: u.nickname, avatar: u.avatar };
       }
     }
     

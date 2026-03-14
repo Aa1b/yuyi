@@ -92,12 +92,14 @@ Page({
         if (app && app.setUnreadNum) app.setUnreadNum(0);
         return;
       }
+      const is500 = error.statusCode === 500 || error.code === 500;
+      const tip = is500 && (error.detail || error.message) ? `${error.message || '加载失败'}：${error.detail}` : '加载失败，请重试';
       console.error('加载通知失败', error);
       Message.error({
         context: this,
         offset: [120, 32],
-        duration: 2000,
-        content: '加载失败，请重试',
+        duration: is500 ? 4000 : 2000,
+        content: tip,
       });
     }
   },

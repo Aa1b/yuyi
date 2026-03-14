@@ -18,6 +18,9 @@ const errorHandler = (err, req, res, next) => {
   } else if (err.code === 'ER_BAD_FIELD_ERROR') {
     statusCode = 400;
     message = '字段错误';
+  } else if (err.code === 'ER_NO_SUCH_TABLE') {
+    statusCode = 500;
+    message = '数据表不存在，请执行数据库迁移: ' + (err.message || '');
   }
 
   // JWT 错误处理
@@ -35,12 +38,14 @@ const errorHandler = (err, req, res, next) => {
     message = err.message;
   }
 
-  // 返回错误响应
-  res.status(statusCode).json({
+  // 返回错误响应（500 时带上 detail 便于排查）
+  const body = {
     code: statusCode,
     message,
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
-  });
+    ...(statusCode === 500 && err.message && { detail: err.message }),
+  };
+  res.status(statusCode).json(body);
 };
 
 module.exports = errorHandler;

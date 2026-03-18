@@ -13,6 +13,7 @@ Page({
     pageSize: 10,
     isFollowing: false,
     isSelf: false,
+    needLogin: false,
     activeTab: 'records', // records | liked（仅本人）
     likedRecords: [],
     loadingLiked: false,
@@ -22,11 +23,6 @@ Page({
 
   onLoad(options) {
     const token = wx.getStorageSync('access_token');
-    if (!token) {
-      wx.showToast({ title: '请先登录', icon: 'none' });
-      wx.redirectTo({ url: '/pages/login/login' });
-      return;
-    }
     const { userId } = options;
     if (!userId) {
       Message.error({
@@ -42,6 +38,7 @@ Page({
     this.setData({ userId }, () => {
       this.loadUserProfile();
       this.loadUserRecords(true);
+      this.setData({ needLogin: !token });
     });
   },
 
@@ -84,11 +81,13 @@ Page({
     try {
       this.setData({ loading: true });
 
+      const token = wx.getStorageSync('access_token');
       const params = {
         page: refresh ? 1 : page,
         pageSize,
         userId: String(userId),
-        privacy: 'all', // 显示该用户公开及（若已关注）好友可见的记录
+        // 未登录时只能看公开记录；登录后可看公开+（若已关注）好友可见
+        privacy: token ? 'all' : 'public',
       };
 
       const queryString = Object.keys(params)
@@ -138,6 +137,12 @@ Page({
         duration: 2000,
         content: '不能关注自己',
       });
+      return;
+    }
+
+    if (!wx.getStorageSync('access_token')) {
+      wx.showToast({ title: '请先登录', icon: 'none' });
+      wx.navigateTo({ url: '/pages/login/login' });
       return;
     }
 
@@ -211,6 +216,11 @@ Page({
   goGuestbook() {
     const { userId, userInfo } = this.data;
     if (!userId) return;
+    if (!wx.getStorageSync('access_token')) {
+      wx.showToast({ title: '请先登录', icon: 'none' });
+      wx.navigateTo({ url: '/pages/login/login' });
+      return;
+    }
     const name = (userInfo && userInfo.nickname) || '';
     const avatar = (userInfo && userInfo.avatar) || '';
     const q = `userId=${userId}&name=${encodeURIComponent(name)}&avatar=${encodeURIComponent(avatar)}`;

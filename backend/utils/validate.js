@@ -12,6 +12,8 @@ const LIMIT = {
   commentContent: 100,
   profileNickname: 50,
   profileAvatar: 500,
+  profileIntroduction: 200,
+  profileAddress: 255,
 };
 
 function length(str, max) {
@@ -112,7 +114,7 @@ function validateComment(body) {
  * 个人资料更新校验
  */
 function validateProfile(body) {
-  const { nickname, avatar, gender } = body || {};
+  const { nickname, avatar, gender, birth, address, introduction } = body || {};
   if (nickname !== undefined) {
     const n = String(nickname).trim();
     if (n.length > LIMIT.profileNickname) {
@@ -124,6 +126,24 @@ function validateProfile(body) {
   }
   if (gender !== undefined && ![0, 1, 2].includes(Number(gender))) {
     return { code: 400, message: '性别参数无效', field: 'gender' };
+  }
+  if (birth !== undefined && birth != null && String(birth).trim() !== '') {
+    const b = String(birth).trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(b)) {
+      return { code: 400, message: '生日格式无效，应为YYYY-MM-DD', field: 'birth' };
+    }
+  }
+  if (address !== undefined && address != null) {
+    const raw = Array.isArray(address) ? JSON.stringify(address) : String(address);
+    if (raw.length > LIMIT.profileAddress) {
+      return { code: 400, message: '地址内容过长', field: 'address' };
+    }
+  }
+  if (introduction !== undefined && introduction != null) {
+    const intro = String(introduction).trim();
+    if (intro.length > LIMIT.profileIntroduction) {
+      return { code: 400, message: `个人简介不能超过${LIMIT.profileIntroduction}字`, field: 'introduction' };
+    }
   }
   return null;
 }

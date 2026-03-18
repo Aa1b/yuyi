@@ -6,6 +6,12 @@ const { validateProfile } = require('../utils/validate');
 
 const TENCENT_MAP_KEY = process.env.TENCENT_MAP_KEY || 'LITBZ-IDMWA-5D3KD-CURMW-MHJ4J-2SFMX';
 
+function normalizeWechatAvatarUrl(url) {
+  if (!url || typeof url !== 'string') return url || '';
+  // 小程序端常见：thirdwx.qlogo.cn，有时需要替换为 wx.qlogo.cn 才能正常显示
+  return url.replace(/^https:\/\/thirdwx\.qlogo\.cn/i, 'https://wx.qlogo.cn');
+}
+
 /**
  * 根据 IP 调用腾讯地图 API 解析城市名称
  */
@@ -119,9 +125,11 @@ exports.login = async (req, res, next) => {
 
     let user;
     if (users.length === 0) {
+      const nicknameFromWx = userInfo && userInfo.nickName ? String(userInfo.nickName).trim() : '';
+      const avatarFromWx = userInfo && userInfo.avatarUrl ? normalizeWechatAvatarUrl(userInfo.avatarUrl) : '';
       const [result] = await pool.execute(
         'INSERT INTO users (openid, unionid, nickname, avatar) VALUES (?, ?, ?, ?)',
-        [openid, unionid, userInfo?.nickName || '微信用户', userInfo?.avatarUrl || '']
+        [openid, unionid, nicknameFromWx || '微信用户', avatarFromWx || '']
       );
       [users] = await pool.execute(
         'SELECT id, openid, nickname, avatar, is_admin FROM users WHERE id = ?',
@@ -131,12 +139,13 @@ exports.login = async (req, res, next) => {
     } else {
       user = users[0];
       if (userInfo) {
+        const avatarFromWx = userInfo.avatarUrl ? normalizeWechatAvatarUrl(userInfo.avatarUrl) : '';
+        // 对已存在用户：默认只用微信头像更新 avatar，不强制覆盖用户在系统里的昵称
         await pool.execute(
-          'UPDATE users SET nickname = ?, avatar = ? WHERE id = ?',
-          [userInfo.nickName || user.nickname, userInfo.avatarUrl || user.avatar, user.id]
+          'UPDATE users SET avatar = ? WHERE id = ?',
+          [avatarFromWx || user.avatar, user.id]
         );
-        user.nickname = userInfo.nickName || user.nickname;
-        user.avatar = userInfo.avatarUrl || user.avatar;
+        user.avatar = avatarFromWx || user.avatar;
       }
     }
 
@@ -355,7 +364,7 @@ exports.getProfile = async (req, res, next) => {
     const userId = req.user.id;
 
     const [users] = await pool.execute(
-      'SELECT id, openid, nickname, avatar, gender, phone, is_admin, created_at FROM users WHERE id = ?',
+      'SELECT id, openid, nickname, avatar, gender, birth, address, introduction, phone, is_admin, created_at FROM users WHERE id = ?',
       [userId]
     );
 
@@ -418,7 +427,7 @@ exports.getProfile = async (req, res, next) => {
 exports.updateProfile = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { nickname, avatar, gender } = req.body;
+    const { nickname, avatar, gender, birth, address, introduction } = req.body;
 
     const err = validateProfile(req.body);
     if (err) return res.status(400).json(err);
@@ -438,6 +447,28 @@ exports.updateProfile = async (req, res, next) => {
       updateFields.push('gender = ?');
       updateValues.push(gender);
     }
+    if (birth !== undefined) {
+      const v = birth == null || String(birth).trim() === '' ? null : String(birth).trim();
+      updateFields.push('birth = ?');
+      updateValues.push(v);
+    }
+    if (address !== undefined) {
+      let v = null;
+      if (address == null || address === '') {
+        v = null;
+      } else if (Array.isArray(address)) {
+        v = JSON.stringify(address);
+      } else {
+        v = String(address);
+      }
+      updateFields.push('address = ?');
+      updateValues.push(v);
+    }
+    if (introduction !== undefined) {
+      const v = introduction == null ? null : String(introduction).trim();
+      updateFields.push('introduction = ?');
+      updateValues.push(v);
+    }
 
     if (updateFields.length === 0) {
       return res.status(400).json({
@@ -455,7 +486,7 @@ exports.updateProfile = async (req, res, next) => {
 
     // 返回更新后的用户信息
     const [users] = await pool.execute(
-      'SELECT id, nickname, avatar, gender FROM users WHERE id = ?',
+      'SELECT id, nickname, avatar, gender, birth, address, introduction FROM users WHERE id = ?',
       [userId]
     );
 

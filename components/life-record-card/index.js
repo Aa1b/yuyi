@@ -1,11 +1,25 @@
 import config from '~/config';
 import request from '~/api/request';
 import Message from 'tdesign-miniprogram/message/index';
+import { formatRelativeDayOrTime } from '~/utils/time';
 
-/** 将后端返回的相对路径转为小程序可用的完整 URL */
+/** 将后端返回的媒体地址转为小程序可用的完整 URL */
 function resolveMediaUrl(url) {
   if (!url || typeof url !== 'string') return url || '';
+
+  const legacyHost = 'http://149.104.29.197:5678';
+
+  // 兼容老数据：老 IP 地址
+  if (url.startsWith(legacyHost)) {
+    const base = (config.baseUrl || '').replace(/\/api\/?$/, '');
+    const path = url.slice(legacyHost.length);
+    return base + (path.startsWith('/') ? path : '/' + path);
+  }
+
+  // 已经是 http/https 的其它完整 URL，直接返回
   if (/^https?:\/\//i.test(url)) return url;
+
+  // 相对路径补全为当前后端域名
   const base = (config.baseUrl || '').replace(/\/api\/?$/, '');
   return base + (url.startsWith('/') ? url : '/' + url);
 }
@@ -18,21 +32,34 @@ Component({
     },
   },
   data: {
+    displayAvatarUrl: '',
     displayImageUrl: '',
     displayVideo: null,
+    displayTime: '',
   },
   observers: {
     // 防重入：同一 record.id 只处理一次，避免重复 setData 导致开发者工具卡死
     record(record) {
       if (!record || !record.id) {
-        this._lastRecordId = null;
-        this.setData({ displayImageUrl: '', displayVideo: null });
+        this._lastRecordKey = null;
+        this.setData({ displayAvatarUrl: '', displayImageUrl: '', displayVideo: null, displayTime: '' });
         return;
       }
-      if (this._lastRecordId === record.id) return;
-      this._lastRecordId = record.id;
+      const keyParts = [
+        record.id,
+        record.avatar || '',
+        (record.images && record.images[0]) || '',
+        record.video && record.video.url ? record.video.url : '',
+        record.video && record.video.cover ? record.video.cover : '',
+      ];
+      const currentKey = keyParts.join('|');
+      if (this._lastRecordKey === currentKey) return;
+      this._lastRecordKey = currentKey;
+      const rawAvatar = record.avatar && String(record.avatar).trim();
+      const displayAvatarUrl = rawAvatar ? resolveMediaUrl(rawAvatar) : '/static/chat/avatar.png';
       const images = (record.images || []).map(resolveMediaUrl);
       const displayImageUrl = images[0] || '';
+      const displayTime = formatRelativeDayOrTime(record.createdAt);
       const video = record.video
         ? {
             url: resolveMediaUrl(record.video.url),
@@ -40,7 +67,7 @@ Component({
             duration: record.video.duration,
           }
         : null;
-      this.setData({ record, displayImageUrl, displayVideo: video });
+      this.setData({ record, displayAvatarUrl, displayImageUrl, displayVideo: video, displayTime });
     },
   },
   methods: {

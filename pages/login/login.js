@@ -58,19 +58,68 @@ Page({
       return;
     }
     try {
-      const { code } = await new Promise((resolve, reject) => {
+      // 注意：wx.getUserProfile 必须由用户点击事件“同步触发”，中间不能先 await。
+      // 所以这里先立即触发获取头像昵称，再去异步拿 code。
+      const userInfoPromise = new Promise((resolve) => {
+        if (wx.getUserProfile) {
+          wx.getUserProfile({
+            desc: '用于完善个人资料（头像和昵称）',
+            success: (r) => resolve(r && r.userInfo ? r.userInfo : null),
+            fail: () => resolve(null),
+          });
+          return;
+        }
+        if (wx.getUserInfo) {
+          wx.getUserInfo({
+            withCredentials: false,
+            success: (r) => resolve(r && r.userInfo ? r.userInfo : null),
+            fail: () => resolve(null),
+          });
+          return;
+        }
+        resolve(null);
+      });
+
+      const codePromise = new Promise((resolve, reject) => {
         wx.login({
-          success: (res) => (res.code ? resolve(res) : reject(new Error('获取 code 失败'))),
+          success: (res) => (res.code ? resolve(res.code) : reject(new Error('获取 code 失败'))),
           fail: reject,
         });
       });
-      // 仅用 code 换取 token，不弹昵称/头像授权，点击即自动登录（与之前一致）
-      const res = await request('/auth/login', 'POST', { code });
+
+      const [userInfo, code] = await Promise.all([userInfoPromise, codePromise]);
+
+      // 携带 code + userInfo 调用后端登录
+      const res = await request('/auth/login', 'POST', { code, userInfo });
       const token = res && res.data && res.data.token ? res.data.token : res.data?.token;
       if (token) {
         wx.setStorageSync('access_token', token);
-        if (res.data && res.data.user) {
-          wx.setStorageSync('user_info', res.data.user);
+        let loginUser = res && res.data && res.data.user ? res.data.user : res.data?.user;
+        if (loginUser) {
+          wx.setStorageSync('user_info', loginUser);
+        }
+
+        // 如果这次登录拿到了 userInfo，但服务器返回的用户头像还是空，则再调用一次资料更新接口补写头像/昵称
+        if (userInfo && (!loginUser || !loginUser.avatar)) {
+          try {
+            const profileRes = await request('/auth/profile', 'PUT', {
+              nickname: userInfo.nickName,
+              avatar: userInfo.avatarUrl,
+            });
+            if (profileRes && profileRes.data) {
+              // 用最新资料覆盖本地缓存
+              const updated = profileRes.data;
+              const merged = {
+                ...(loginUser || {}),
+                nickname: updated.nickname ?? (loginUser && loginUser.nickname),
+                avatar: updated.avatar ?? (loginUser && loginUser.avatar),
+                gender: updated.gender ?? (loginUser && loginUser.gender),
+              };
+              wx.setStorageSync('user_info', merged);
+            }
+          } catch (e) {
+            // 更新资料失败不影响登录流程，静默忽略
+          }
         }
         wx.showToast({ title: '登录成功', icon: 'success' });
         wx.switchTab({ url: '/pages/my/index' });

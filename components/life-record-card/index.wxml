@@ -1,10 +1,15 @@
 <view class="life-record-card" bindtap="goToDetail">
   <!-- 用户信息 -->
   <view class="life-record-card__header">
-    <t-avatar image="{{record.avatar}}" size="small" bindtap="goToUserProfile" data-user-id="{{record.userId}}" />
+    <t-avatar
+      image="{{displayAvatarUrl}}"
+      size="small"
+      bindtap="goToUserProfile"
+      data-user-id="{{record.userId}}"
+    />
     <view class="life-record-card__user-info" bindtap="goToUserProfile" data-user-id="{{record.userId}}">
       <text class="life-record-card__username">{{record.userName}}</text>
-      <text class="life-record-card__time">{{record.createdAt}}</text>
+      <text class="life-record-card__time">{{displayTime}}</text>
     </view>
     <view class="life-record-card__privacy">
       <t-icon
@@ -20,11 +25,12 @@
     <text wx:if="{{record.title || record.content}}" class="life-record-card__title">{{record.title || record.content}}</text>
 
     <!-- 图片展示：仅显示第一张图，点击进详情看全部 -->
-    <view wx:if="{{record.type === 'image'}}" class="life-record-card__media">
+    <view wx:if="{{record.type === 'image' || (record.images && record.images.length)}}" class="life-record-card__media">
       <t-image
         src="{{displayImageUrl || '/static/home/card0.png'}}"
         mode="aspectFill"
         class="life-record-card__image"
+        style="width: 100%; height: 320rpx;"
       />
     </view>
 

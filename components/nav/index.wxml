@@ -17,7 +17,7 @@
     visible="{{visible}}"
     items="{{sidebar}}"
     placement="left"
-    title="页面目录"
+    title="快捷入口"
     bind:item-click="itemClick"
   />
 </view>

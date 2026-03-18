@@ -1,41 +1,9 @@
 // pages/message/index.js
 import request from '~/api/request';
 import Message from 'tdesign-miniprogram/message/index';
-
-function formatNotifyTime(str) {
-  if (!str) return '';
-  const date = new Date(String(str).replace(/-/g, '/'));
-  if (Number.isNaN(date.getTime())) return '';
-  const now = new Date();
-  const diff = (now - date) / 1000;
-  if (diff < 60) return '刚刚';
-  if (diff < 3600) return `${Math.floor(diff / 60)}分钟前`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}小时前`;
-  if (diff < 172800) return '昨天';
-  if (diff < 604800) return `${Math.floor(diff / 86400)}天前`;
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
+import { formatRelativeDayOrTime } from '~/utils/time';
 
 const VALID_TYPES = ['all', 'like', 'comment', 'follow', 'guestbook'];
-
-function formatGuestbookTime(str) {
-  if (!str) return '';
-  const date = new Date(String(str).replace(/-/g, '/'));
-  if (Number.isNaN(date.getTime())) return '';
-  const now = new Date();
-  const diff = (now - date) / 1000;
-  if (diff < 60) return '刚刚';
-  if (diff < 3600) return `${Math.floor(diff / 60)}分钟前`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}小时前`;
-  if (diff < 172800) return '昨天';
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
 
 Page({
   data: {
@@ -105,7 +73,7 @@ Page({
       const total = Number(res.data?.total) || 0;
       const listWithTime = list.map((n) => ({
         ...n,
-        displayTime: formatNotifyTime(n.createdAt),
+        displayTime: formatRelativeDayOrTime(n.createdAt),
       }));
 
       if (refresh) {
@@ -192,7 +160,7 @@ Page({
       const res = await request('/message/conversations?page=1&pageSize=50');
       const list = (res.data?.list ?? []).map((item) => ({
         ...item,
-        displayTime: formatGuestbookTime(item.lastTime),
+        displayTime: formatRelativeDayOrTime(item.lastTime),
       }));
       this.setData({ guestbookList: list, loadingGuestbook: false });
     } catch (err) {

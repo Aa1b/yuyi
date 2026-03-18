@@ -1,16 +1,32 @@
 import request from '~/api/request';
+import config from '~/config';
 import { areaList } from './areaData.js';
+
+function resolveMediaUrl(url) {
+  if (!url || typeof url !== 'string') return url || '';
+  const legacyHost = 'http://149.104.29.197:5678';
+  if (url.startsWith(legacyHost)) {
+    const base = (config.baseUrl || '').replace(/\/api\/?$/, '');
+    const path = url.slice(legacyHost.length);
+    return base + (path.startsWith('/') ? path : '/' + path);
+  }
+  if (/^https?:\/\//i.test(url)) return url;
+  const base = (config.baseUrl || '').replace(/\/api\/?$/, '');
+  return base + (url.startsWith('/') ? url : '/' + url);
+}
 
 Page({
   data: {
     personInfo: {
       name: '',
+      avatar: '',
       gender: 0,
       birth: '',
       address: [],
       introduction: '',
       photos: [],
     },
+    displayAvatarUrl: '',
     genderOptions: [
       {
         label: '男',
@@ -51,12 +67,28 @@ Page({
     try {
       const res = await request('/auth/profile');
       const data = res?.data ?? {};
+      const avatar = data.avatar || '';
+      let address = [];
+      if (data.address != null && data.address !== '') {
+        if (Array.isArray(data.address)) {
+          address = data.address;
+        } else {
+          try {
+            const parsed = JSON.parse(String(data.address));
+            if (Array.isArray(parsed)) address = parsed;
+          } catch (_) {}
+        }
+      }
       const personInfo = {
         ...this.data.personInfo,
         name: data.nickname || '',
+        avatar,
         gender: data.gender === 1 ? 0 : data.gender === 2 ? 1 : 2,
+        birth: data.birth || '',
+        address,
+        introduction: data.introduction || '',
       };
-      this.setData({ personInfo });
+      this.setData({ personInfo, displayAvatarUrl: avatar ? resolveMediaUrl(avatar) : '' });
       if (personInfo.address && Array.isArray(personInfo.address) && personInfo.address.length >= 2) {
         this.setData({
           addressText: `${areaList.provinces[personInfo.address[0]] || ''} ${areaList.cities[personInfo.address[1]] || ''}`,
@@ -147,6 +179,68 @@ Page({
     this.personInfoFieldChange('introduction', e);
   },
 
+  async onChangeAvatar() {
+    try {
+      const choose = async () => {
+        if (typeof wx.chooseMedia === 'function') {
+          const res = await wx.chooseMedia({
+            count: 1,
+            mediaType: ['image'],
+            sourceType: ['album', 'camera'],
+            sizeType: ['compressed'],
+          });
+          const file = res && res.tempFiles && res.tempFiles[0];
+          return file && file.tempFilePath ? file.tempFilePath : '';
+        }
+        const res = await wx.chooseImage({
+          count: 1,
+          sourceType: ['album', 'camera'],
+          sizeType: ['compressed'],
+        });
+        return (res && res.tempFilePaths && res.tempFilePaths[0]) || '';
+      };
+
+      const filePath = await choose();
+      if (!filePath) return;
+
+      wx.showLoading({ title: '上传中...', mask: true });
+      const token = wx.getStorageSync('access_token');
+      const baseUrl = (config.baseUrl || '').replace(/\/+$/, '');
+      const uploadRes = await new Promise((resolve, reject) => {
+        wx.uploadFile({
+          url: `${baseUrl}/upload/image`,
+          filePath,
+          name: 'image',
+          header: token ? { Authorization: `Bearer ${token}` } : {},
+          success: resolve,
+          fail: reject,
+        });
+      });
+
+      if (uploadRes.statusCode !== 200) {
+        throw new Error('头像上传失败');
+      }
+      let parsed;
+      try {
+        parsed = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data;
+      } catch (_) {
+        throw new Error('头像上传响应异常');
+      }
+      const avatarUrl = parsed && parsed.data && parsed.data.url ? parsed.data.url : '';
+      if (!avatarUrl) throw new Error((parsed && parsed.message) || '头像上传失败');
+
+      // 写入用户资料
+      await request('/auth/profile', 'PUT', { avatar: avatarUrl });
+
+      this.setData({ 'personInfo.avatar': avatarUrl, displayAvatarUrl: resolveMediaUrl(avatarUrl) });
+      wx.hideLoading();
+      wx.showToast({ title: '头像已更新', icon: 'success' });
+    } catch (e) {
+      wx.hideLoading();
+      wx.showToast({ title: e?.message || '头像更新失败', icon: 'none' });
+    }
+  },
+
   onPhotosRemove(e) {
     const { index } = e.detail;
     const { photos } = this.data.personInfo;
@@ -182,7 +276,11 @@ Page({
       wx.showLoading({ title: '保存中...', mask: true });
       await request('/auth/profile', 'PUT', {
         nickname,
+        avatar: personInfo.avatar || '',
         gender: personInfo.gender === 0 ? 1 : personInfo.gender === 1 ? 2 : 0,
+        birth: personInfo.birth || '',
+        address: Array.isArray(personInfo.address) ? personInfo.address : [],
+        introduction: personInfo.introduction || '',
       });
       wx.hideLoading();
       wx.showToast({ title: '保存成功', icon: 'success' });

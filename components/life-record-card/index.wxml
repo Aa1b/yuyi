@@ -4,10 +4,8 @@
     <t-avatar
       image="{{displayAvatarUrl}}"
       size="small"
-      bindtap="goToUserProfile"
-      data-user-id="{{record.userId}}"
     />
-    <view class="life-record-card__user-info" bindtap="goToUserProfile" data-user-id="{{record.userId}}">
+    <view class="life-record-card__user-info">
       <text class="life-record-card__username">{{record.userName}}</text>
       <text class="life-record-card__time">{{displayTime}}</text>
     </view>

@@ -270,7 +270,7 @@ Page({
 
   async release() {
     if (!this.validateForm()) return;
-    await this.submitPublish('pending', '提交中...', '已提交审核，通过后将在首页展示', '/pages/my-life-records/index?publishStatus=pending');
+    await this.submitPublish('pending', '提交中...', '已提交审核，通过后将在首页展示', '/pages/home/index?oper=pending');
   },
 
   async releaseDirect() {

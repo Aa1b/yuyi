@@ -232,7 +232,15 @@ Page({
       // 写入用户资料
       await request('/auth/profile', 'PUT', { avatar: avatarUrl });
 
-      this.setData({ 'personInfo.avatar': avatarUrl, displayAvatarUrl: resolveMediaUrl(avatarUrl) });
+      const resolved = resolveMediaUrl(avatarUrl);
+      this.setData({ 'personInfo.avatar': avatarUrl, displayAvatarUrl: resolved });
+
+      // 同步更新本地缓存的 user_info，确保首页/留言等处头像立即生效
+      try {
+        const cached = wx.getStorageSync('user_info') || {};
+        const nextUser = { ...cached, avatar: avatarUrl, image: resolved };
+        wx.setStorageSync('user_info', nextUser);
+      } catch (_) {}
       wx.hideLoading();
       wx.showToast({ title: '头像已更新', icon: 'success' });
     } catch (e) {

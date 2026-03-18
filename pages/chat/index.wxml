@@ -28,13 +28,15 @@
 
 <view class="bottom">
   <view class="input">
-    <input
+    <textarea
       value="{{ input }}"
-      type="text"
-      confirm-type="send"
       placeholder="请输入留言"
       placeholder-style="color: #00000066"
       maxlength="500"
+      confirm-type="send"
+      cursor-spacing="16"
+      adjust-position="true"
+      show-confirm-bar="true"
       bindinput="handleInput"
       bindconfirm="sendMessage"
     />

@@ -9,10 +9,23 @@ Page({
     hasMore: true,
     page: 1,
     pageSize: 10,
+    isAdmin: false,
   },
 
   onLoad() {
+    this.checkAdmin();
     this.loadPendingRecords(true);
+  },
+
+  async checkAdmin() {
+    try {
+      const res = await request('/auth/profile');
+      const p = res?.data || {};
+      const isAdmin = p.role === 'admin' || !!p.isAdmin || p.is_admin === 1;
+      this.setData({ isAdmin });
+    } catch (_) {
+      this.setData({ isAdmin: false });
+    }
   },
 
   // 加载待审核记录
@@ -65,6 +78,7 @@ Page({
 
   // 审核记录（通过 / 驳回）
   async reviewRecord(e) {
+    if (!this.data.isAdmin) return;
     const { id, action } = e.currentTarget.dataset;
     const actionText = action === 'approve' ? '通过' : '驳回';
 

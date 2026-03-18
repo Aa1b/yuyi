@@ -77,13 +77,13 @@ const optionalAuth = async (req, res, next) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret_key');
       
       const [users] = await pool.execute(
-        'SELECT id, openid, nickname, avatar FROM users WHERE id = ?',
+        'SELECT id, openid, nickname, avatar, is_admin FROM users WHERE id = ?',
         [decoded.userId]
       );
 
       if (users.length > 0) {
         const u = users[0];
-        req.user = { id: Number(u.id), openid: u.openid, nickname: u.nickname, avatar: u.avatar };
+        req.user = { id: Number(u.id), openid: u.openid, nickname: u.nickname, avatar: u.avatar, isAdmin: !!u.is_admin };
       }
     }
     

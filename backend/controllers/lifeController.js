@@ -112,9 +112,12 @@ exports.getList = async (req, res, next) => {
         queryParams.push(currentUserId || 0);
       }
     } else if (privacy === 'all' && !userId && currentUserId) {
-      // 当前用户的记录，显示所有
-      whereConditions.push('r.user_id = ?');
-      queryParams.push(currentUserId);
+      // 默认：当前用户的记录，显示所有
+      // 但管理员在审核视角（pending）需要看到所有待审核记录
+      if (!(status === 'pending' && req.user && req.user.isAdmin)) {
+        whereConditions.push('r.user_id = ?');
+        queryParams.push(currentUserId);
+      }
     }
 
     // 用户筛选

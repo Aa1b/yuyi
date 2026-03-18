@@ -1,7 +1,7 @@
 import config from '~/config';
 import request from '~/api/request';
 import Message from 'tdesign-miniprogram/message/index';
-import { formatRelativeDayOrTime } from '~/utils/time';
+import { formatDateTime } from '~/utils/time';
 
 /** 将后端返回的媒体地址转为小程序可用的完整 URL */
 function resolveMediaUrl(url) {
@@ -59,7 +59,7 @@ Component({
       const displayAvatarUrl = rawAvatar ? resolveMediaUrl(rawAvatar) : '/static/chat/avatar.png';
       const images = (record.images || []).map(resolveMediaUrl);
       const displayImageUrl = images[0] || '';
-      const displayTime = formatRelativeDayOrTime(record.createdAt);
+      const displayTime = formatDateTime(record.createdAt);
       const video = record.video
         ? {
             url: resolveMediaUrl(record.video.url),

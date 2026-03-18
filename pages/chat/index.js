@@ -1,5 +1,19 @@
 import request from '~/api/request';
 import Message from 'tdesign-miniprogram/message/index';
+import config from '~/config';
+
+function resolveMediaUrl(url) {
+  if (!url || typeof url !== 'string') return url || '';
+  const legacyHost = 'http://149.104.29.197:5678';
+  if (url.startsWith(legacyHost)) {
+    const base = (config.baseUrl || '').replace(/\/api\/?$/, '');
+    const path = url.slice(legacyHost.length);
+    return base + (path.startsWith('/') ? path : '/' + path);
+  }
+  if (/^https?:\/\//i.test(url)) return url;
+  const base = (config.baseUrl || '').replace(/\/api\/?$/, '');
+  return base + (url.startsWith('/') ? url : '/' + url);
+}
 
 Page({
   data: {
@@ -26,11 +40,12 @@ Page({
       setTimeout(() => wx.navigateBack(), 1500);
       return;
     }
+    const myAvatarRaw = userInfo.avatar || userInfo.image || '';
     this.setData({
       userId,
       name: decodeURIComponent(name || ''),
-      avatar: decodeURIComponent(avatar || ''),
-      myAvatar: userInfo.image || userInfo.avatar || '',
+      avatar: resolveMediaUrl(decodeURIComponent(avatar || '')),
+      myAvatar: resolveMediaUrl(myAvatarRaw),
     });
     this.loadUserAndConversation();
   },
@@ -43,7 +58,7 @@ Page({
         const u = res.data || {};
         this.setData({
           name: u.nickname || name || '留言',
-          avatar: u.avatar || '',
+          avatar: resolveMediaUrl(u.avatar || ''),
         });
       } catch (_) {}
     }
@@ -93,7 +108,7 @@ Page({
   },
 
   handleInput(e) {
-    this.setData({ input: e.detail.value || '' });
+    this.setData({ input: (e.detail && e.detail.value) || '' });
   },
 
   async sendMessage() {

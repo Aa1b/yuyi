@@ -8,6 +8,7 @@
       </view>
       <view class="review-center-actions">
         <t-button
+          wx:if="{{isAdmin}}"
           theme="primary"
           size="small"
           variant="outline"
@@ -18,6 +19,7 @@
           通过
         </t-button>
         <t-button
+          wx:if="{{isAdmin}}"
           theme="danger"
           size="small"
           variant="outline"

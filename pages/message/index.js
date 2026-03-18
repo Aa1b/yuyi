@@ -1,7 +1,7 @@
 // pages/message/index.js
 import request from '~/api/request';
 import Message from 'tdesign-miniprogram/message/index';
-import { formatRelativeDayOrTime } from '~/utils/time';
+import { formatDateTime } from '~/utils/time';
 
 const VALID_TYPES = ['all', 'like', 'comment', 'follow', 'guestbook'];
 
@@ -73,7 +73,7 @@ Page({
       const total = Number(res.data?.total) || 0;
       const listWithTime = list.map((n) => ({
         ...n,
-        displayTime: formatRelativeDayOrTime(n.createdAt),
+        displayTime: formatDateTime(n.createdAt),
       }));
 
       if (refresh) {
@@ -83,6 +83,16 @@ Page({
           hasMore: listWithTime.length < total,
           loading: false,
         });
+        // 首次加载或下拉刷新时，自动将当前通知全部标记为已读，清空红点
+        try {
+          await request('/notification/read', 'POST', { id: 'all' });
+          const cleared = (listWithTime || []).map((n) => ({ ...n, isRead: 1 }));
+          this.setData({ notifications: cleared, unreadCount: 0 });
+          const app = getApp();
+          if (app && app.setUnreadNum) app.setUnreadNum(0);
+        } catch (_) {
+          // 静默失败，不影响列表展示
+        }
       } else {
         this.setData({
           notifications: [...this.data.notifications, ...listWithTime],
@@ -160,7 +170,7 @@ Page({
       const res = await request('/message/conversations?page=1&pageSize=50');
       const list = (res.data?.list ?? []).map((item) => ({
         ...item,
-        displayTime: formatRelativeDayOrTime(item.lastTime),
+        displayTime: formatDateTime(item.lastTime),
       }));
       this.setData({ guestbookList: list, loadingGuestbook: false });
     } catch (err) {

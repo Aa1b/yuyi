@@ -42,6 +42,13 @@ Page({
     });
   },
 
+  onShow() {
+    // 返回个人主页时刷新一次用户资料，确保头像等信息是最新的
+    if (this.data.userId) {
+      this.loadUserProfile();
+    }
+  },
+
   // 加载用户信息
   async loadUserProfile() {
     try {

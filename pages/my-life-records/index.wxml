@@ -38,7 +38,7 @@
       <view class="my-life-records-actions">
         <!-- 审核入口：仅在“审核中”视图展示 -->
         <t-button
-          wx:if="{{filter === 'pending'}}"
+          wx:if="{{filter === 'pending' && isAdmin}}"
           theme="primary"
           size="small"
           variant="outline"
@@ -49,7 +49,7 @@
           通过
         </t-button>
         <t-button
-          wx:if="{{filter === 'pending'}}"
+          wx:if="{{filter === 'pending' && isAdmin}}"
           theme="danger"
           size="small"
           variant="outline"

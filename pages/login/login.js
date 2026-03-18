@@ -167,7 +167,11 @@ Page({
         wx.showToast({ title: '登录成功', icon: 'success' });
         wx.switchTab({ url: '/pages/my/index' });
       } else {
-        wx.showToast({ title: (res && res.message) || '登录失败', icon: 'none' });
+        const msg =
+          (res && res.code === 401 && '邮箱或密码错误') ||
+          (res && res.message) ||
+          '登录失败';
+        wx.showToast({ title: msg, icon: 'none' });
       }
     } catch (err) {
       const msg =

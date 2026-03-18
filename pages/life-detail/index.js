@@ -2,6 +2,7 @@
 import config from '~/config';
 import request from '~/api/request';
 import Message from 'tdesign-miniprogram/message/index';
+import { formatDateTime } from '~/utils/time';
 
 function resolveMediaUrl(url) {
   if (!url || typeof url !== 'string') return url || '';
@@ -51,6 +52,9 @@ Page({
       const res = await request(`/life/detail?id=${this.data.recordId}`);
       const raw = res.data || {};
       const record = { ...raw };
+      if (record.avatar) {
+        record.avatar = resolveMediaUrl(record.avatar);
+      }
       if (record.images && record.images.length) {
         record.images = record.images.map(resolveMediaUrl);
       }
@@ -61,7 +65,18 @@ Page({
           cover: resolveMediaUrl(record.video.cover),
         };
       }
-      const comments = record.comments || [];
+      const comments = (record.comments || []).map((c) => {
+        const replies = (c.replies || []).map((r) => ({
+          ...r,
+          displayTime: formatDateTime(r.createdAt),
+        }));
+        return {
+          ...c,
+          displayTime: formatDateTime(c.createdAt),
+          replies,
+        };
+      });
+      record.displayTime = formatDateTime(record.createdAt);
       const commentTotal = comments.reduce((s, c) => s + 1 + (c.replies ? c.replies.length : 0), 0);
       this.setData({
         record,
@@ -257,5 +272,17 @@ Page({
         urls: record.images,
       });
     }
+  },
+
+  goToUserProfile(e) {
+    const userId = e && e.currentTarget && e.currentTarget.dataset ? e.currentTarget.dataset.userId : null;
+    if (!userId) return;
+    const me = wx.getStorageSync('user_info');
+    const myId = me && me.id != null ? String(me.id) : null;
+    if (myId && String(userId) === myId) {
+      wx.switchTab({ url: '/pages/my/index' });
+      return;
+    }
+    wx.navigateTo({ url: `/pages/user-profile/index?userId=${userId}` });
   },
 });

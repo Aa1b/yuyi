@@ -60,7 +60,10 @@
               <text>没有更多了</text>
             </view>
             <view wx:if="{{!loading && lifeRecords.length === 0}}" class="home-empty">
-              <t-empty icon="image" description="暂无内容" />
+              <t-empty
+                icon="image"
+                description="{{sameCityReady ? '暂无内容' : '请开启定位后查看同城内容'}}"
+              />
             </view>
           </view>
         </t-pull-down-refresh>

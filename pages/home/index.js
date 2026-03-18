@@ -17,6 +17,7 @@ Page({
     // 位置筛选 / 同城
     locationCity: '',
     useLocationFilter: false,
+    sameCityReady: true,
     // 分页
     page: 1,
     pageSize: 10,
@@ -76,7 +77,18 @@ Page({
     try {
       this.setData({ loading: true });
       
-      const { activeTab, selectedCategory, page, pageSize, useLocationFilter, locationCity } = this.data;
+      const { activeTab, selectedCategory, page, pageSize, locationCity } = this.data;
+
+      // 同城：拿不到城市就不加载（避免退化成全量列表）
+      if (activeTab === 'sameCity' && !locationCity) {
+        this.setData({
+          lifeRecords: [],
+          hasMore: false,
+          sameCityReady: false,
+        });
+        return;
+      }
+
       const params = {
         page: refresh ? 1 : page,
         pageSize,
@@ -89,6 +101,8 @@ Page({
       // 同城筛选：在 sameCity 标签下按当前城市过滤
       if (activeTab === 'sameCity' && locationCity) {
         params.location = locationCity;
+        // 强制只取有位置的记录，避免空 location 混入
+        params.hasLocation = 1;
       }
       
       // 构建查询字符串
@@ -104,12 +118,14 @@ Page({
           lifeRecords: list,
           page: 1,
           hasMore: list.length < total,
+          sameCityReady: true,
         });
       } else {
         this.setData({
           lifeRecords: [...this.data.lifeRecords, ...list],
           page: page + 1,
           hasMore: this.data.lifeRecords.length + list.length < total,
+          sameCityReady: true,
         });
       }
     } catch (error) {
@@ -134,6 +150,7 @@ Page({
       lifeRecords: [],
       page: 1,
       hasMore: true,
+      sameCityReady: value !== 'sameCity',
     });
     if (value === 'follow') {
       this.loadFollowRecords();
@@ -233,42 +250,54 @@ Page({
             that.setData({
               locationCity: city,
               useLocationFilter: true,
+              sameCityReady: !!city,
               lifeRecords: [],
               page: 1,
               hasMore: true,
             });
+            if (!city) {
+              Message.warning({ context: that, offset: [120, 32], duration: 2500, content: '未获取到城市信息，请稍后重试' });
+              return;
+            }
           } else {
             // 逆地理编码失败，不启用同城筛选
             that.setData({
               useLocationFilter: false,
+              sameCityReady: false,
+              locationCity: '',
               lifeRecords: [],
               page: 1,
               hasMore: true,
             });
+            Message.warning({ context: that, offset: [120, 32], duration: 2500, content: '获取城市失败，请开启定位后重试' });
           }
-          // 无论成功或失败，都加载一次列表，避免需要手动刷新
+          // 仅在拿到城市时加载列表
           that.loadLifeRecords(true);
         },
         fail() {
           // 地图请求失败，降级为不按城市筛选
           that.setData({
             useLocationFilter: false,
+            sameCityReady: false,
+            locationCity: '',
             lifeRecords: [],
             page: 1,
             hasMore: true,
           });
-          that.loadLifeRecords(true);
+          Message.warning({ context: that, offset: [120, 32], duration: 2500, content: '获取城市失败，请稍后重试' });
         },
       });
     } catch (e) {
       // 获取定位失败，降级为不按城市筛选
       this.setData({
         useLocationFilter: false,
+        sameCityReady: false,
+        locationCity: '',
         lifeRecords: [],
         page: 1,
         hasMore: true,
       });
-      this.loadLifeRecords(true);
+      Message.warning({ context: this, offset: [120, 32], duration: 2500, content: '请开启定位权限以查看同城内容' });
     }
   },
 

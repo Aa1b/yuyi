@@ -70,6 +70,7 @@ exports.getList = async (req, res, next) => {
       type = 'all',
       userId = null, // 可选：获取指定用户的记录
       location = '', // 可选：按位置关键字筛选
+      hasLocation = 0, // 可选：1=仅返回有位置的记录
       status = 1, // 可选：状态筛选，1=已发布，pending=待审核，all=已发布+待审核
       sort = 'latest', // 可选：latest=按时间，hot=按点赞数
     } = req.query;
@@ -136,6 +137,9 @@ exports.getList = async (req, res, next) => {
     if (location) {
       whereConditions.push('r.location LIKE ?');
       queryParams.push(`%${location}%`);
+    }
+    if (String(hasLocation) === '1' || String(hasLocation).toLowerCase() === 'true') {
+      whereConditions.push('(r.location IS NOT NULL AND r.location <> "")');
     }
 
     // 类型筛选

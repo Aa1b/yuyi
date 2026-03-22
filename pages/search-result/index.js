@@ -36,9 +36,9 @@ Page({
   // 加载分类
   async loadCategories() {
     try {
-      const res = await request('/life/categories');
+      const res = await request('/life/categories?scope=filter');
       this.setData({
-        categories: res.data.data || [],
+        categories: res.data || [],
       });
     } catch (error) {
       console.error('加载分类失败', error);

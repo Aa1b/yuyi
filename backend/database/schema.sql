@@ -1,6 +1,15 @@
--- 记录生活管理系统数据库设计（与线上 DDL 一致）
--- 数据库类型: MySQL 5.7+
--- 字符集: utf8mb4
+-- =============================================================================
+-- 记录生活管理系统 · 全量建库脚本（新库直接执行本文件即可）
+-- =============================================================================
+-- SCHEMA_VERSION:        2.0.0
+-- SCHEMA_DATE:           2026-03-04
+-- 数据库类型:            MySQL 5.7+
+-- 字符集:                utf8mb4
+-- 本版本变更摘要:
+--   - 新增表 life_categories（分类字典；sort_order 越小越靠前）
+--   - life_tags 增加 sort_order、is_enabled（禁用仅影响发布页可选，历史记录仍展示）
+-- 已有线上库请勿重复整库导入；请改用 migrations/ 下增量脚本（见 database/README.md）
+-- =============================================================================
 
 CREATE DATABASE IF NOT EXISTS life_record_db DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE life_record_db;
@@ -77,16 +86,44 @@ CREATE TABLE IF NOT EXISTS `life_media` (
   CONSTRAINT `life_media_ibfk_1` FOREIGN KEY (`record_id`) REFERENCES `life_records` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='媒体文件表';
 
+-- 3b. 分类字典表（独立维护；sort_order 越小越靠前；禁用后仅发布页不可选，历史记录仍按名称展示）
+CREATE TABLE IF NOT EXISTS `life_categories` (
+  `id` int NOT NULL AUTO_INCREMENT COMMENT '分类ID',
+  `name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '分类名称',
+  `sort_order` int NOT NULL DEFAULT '0' COMMENT '排序，数值越小越靠前',
+  `is_enabled` tinyint NOT NULL DEFAULT '1' COMMENT '是否启用：0否（仅发布不可选），1是',
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_name` (`name`),
+  KEY `idx_sort_order` (`sort_order`),
+  KEY `idx_enabled` (`is_enabled`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='生活记录分类字典表';
+
+INSERT IGNORE INTO `life_categories` (`name`, `sort_order`, `is_enabled`) VALUES
+('日常', 10, 1),
+('旅行', 20, 1),
+('美食', 30, 1),
+('心情', 40, 1),
+('运动', 50, 1),
+('学习', 60, 1),
+('工作', 70, 1),
+('其他', 80, 1);
+
 -- 4. 标签表
 CREATE TABLE IF NOT EXISTS `life_tags` (
   `id` int NOT NULL AUTO_INCREMENT COMMENT '标签ID',
   `name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '标签名称',
   `count` int DEFAULT '0' COMMENT '使用次数',
+  `sort_order` int NOT NULL DEFAULT '0' COMMENT '排序，数值越小越靠前',
+  `is_enabled` tinyint NOT NULL DEFAULT '1' COMMENT '是否可选：0=仅发布页不可选，历史记录仍展示',
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (`id`),
   UNIQUE KEY `name` (`name`),
   KEY `idx_name` (`name`),
-  KEY `idx_count` (`count`)
+  KEY `idx_count` (`count`),
+  KEY `idx_sort_order` (`sort_order`),
+  KEY `idx_enabled` (`is_enabled`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='标签表';
 
 -- 5. 记录标签关联表

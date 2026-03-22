@@ -16,6 +16,7 @@ Page({
       { name: '已发布', icon: 'upload', type: 'published', url: '' },
       { name: '草稿箱', icon: 'file-copy', type: 'draft', url: '' },
       { name: '内容审核', icon: 'search', type: 'reviewCenter', url: '' },
+      { name: '系统管理', icon: 'setting', type: 'adminCenter', url: '' },
       { name: '管理看板', icon: 'chart', type: 'dataCenter', url: '' },
     ],
 
@@ -156,6 +157,10 @@ Page({
     }
     if (type === 'reviewCenter') {
       wx.navigateTo({ url: '/pages/review-center/index' });
+      return;
+    }
+    if (type === 'adminCenter') {
+      wx.navigateTo({ url: '/pages/admin-center/index' });
       return;
     }
     if (type === 'dataCenter') {

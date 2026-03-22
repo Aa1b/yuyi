@@ -124,8 +124,21 @@ npm start
 - `DELETE /api/life/like` - 取消点赞
 - `GET /api/life/comments` - 获取评论列表
 - `POST /api/life/comment` - 发表评论
-- `GET /api/life/categories` - 获取分类列表
-- `GET /api/life/tags` - 获取标签列表
+- `GET /api/life/categories` - 获取分类列表（`scope=select` 仅启用，用于发布；`scope=filter` 或默认为字典全部项，用于首页/筛选）
+- `GET /api/life/tags` - 获取可选标签（仅 `is_enabled=1`，按 `sort_order` 排序）
+
+### 管理员（需 `is_admin=1`，JWT + `Authorization: Bearer`）
+
+- `GET /api/admin/categories` - 分类列表（含禁用）
+- `POST /api/admin/categories` - 新增分类（`name`, `sortOrder`, `isEnabled`）
+- `PUT /api/admin/categories/:id` - 更新（可重命名；重命名会同步 `life_records.category`）
+- `DELETE /api/admin/categories/:id` - 删除（有记录引用时禁止）
+- `GET /api/admin/tags` - 标签列表
+- `POST /api/admin/tags` - 新增标签
+- `PUT /api/admin/tags/:id` - 更新标签
+- `DELETE /api/admin/tags/:id` - 删除（有关联时禁止）
+- `GET /api/admin/users` - 用户分页（`page`, `pageSize`, `keyword`）
+- `PUT /api/admin/users/:id` - 设置管理员（`isAdmin`；不可操作自己；至少保留一名管理员）
 
 ### 用户相关
 

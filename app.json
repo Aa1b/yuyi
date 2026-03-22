@@ -60,6 +60,11 @@
       "pages": ["index"]
     },
     {
+      "root": "pages/admin-center",
+      "name": "adminCenter",
+      "pages": ["index"]
+    },
+    {
       "root": "pages/life-edit",
       "name": "lifeEdit",
       "pages": ["index"]

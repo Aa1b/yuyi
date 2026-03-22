@@ -38,7 +38,7 @@ Page({
   // 加载分类
   async loadCategories() {
     try {
-      const res = await request('/life/categories');
+      const res = await request('/life/categories?scope=filter');
       this.setData({
         categories: res.data || [],
       });

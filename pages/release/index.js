@@ -53,7 +53,7 @@ Page({
 
   async loadCategories() {
     try {
-      const res = await request('/life/categories');
+      const res = await request('/life/categories?scope=select');
       const list = res?.data ?? [];
       let names = Array.isArray(list) ? list : [];
       if (names.length === 0) names = this.getDefaultCategories();
@@ -74,13 +74,11 @@ Page({
       const res = await request('/life/tags');
       const list = res?.data ?? [];
       const raw = Array.isArray(list) ? list : [];
-      const fromApi = raw.map(item => (item && item.name ? item.name : item)).filter(Boolean);
-      const defaults = this.getDefaultTags();
-      const merged = [...defaults];
-      fromApi.forEach(name => {
-        if (merged.indexOf(name) === -1) merged.push(name);
+      const fromApi = raw.map((item) => (item && item.name ? item.name : item)).filter(Boolean);
+      // 仅使用后端返回的可选标签（禁用项不会出现在列表中）；无数据时退回默认
+      this.setData({
+        tagOptions: fromApi.length > 0 ? fromApi : this.getDefaultTags(),
       });
-      this.setData({ tagOptions: merged });
     } catch (error) {
       console.error('加载标签失败', error);
       this.setData({ tagOptions: this.getDefaultTags() });

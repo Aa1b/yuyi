@@ -1,0 +1,153 @@
+<t-navbar title="系统管理" left-arrow />
+<view class="admin-page">
+  <t-tabs value="{{mainTab}}" bind:change="onMainTabChange">
+    <t-tab-panel label="分类" value="cat" />
+    <t-tab-panel label="标签" value="tag" />
+    <t-tab-panel label="用户" value="user" />
+  </t-tabs>
+
+  <!-- 分类 -->
+  <view class="admin-body" wx:if="{{mainTab === 'cat'}}">
+    <view class="admin-toolbar">
+      <t-button size="small" theme="primary" bindtap="openCatForm">添加分类</t-button>
+    </view>
+    <t-loading wx:if="{{loading && mainTab === 'cat'}}" theme="circular" size="40rpx" text="加载中..." />
+    <block wx:else>
+      <view wx:for="{{categories}}" wx:key="id" class="admin-row">
+        <view class="admin-row-main">
+          <text class="admin-name">{{item.name}}</text>
+          <text class="admin-meta">排序 {{item.sortOrder}}（越小越靠前） · {{item.isEnabled ? '启用' : '禁用'}}</text>
+        </view>
+        <view class="admin-row-actions">
+          <t-button size="small" variant="outline" data-item="{{item}}" bindtap="editCat">编辑</t-button>
+          <t-button size="small" theme="danger" variant="outline" data-id="{{item.id}}" bindtap="deleteCat">删除</t-button>
+        </view>
+      </view>
+      <t-empty wx:if="{{categories.length === 0}}" description="暂无分类数据" />
+    </block>
+  </view>
+
+  <!-- 标签 -->
+  <view class="admin-body" wx:if="{{mainTab === 'tag'}}">
+    <view class="admin-toolbar">
+      <t-button size="small" theme="primary" bindtap="openTagForm">添加标签</t-button>
+    </view>
+    <t-loading wx:if="{{loading && mainTab === 'tag'}}" theme="circular" size="40rpx" text="加载中..." />
+    <block wx:else>
+      <view wx:for="{{tags}}" wx:key="id" class="admin-row">
+        <view class="admin-row-main">
+          <text class="admin-name">{{item.name}}</text>
+          <text class="admin-meta"
+            >使用 {{item.count}} · 排序 {{item.sortOrder}} · {{item.isEnabled ? '可选' : '仅发布不可选'}}</text
+          >
+        </view>
+        <view class="admin-row-actions">
+          <t-button size="small" variant="outline" data-item="{{item}}" bindtap="editTag">编辑</t-button>
+          <t-button size="small" theme="danger" variant="outline" data-id="{{item.id}}" bindtap="deleteTag">删除</t-button>
+        </view>
+      </view>
+      <t-empty wx:if="{{tags.length === 0}}" description="暂无标签数据" />
+    </block>
+  </view>
+
+  <!-- 用户 -->
+  <view class="admin-body" wx:if="{{mainTab === 'user'}}">
+    <view class="admin-search">
+      <input
+        class="admin-search-input"
+        placeholder="搜索昵称 / 邮箱 / ID"
+        value="{{userKeyword}}"
+        bindinput="onUserKeywordInput"
+        confirm-type="search"
+        bindconfirm="onSearchUsers"
+      />
+      <t-button size="small" theme="primary" bindtap="onSearchUsers">搜索</t-button>
+    </view>
+    <t-loading wx:if="{{loading && mainTab === 'user'}}" theme="circular" size="40rpx" text="加载中..." />
+    <block wx:else>
+      <view wx:for="{{users}}" wx:key="id" class="admin-row admin-user-row">
+        <view class="admin-user-info">
+          <view class="admin-user-name">{{item.nickname || '未命名'}}</view>
+          <view class="admin-user-sub">ID {{item.id}} · {{item.isAdmin ? '管理员' : '用户'}}</view>
+        </view>
+        <view wx:if="{{item.id !== myUserId}}">
+          <t-button
+            wx:if="{{!item.isAdmin}}"
+            size="small"
+            theme="primary"
+            variant="outline"
+            data-id="{{item.id}}"
+            data-admin="1"
+            bindtap="toggleUserAdmin"
+          >
+            设为管理员
+          </t-button>
+          <t-button
+            wx:else
+            size="small"
+            theme="danger"
+            variant="outline"
+            data-id="{{item.id}}"
+            data-admin="0"
+            bindtap="toggleUserAdmin"
+          >
+            取消管理员
+          </t-button>
+        </view>
+        <view wx:else>
+          <text class="admin-meta">当前账号</text>
+        </view>
+      </view>
+      <view wx:if="{{userHasMore}}" class="admin-load-more" bindtap="loadMoreUsers">加载更多</view>
+      <t-empty wx:if="{{users.length === 0}}" description="暂无用户" />
+    </block>
+  </view>
+</view>
+
+<!-- 分类表单 -->
+<view class="admin-mask" wx:if="{{catFormVisible}}" catchtouchmove="true">
+  <view class="admin-panel" catchtap="noop">
+    <view class="admin-panel-title">{{catEditingId ? '编辑分类' : '添加分类'}}</view>
+    <view class="admin-form-item">
+      <view class="admin-form-label">名称</view>
+      <t-input placeholder="分类名称" value="{{catForm.name}}" bind:change="onCatFormName" />
+    </view>
+    <view class="admin-form-item">
+      <view class="admin-form-label">排序（数值越小越靠前）</view>
+      <t-input type="number" placeholder="0" value="{{catForm.sortOrderStr}}" bind:change="onCatFormSort" />
+    </view>
+    <view class="admin-switch-row">
+      <text>启用（禁用后仅发布页不可选）</text>
+      <t-switch value="{{catForm.isEnabled}}" bind:change="onCatFormEnabled" />
+    </view>
+    <view class="admin-form-actions">
+      <t-button theme="light" bindtap="closeCatForm">取消</t-button>
+      <t-button theme="primary" bindtap="submitCatForm">保存</t-button>
+    </view>
+  </view>
+</view>
+
+<!-- 标签表单 -->
+<view class="admin-mask" wx:if="{{tagFormVisible}}" catchtouchmove="true">
+  <view class="admin-panel" catchtap="noop">
+    <view class="admin-panel-title">{{tagEditingId ? '编辑标签' : '添加标签'}}</view>
+    <view class="admin-form-item">
+      <view class="admin-form-label">名称</view>
+      <t-input placeholder="标签名称" value="{{tagForm.name}}" bind:change="onTagFormName" />
+    </view>
+    <view class="admin-form-item">
+      <view class="admin-form-label">排序（数值越小越靠前）</view>
+      <t-input type="number" placeholder="0" value="{{tagForm.sortOrderStr}}" bind:change="onTagFormSort" />
+    </view>
+    <view class="admin-switch-row">
+      <text>发布页可选</text>
+      <t-switch value="{{tagForm.isEnabled}}" bind:change="onTagFormEnabled" />
+    </view>
+    <view class="admin-form-actions">
+      <t-button theme="light" bindtap="closeTagForm">取消</t-button>
+      <t-button theme="primary" bindtap="submitTagForm">保存</t-button>
+    </view>
+  </view>
+</view>
+
+<t-message id="t-message" />

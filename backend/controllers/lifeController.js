@@ -2,6 +2,51 @@ const pool = require('../config/database');
 const cache = require('../utils/cache');
 const { validateRecordCreate, validateRecordUpdate, validateComment } = require('../utils/validate');
 
+/** 发布/编辑时校验：分类在字典中且启用；已存在的禁用标签不可选用 */
+async function assertPublishCategoryAndTags(category, tags, options = {}) {
+  const { skipCategory = false, skipTags = false } = options;
+
+  let hasCategoryDict = false;
+  try {
+    const [dictCount] = await pool.execute('SELECT COUNT(*) AS c FROM life_categories');
+    hasCategoryDict = dictCount[0].c > 0;
+  } catch (e) {
+    if (e.code !== 'ER_NO_SUCH_TABLE') throw e;
+  }
+
+  if (!skipCategory && hasCategoryDict) {
+    const trimmed = category != null && String(category).trim() !== '' ? String(category).trim() : '';
+    if (trimmed) {
+      const [ok] = await pool.execute(
+        'SELECT id FROM life_categories WHERE name = ? AND is_enabled = 1',
+        [trimmed]
+      );
+      if (ok.length === 0) {
+        const err = new Error('分类不可用或已禁用，请重新选择');
+        err.statusCode = 400;
+        throw err;
+      }
+    }
+  }
+
+  if (!skipTags && tags && tags.length > 0) {
+    for (const tagName of tags) {
+      try {
+        const [rows] = await pool.execute('SELECT id, is_enabled FROM life_tags WHERE name = ?', [tagName]);
+        if (rows.length > 0 && Number(rows[0].is_enabled) === 0) {
+          const err = new Error(`标签「${tagName}」已禁用，无法选用`);
+          err.statusCode = 400;
+          throw err;
+        }
+      } catch (e) {
+        if (e.statusCode === 400) throw e;
+        if (e.code === 'ER_BAD_FIELD_ERROR') continue;
+        throw e;
+      }
+    }
+  }
+}
+
 /**
  * 检查用户是否有权限查看记录（基于隐私设置）
  */
@@ -576,6 +621,15 @@ exports.createRecord = async (req, res, next) => {
         ? bodyPublishStatus
         : 'pending';
 
+    try {
+      await assertPublishCategoryAndTags(category, tags);
+    } catch (e) {
+      if (e.statusCode === 400) {
+        return res.status(400).json({ code: 400, message: e.message });
+      }
+      throw e;
+    }
+
     const [result] = await pool.execute(
       `INSERT INTO life_records 
        (user_id, title, content, type, privacy, category, location, status, publish_status) 
@@ -695,6 +749,19 @@ exports.updateRecord = async (req, res, next) => {
 
     const err = validateRecordUpdate(req.body);
     if (err) return res.status(400).json(err);
+
+    try {
+      await assertPublishCategoryAndTags(
+        category !== undefined ? category : undefined,
+        tags !== undefined ? tags : undefined,
+        { skipCategory: category === undefined, skipTags: tags === undefined }
+      );
+    } catch (e) {
+      if (e.statusCode === 400) {
+        return res.status(400).json({ code: 400, message: e.message });
+      }
+      throw e;
+    }
 
     // 构建更新字段
     const updateFields = [];
@@ -1216,33 +1283,41 @@ exports.createComment = async (req, res, next) => {
 
 /**
  * 获取分类列表
+ * @query scope=select 仅返回启用项（发布页选择器）；默认/scope=filter 返回字典中全部项（筛选含已禁用，便于筛历史）
  */
 exports.getCategories = async (req, res, next) => {
   try {
-    const cacheKey = 'life_categories';
-    const defaultCategories = ['日常', '旅行', '美食', '心情', '运动', '学习', '工作', '其他'];
-    
-    // 尝试从缓存获取
+    const scope = req.query.scope === 'select' ? 'select' : 'filter';
+    const cacheKey = `life_categories_${scope}`;
+
     let categoryList = cache.get(cacheKey);
-    
+
     if (!categoryList) {
-      // 从数据库查询已有分类
-      const [categories] = await pool.execute(
-        'SELECT DISTINCT category FROM life_records WHERE category IS NOT NULL AND status = 1 ORDER BY category'
-      );
+      try {
+        const sql =
+          scope === 'select'
+            ? 'SELECT name FROM life_categories WHERE is_enabled = 1 ORDER BY sort_order ASC, id ASC'
+            : 'SELECT name FROM life_categories ORDER BY sort_order ASC, id ASC';
+        const [cats] = await pool.execute(sql);
+        if (cats.length > 0) {
+          categoryList = cats.map((c) => c.name);
+        }
+      } catch (e) {
+        if (e.code !== 'ER_NO_SUCH_TABLE') throw e;
+      }
 
-      const dbCategories = categories
-        .map(c => c.category)
-        .filter(name => typeof name === 'string' && name.trim());
+      if (!categoryList || categoryList.length === 0) {
+        const defaultCategories = ['日常', '旅行', '美食', '心情', '运动', '学习', '工作', '其他'];
+        const [categories] = await pool.execute(
+          'SELECT DISTINCT category FROM life_records WHERE category IS NOT NULL AND status = 1 ORDER BY category'
+        );
+        const dbCategories = categories
+          .map((c) => c.category)
+          .filter((name) => typeof name === 'string' && name.trim());
+        const mergedSet = new Set([...defaultCategories, ...dbCategories]);
+        categoryList = Array.from(mergedSet);
+      }
 
-      // 使用「默认分类 + 数据库中出现过的分类」去重合并，确保默认项始终存在
-      const mergedSet = new Set([
-        ...defaultCategories,
-        ...dbCategories,
-      ]);
-      categoryList = Array.from(mergedSet);
-      
-      // 缓存10分钟
       cache.set(cacheKey, categoryList, 10 * 60 * 1000);
     }
 
@@ -1257,29 +1332,37 @@ exports.getCategories = async (req, res, next) => {
 };
 
 /**
- * 获取标签列表（热门标签）
+ * 获取标签列表（发布页可选：仅 is_enabled=1；排序 sort_order 越小越靠前，其次 count）
  */
 exports.getTags = async (req, res, next) => {
   try {
     const { limit = 10 } = req.query;
     const cacheKey = `life_tags_${limit}`;
-    
-    // 尝试从缓存获取
-    let tagList = cache.get(cacheKey);
-    
-    if (!tagList) {
-      // 从数据库查询
-      const limitNum = Math.max(1, Math.min(50, parseInt(limit, 10) || 10));
-      const [tags] = await pool.execute(
-        `SELECT name, count FROM life_tags WHERE count > 0 ORDER BY count DESC, name ASC LIMIT ${limitNum}`
-      );
 
-      tagList = tags.map(t => ({
+    let tagList = cache.get(cacheKey);
+
+    if (!tagList) {
+      const limitNum = Math.max(1, Math.min(50, parseInt(limit, 10) || 10));
+      let tags;
+      try {
+        [tags] = await pool.execute(
+          `SELECT name, count FROM life_tags WHERE is_enabled = 1 ORDER BY sort_order ASC, count DESC, name ASC LIMIT ${limitNum}`
+        );
+      } catch (e) {
+        if (e.code === 'ER_BAD_FIELD_ERROR') {
+          [tags] = await pool.execute(
+            `SELECT name, count FROM life_tags WHERE count > 0 ORDER BY count DESC, name ASC LIMIT ${limitNum}`
+          );
+        } else {
+          throw e;
+        }
+      }
+
+      tagList = tags.map((t) => ({
         name: t.name,
         count: t.count,
       }));
-      
-      // 缓存5分钟
+
       cache.set(cacheKey, tagList, 5 * 60 * 1000);
     }
 

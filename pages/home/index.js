@@ -55,12 +55,11 @@ Page({
       // 加载轮播图
       const swiperRes = await request('/home/swipers').then((res) => res.data);
       
-      // 加载分类
-      const categoryRes = await request('/life/categories').then((res) => res.data);
-      
+      // 加载分类（含已禁用项，便于筛选历史记录）
+      const catRes = await request('/life/categories?scope=filter');
       this.setData({
         swiperList: swiperRes.data,
-        categories: categoryRes.data || [],
+        categories: catRes.data || [],
       });
       
       // 加载生活记录

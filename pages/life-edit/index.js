@@ -132,8 +132,9 @@ Page({
   // 加载分类
   async loadCategories() {
     try {
-      const res = await request('/life/categories');
-      const categories = (res.data.data || []).map(item => ({ label: item, value: item }));
+      const res = await request('/life/categories?scope=select');
+      const list = res.data || [];
+      const categories = list.map((item) => ({ label: item, value: item }));
       this.setData({ categories });
     } catch (error) {
       console.error('加载分类失败', error);
@@ -144,8 +145,9 @@ Page({
   async loadTags() {
     try {
       const res = await request('/life/tags');
+      const raw = res.data || [];
       this.setData({
-        allTags: (res.data.data || []).map(item => item.name || item),
+        allTags: raw.map((item) => item.name || item),
       });
     } catch (error) {
       console.error('加载标签失败', error);

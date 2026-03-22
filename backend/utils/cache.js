@@ -59,6 +59,18 @@ class Cache {
   }
 
   /**
+   * 清除生活分类/标签相关缓存（分类字典或标签变更后调用）
+   */
+  invalidateLifeMetaCaches() {
+    this.delete('life_categories');
+    this.delete('life_categories_select');
+    this.delete('life_categories_filter');
+    for (let i = 1; i <= 50; i += 1) {
+      this.delete(`life_tags_${i}`);
+    }
+  }
+
+  /**
    * 检查缓存是否存在且未过期
    * @param {string} key 缓存键
    * @returns {boolean}

@@ -1,5 +1,6 @@
 import request from '~/api/request';
 import useToastBehavior from '~/behaviors/useToast';
+import resolveMediaUrl from '~/utils/resolveMediaUrl';
 
 Page({
   behaviors: [useToastBehavior],
@@ -76,7 +77,7 @@ Page({
 
       const base = {
         name: p.nickname || '用户',
-        image: p.avatar || '',
+        image: p.avatar ? resolveMediaUrl(p.avatar) : '',
         star: p.star || '',
         city: p.city || '',
         isAdmin: p.role === 'admin' || !!p.isAdmin || p.is_admin === 1,

@@ -2,23 +2,7 @@
 import config from '~/config';
 import request from '~/api/request';
 import Message from 'tdesign-miniprogram/message/index';
-
-function resolveMediaUrl(url) {
-  if (!url || typeof url !== 'string') return url || '';
-
-  const legacyHost = 'http://149.104.29.197:5678';
-
-  // 兼容老数据：老 IP 地址
-  if (url.startsWith(legacyHost)) {
-    const base = (config.baseUrl || '').replace(/\/api\/?$/, '');
-    const path = url.slice(legacyHost.length);
-    return base + (path.startsWith('/') ? path : '/' + path);
-  }
-
-  if (/^https?:\/\//i.test(url)) return url;
-  const base = (config.baseUrl || '').replace(/\/api\/?$/, '');
-  return base + (url.startsWith('/') ? url : '/' + url);
-}
+import resolveMediaUrl from '~/utils/resolveMediaUrl';
 
 // 腾讯地图 WebService Key（与发布页保持一致）
 const TENCENT_MAP_KEY = 'LITBZ-IDMWA-5D3KD-CURMW-MHJ4J-2SFMX';

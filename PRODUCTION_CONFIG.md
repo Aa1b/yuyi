@@ -1,27 +1,28 @@
 # 生产环境配置说明
 
-## 📋 当前服务器配置
+## 📋 当前对外域名（HTTPS，与小程序一致）
 
-- **服务器IP**: 149.104.29.197
-- **后端API端口**: 3000
-- **文件服务端口**: 5678
-- **API地址**: http://149.104.29.197:3000/api
-- **文件服务地址**: http://149.104.29.197:5678/uploads/
+- **API（含 `/api` 前缀）**: `https://api.zaoqidawang.xin/api`
+- **静态资源根域名（上传图片/视频 URL 前缀）**: `https://api.zaoqidawang.xin`（路径如 `/uploads/images/...`）
+- **说明**: 真机与正式版**仅支持 HTTPS**；历史 `http://IP:端口` 数据由小程序 `utils/resolveMediaUrl.js` 自动映射到上述 HTTPS 域名。
+
+> 服务器内网 IP、Node 端口等仅作运维参考，勿写入小程序 `config.js`。
 
 ## ✅ 已完成的配置
 
 ### 1. 本地小程序配置
 
 已更新 `config.js`：
-- `isMock: false` - 使用真实API
-- `baseUrl: 'http://149.104.29.197:3000/api'` - 指向服务器API
+- `isMock: false`
+- `baseUrl: 'https://api.zaoqidawang.xin/api'`
+- `publicBaseUrl: 'https://api.zaoqidawang.xin'`（图片/视频拼接用，与 Nginx 上 `uploads` 一致）
 
 ### 2. 服务器后端配置
 
 已配置 `backend/.env`：
 - 数据库连接：life_record_user / your_password_here / life_record_db
 - 文件存储：/data/uploads
-- 文件服务URL：http://149.104.29.197:5678
+- `STORAGE_BASE_URL=https://api.zaoqidawang.xin`（上传接口返回的 `url` 须为 HTTPS）
 
 ## ⚠️ 重要提醒
 
@@ -46,10 +47,10 @@
 
 1. 登录[微信公众平台](https://mp.weixin.qq.com/)
 2. 进入：开发 → 开发管理 → 开发设置
-3. 在"服务器域名"中配置：
-   - **request合法域名**：`https://api.yourdomain.com` 或 `http://149.104.29.197:3000`（开发环境）
-   - **uploadFile合法域名**：`https://api.yourdomain.com` 或 `http://149.104.29.197:3000`（开发环境）
-   - **downloadFile合法域名**：`http://149.104.29.197:5678`（文件服务）
+3. 在「服务器域名」中配置（**仅 HTTPS 域名**，不要填 IP）：
+   - **request合法域名**：`https://api.zaoqidawang.xin`
+   - **uploadFile合法域名**：`https://api.zaoqidawang.xin`
+   - **downloadFile合法域名**：`https://api.zaoqidawang.xin`（与静态资源同源即可）
 
 #### 2. 配置Nginx反向代理（可选，推荐）
 

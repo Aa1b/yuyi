@@ -118,8 +118,9 @@ bash deploy-backend.sh
 
 ```javascript
 export default {
-  isMock: false, // 生产环境设为 false
-  baseUrl: 'http://your-api-domain.com/api', // API地址
+  isMock: false,
+  baseUrl: 'https://api.zaoqidawang.xin/api',
+  publicBaseUrl: 'https://api.zaoqidawang.xin', // 图片/视频 HTTPS 根域名（与 uploads 同源）
 };
 ```
 
@@ -142,7 +143,7 @@ JWT_EXPIRES_IN=7d
 # 文件存储配置
 STORAGE_TYPE=local
 STORAGE_PATH=/data/uploads
-STORAGE_BASE_URL=http://your-domain.com:5678
+STORAGE_BASE_URL=https://api.zaoqidawang.xin
 ```
 
 详细配置说明请查看：[生产环境配置](PRODUCTION_CONFIG.md)

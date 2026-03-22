@@ -11,6 +11,7 @@ class StorageService {
   constructor() {
     this.storageType = process.env.STORAGE_TYPE || 'local';
     this.storagePath = process.env.STORAGE_PATH || './uploads';
+    // 生产环境请在 .env 设置 HTTPS，例如：https://api.example.com（与小程序 downloadFile 合法域名一致）
     this.baseUrl = process.env.STORAGE_BASE_URL || 'http://localhost:3000';
     
     // 确保存储目录存在

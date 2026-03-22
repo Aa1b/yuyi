@@ -1,19 +1,7 @@
 import request from '~/api/request';
 import config from '~/config';
 import { areaList } from './areaData.js';
-
-function resolveMediaUrl(url) {
-  if (!url || typeof url !== 'string') return url || '';
-  const legacyHost = 'http://149.104.29.197:5678';
-  if (url.startsWith(legacyHost)) {
-    const base = (config.baseUrl || '').replace(/\/api\/?$/, '');
-    const path = url.slice(legacyHost.length);
-    return base + (path.startsWith('/') ? path : '/' + path);
-  }
-  if (/^https?:\/\//i.test(url)) return url;
-  const base = (config.baseUrl || '').replace(/\/api\/?$/, '');
-  return base + (url.startsWith('/') ? url : '/' + url);
-}
+import resolveMediaUrl from '~/utils/resolveMediaUrl';
 
 Page({
   data: {

@@ -2,6 +2,7 @@
 import request from '~/api/request';
 import Message from 'tdesign-miniprogram/message/index';
 import { formatDateTime } from '~/utils/time';
+import resolveMediaUrl from '~/utils/resolveMediaUrl';
 
 const VALID_TYPES = ['all', 'like', 'comment', 'follow', 'guestbook'];
 
@@ -74,6 +75,7 @@ Page({
       const listWithTime = list.map((n) => ({
         ...n,
         displayTime: formatDateTime(n.createdAt),
+        userAvatar: n.userAvatar ? resolveMediaUrl(n.userAvatar) : n.userAvatar,
       }));
 
       if (refresh) {

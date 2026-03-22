@@ -1,28 +1,7 @@
-import config from '~/config';
 import request from '~/api/request';
 import Message from 'tdesign-miniprogram/message/index';
 import { formatDateTime } from '~/utils/time';
-
-/** 将后端返回的媒体地址转为小程序可用的完整 URL */
-function resolveMediaUrl(url) {
-  if (!url || typeof url !== 'string') return url || '';
-
-  const legacyHost = 'http://149.104.29.197:5678';
-
-  // 兼容老数据：老 IP 地址
-  if (url.startsWith(legacyHost)) {
-    const base = (config.baseUrl || '').replace(/\/api\/?$/, '');
-    const path = url.slice(legacyHost.length);
-    return base + (path.startsWith('/') ? path : '/' + path);
-  }
-
-  // 已经是 http/https 的其它完整 URL，直接返回
-  if (/^https?:\/\//i.test(url)) return url;
-
-  // 相对路径补全为当前后端域名
-  const base = (config.baseUrl || '').replace(/\/api\/?$/, '');
-  return base + (url.startsWith('/') ? url : '/' + url);
-}
+import resolveMediaUrl from '~/utils/resolveMediaUrl';
 
 Component({
   properties: {

@@ -1,6 +1,7 @@
 // pages/user-profile/index.js
 import request from '~/api/request';
 import Message from 'tdesign-miniprogram/message/index';
+import resolveMediaUrl from '~/utils/resolveMediaUrl';
 
 Page({
   data: {
@@ -58,6 +59,9 @@ Page({
       if (!userInfo) {
         this.setData({ loading: false });
         return;
+      }
+      if (userInfo.avatar) {
+        userInfo.avatar = resolveMediaUrl(userInfo.avatar);
       }
       const isSelf = userInfo.isSelf || false;
       this.setData({

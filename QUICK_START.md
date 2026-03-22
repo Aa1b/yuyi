@@ -2,8 +2,7 @@
 
 ## 🎯 目标配置
 
-- **服务器IP**: 149.104.29.197
-- **文件服务端口**: 5678
+- **对外 HTTPS 域名**: `api.zaoqidawang.xin`（API + 静态资源同源，推荐）
 - **存储路径**: /data/uploads/
 - **数据库**: MySQL 5.7+
 - **数据库名**: life_record_db
@@ -80,35 +79,34 @@ sudo chown -R $USER:$USER /data/uploads
 sudo chmod -R 755 /data/uploads
 ```
 
-#### 3. 配置Nginx
+#### 3. 配置 Nginx（HTTPS + 证书，与小程序合法域名一致）
 
-```bash
-sudo tee /etc/nginx/sites-available/file-storage > /dev/null <<EOF
+生产环境请使用 **443 + SSL**，将 `server_name` 改为你的域名，`ssl_certificate` 指向证书路径；`/uploads/` 与 `/api/` 可同站或分路径反代。示例（需按实际证书路径修改）：
+
+```nginx
 server {
-    listen 5678;
-    server_name 149.104.29.197;
+    listen 443 ssl;
+    server_name api.zaoqidawang.xin;
+    ssl_certificate     /path/to/fullchain.pem;
+    ssl_certificate_key /path/to/privkey.pem;
     client_max_body_size 100M;
     location /uploads/ {
         alias /data/uploads/;
         expires 30d;
         add_header Cache-Control "public, immutable";
     }
-    location /health {
-        access_log off;
-        return 200 "healthy\n";
-        add_header Content-Type text/plain;
+    location /api/ {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
     }
 }
-EOF
-
-sudo ln -s /etc/nginx/sites-available/file-storage /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl restart nginx
 ```
 
 #### 4. 开放防火墙端口
 
 ```bash
-sudo ufw allow 5678/tcp && sudo ufw reload
+sudo ufw allow 443/tcp && sudo ufw allow 80/tcp && sudo ufw reload
 ```
 
 ### 后端服务部署（手动）
@@ -135,7 +133,7 @@ DB_NAME=life_record_db
 # 文件存储配置
 STORAGE_TYPE=local
 STORAGE_PATH=/data/uploads
-STORAGE_BASE_URL=http://149.104.29.197:5678
+STORAGE_BASE_URL=https://api.zaoqidawang.xin
 
 # JWT配置
 JWT_SECRET=your_secret_key
@@ -159,8 +157,8 @@ pm2 save
 # 测试数据库
 mysql -u life_record_user -p life_record_db -e "SHOW TABLES;"
 
-# 测试文件服务
-curl http://149.104.29.197:5678/health
+# 测试文件服务（HTTPS）
+curl https://api.zaoqidawang.xin/health
 
 # 测试后端API
 curl http://localhost:3000/api/health

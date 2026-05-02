@@ -9,6 +9,11 @@ Component({
       type: Object,
       value: {},
     },
+    /** 为 true 时，未登录点击进详情/互动会先提示并跳转登录（如首页列表） */
+    requireLoginForDetail: {
+      type: Boolean,
+      value: false,
+    },
   },
   data: {
     displayAvatarUrl: '',
@@ -51,7 +56,28 @@ Component({
   },
   methods: {
     stopPropagation(e) {},
+    /** Message/t-message 挂在页面节点上，须传页面实例，不能用组件 this */
+    messagePageContext() {
+      const stack = getCurrentPages();
+      return stack.length ? stack[stack.length - 1] : this;
+    },
+    /** @returns {boolean} 是否已满足登录要求，可继续进详情 */
+    ensureLoginForDetail() {
+      if (!this.properties.requireLoginForDetail) return true;
+      if (wx.getStorageSync('access_token')) return true;
+      Message.warning({
+        context: this.messagePageContext(),
+        offset: [120, 32],
+        duration: 2000,
+        content: '请先登录后再查看',
+      });
+      setTimeout(() => {
+        wx.navigateTo({ url: '/pages/login/login' });
+      }, 600);
+      return false;
+    },
     goToDetail() {
+      if (!this.ensureLoginForDetail()) return;
       const record = this.properties.record || this.data.record;
       if (record && record.id) {
         wx.navigateTo({
@@ -79,6 +105,7 @@ Component({
       if (e) {
         e.stopPropagation();
       }
+      if (!this.ensureLoginForDetail()) return;
       const record = this.properties.record || this.data.record;
       if (!record || !record.id) return;
       const { id, isLiked } = record;
@@ -99,7 +126,7 @@ Component({
         }
       } catch (error) {
         Message.error({
-          context: this,
+          context: this.messagePageContext(),
           offset: [120, 32],
           duration: 2000,
           content: '操作失败，请重试',

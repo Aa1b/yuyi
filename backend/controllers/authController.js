@@ -364,7 +364,7 @@ exports.getProfile = async (req, res, next) => {
     const userId = req.user.id;
 
     const [users] = await pool.execute(
-      'SELECT id, openid, nickname, avatar, gender, birth, address, introduction, phone, is_admin, created_at FROM users WHERE id = ?',
+      "SELECT id, openid, nickname, avatar, gender, DATE_FORMAT(birth, '%Y-%m-%d') AS birth, address, introduction, phone, is_admin, created_at FROM users WHERE id = ?",
       [userId]
     );
 
@@ -486,7 +486,7 @@ exports.updateProfile = async (req, res, next) => {
 
     // 返回更新后的用户信息
     const [users] = await pool.execute(
-      'SELECT id, nickname, avatar, gender, birth, address, introduction FROM users WHERE id = ?',
+      "SELECT id, nickname, avatar, gender, DATE_FORMAT(birth, '%Y-%m-%d') AS birth, address, introduction FROM users WHERE id = ?",
       [userId]
     );
 

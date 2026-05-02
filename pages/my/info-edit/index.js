@@ -2,6 +2,7 @@ import request from '~/api/request';
 import config from '~/config';
 import { areaList } from './areaData.js';
 import resolveMediaUrl from '~/utils/resolveMediaUrl';
+import { formatBirthDate } from '~/utils/time';
 
 Page({
   data: {
@@ -72,7 +73,7 @@ Page({
         name: data.nickname || '',
         avatar,
         gender: data.gender === 1 ? 0 : data.gender === 2 ? 1 : 2,
-        birth: data.birth || '',
+        birth: formatBirthDate(data.birth),
         address,
         introduction: data.introduction || '',
       };

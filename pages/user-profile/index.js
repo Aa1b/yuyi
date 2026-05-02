@@ -44,9 +44,12 @@ Page({
   },
 
   onShow() {
-    // 返回个人主页时刷新一次用户资料，确保头像等信息是最新的
-    if (this.data.userId) {
-      this.loadUserProfile();
+    const { userId, activeTab } = this.data;
+    if (!userId) return;
+    // 返回本页时刷新资料；若在「赞过」Tab，顺带刷新列表（避免详情里取消赞后仍显示旧数据）
+    this.loadUserProfile();
+    if (activeTab === 'liked') {
+      this.loadLikedRecords(true);
     }
   },
 
@@ -70,7 +73,6 @@ Page({
         isSelf,
         loading: false,
       });
-      if (isSelf) this.loadLikedRecords(true); // 本人进入时预加载「我赞过的」
     } catch (error) {
       this.setData({ loading: false });
       console.error('加载用户信息失败', error);

@@ -75,7 +75,8 @@ Page({
       const listWithTime = list.map((n) => ({
         ...n,
         displayTime: formatDateTime(n.createdAt),
-        userAvatar: n.userAvatar ? resolveMediaUrl(n.userAvatar) : n.userAvatar,
+        // 与后端 notification 字段一致：fromUserAvatar（勿用 userAvatar，会拿不到图）
+        fromUserAvatar: n.fromUserAvatar ? resolveMediaUrl(n.fromUserAvatar) : n.fromUserAvatar,
       }));
 
       if (refresh) {
@@ -173,6 +174,7 @@ Page({
       const list = (res.data?.list ?? []).map((item) => ({
         ...item,
         displayTime: formatDateTime(item.lastTime),
+        userAvatar: item.userAvatar ? resolveMediaUrl(item.userAvatar) : item.userAvatar,
       }));
       this.setData({ guestbookList: list, loadingGuestbook: false });
     } catch (err) {

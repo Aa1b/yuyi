@@ -49,6 +49,7 @@
                 wx:for="{{lifeRecords}}"
                 wx:key="id"
                 record="{{item}}"
+                require-login-for-detail="{{true}}"
               />
             </view>
             
@@ -102,6 +103,7 @@
                 wx:for="{{lifeRecords}}"
                 wx:key="id"
                 record="{{item}}"
+                require-login-for-detail="{{true}}"
               />
             </view>
             <view wx:if="{{loading}}" class="home-loading">
@@ -153,6 +155,7 @@
                 wx:for="{{lifeRecords}}"
                 wx:key="id"
                 record="{{item}}"
+                require-login-for-detail="{{true}}"
               />
             </view>
 
@@ -182,6 +185,7 @@
                 wx:for="{{focusRecords}}"
                 wx:key="id"
                 record="{{item}}"
+                require-login-for-detail="{{true}}"
               />
             </view>
             <view wx:if="{{focusRecords.length === 0 && !loadingFollow}}" class="home-empty">

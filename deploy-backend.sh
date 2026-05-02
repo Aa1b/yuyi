@@ -155,7 +155,29 @@ fi
 
 echo -e "\n${GREEN}[4/6] 测试数据库连接...${NC}"
 
-if node -e "require('./config/database.js')" 2>/dev/null; then
+# 不能使用 require('./config/database.js')：该模块会常驻连接池导致 node 进程不退出、脚本卡死
+if node <<'NODECHK'
+require('dotenv').config();
+const mysql = require('mysql2/promise');
+(async () => {
+  const pool = mysql.createPool({
+    host: process.env.DB_HOST || 'localhost',
+    port: Number(process.env.DB_PORT) || 3306,
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME || 'life_record_db',
+    waitForConnections: true,
+    connectionLimit: 1,
+  });
+  const c = await pool.getConnection();
+  c.release();
+  await pool.end();
+})().catch((e) => {
+  console.error(e.message);
+  process.exit(1);
+});
+NODECHK
+then
     echo -e "${GREEN}✓ 数据库连接成功${NC}"
 else
     echo -e "${YELLOW}⚠ 数据库连接测试失败，请检查 .env 配置${NC}"

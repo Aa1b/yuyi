@@ -79,14 +79,16 @@ exports.getConversation = async (req, res, next) => {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const pageSize = Math.min(50, Math.max(1, parseInt(req.query.pageSize, 10) || 20));
     const offset = (page - 1) * pageSize;
+    const limitNum = Math.floor(Number(pageSize)) || 20;
+    const offsetNum = Math.floor(Number(offset)) || 0;
 
     const [messages] = await pool.execute(
       `SELECT m.id, m.from_user_id as fromUserId, m.to_user_id as toUserId, m.content, m.is_read as isRead, m.created_at as createdAt
        FROM user_messages m
        WHERE (m.from_user_id = ? AND m.to_user_id = ?) OR (m.from_user_id = ? AND m.to_user_id = ?)
        ORDER BY m.created_at ASC
-       LIMIT ? OFFSET ?`,
-      [me, otherUserId, otherUserId, me, pageSize, offset]
+       LIMIT ${limitNum} OFFSET ${offsetNum}`,
+      [me, otherUserId, otherUserId, me]
     );
 
     // 标记对方发来的未读为已读
@@ -131,6 +133,8 @@ exports.getConversations = async (req, res, next) => {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const pageSize = Math.min(50, Math.max(1, parseInt(req.query.pageSize, 10) || 20));
     const offset = (page - 1) * pageSize;
+    const limitNum = Math.floor(Number(pageSize)) || 20;
+    const offsetNum = Math.floor(Number(offset)) || 0;
 
     const [rows] = await pool.execute(
       `SELECT 
@@ -151,8 +155,8 @@ exports.getConversations = async (req, res, next) => {
        JOIN user_messages m ON m.id = t.last_id
        JOIN users u ON u.id = t.other_user_id
        ORDER BY m.created_at DESC
-       LIMIT ? OFFSET ?`,
-      [me, me, me, me, pageSize, offset]
+       LIMIT ${limitNum} OFFSET ${offsetNum}`,
+      [me, me, me, me]
     );
 
     const [countRows] = await pool.execute(

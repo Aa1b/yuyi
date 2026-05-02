@@ -115,6 +115,8 @@ exports.getFollowing = async (req, res, next) => {
 
     const limit = Math.min(100, Math.max(1, parseInt(pageSize, 10) || 20));
     const offset = Math.max(0, (parseInt(page, 10) || 1) - 1) * limit;
+    const limitNum = Math.floor(Number(limit)) || 20;
+    const offsetNum = Math.floor(Number(offset)) || 0;
 
     const [follows] = await pool.execute(
       `SELECT 
@@ -126,8 +128,8 @@ exports.getFollowing = async (req, res, next) => {
       LEFT JOIN users u ON uf.following_id = u.id
       WHERE uf.follower_id = ?
       ORDER BY uf.created_at DESC
-      LIMIT ? OFFSET ?`,
-      [ownerId, limit, offset]
+      LIMIT ${limitNum} OFFSET ${offsetNum}`,
+      [ownerId]
     );
 
     if (ownerId !== currentUserId && follows.length > 0) {
@@ -183,6 +185,8 @@ exports.getFollowers = async (req, res, next) => {
 
     const limit = Math.min(100, Math.max(1, parseInt(pageSize, 10) || 20));
     const offset = Math.max(0, (parseInt(page, 10) || 1) - 1) * limit;
+    const limitNum = Math.floor(Number(limit)) || 20;
+    const offsetNum = Math.floor(Number(offset)) || 0;
 
     const [followers] = await pool.execute(
       `SELECT 
@@ -194,8 +198,8 @@ exports.getFollowers = async (req, res, next) => {
       LEFT JOIN users u ON uf.follower_id = u.id
       WHERE uf.following_id = ?
       ORDER BY uf.created_at DESC
-      LIMIT ? OFFSET ?`,
-      [ownerId, limit, offset]
+      LIMIT ${limitNum} OFFSET ${offsetNum}`,
+      [ownerId]
     );
 
     if (followers.length > 0) {

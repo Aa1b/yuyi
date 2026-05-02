@@ -308,8 +308,8 @@ exports.getLikedList = async (req, res, next) => {
     const { page = 1, pageSize = 10, userId: targetUserId } = req.query;
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
     const pageSizeNum = Math.min(100, Math.max(1, parseInt(pageSize, 10) || 10));
-    const limit = pageSizeNum;
-    const offset = (pageNum - 1) * limit;
+    const safeLimit = Math.min(100, Math.max(1, Math.floor(Number(pageSizeNum)) || 10));
+    const safeOffset = Math.max(0, Math.floor(Number((pageNum - 1) * safeLimit)) || 0);
 
     const ownerId = targetUserId ? parseInt(targetUserId) : currentUserId;
     if (!ownerId) {
@@ -352,8 +352,8 @@ exports.getLikedList = async (req, res, next) => {
       LEFT JOIN users u ON r.user_id = u.id
       ${whereClause}
       ORDER BY l.created_at DESC
-      LIMIT ? OFFSET ?`,
-      [...queryParams, limit, offset]
+      LIMIT ${safeLimit} OFFSET ${safeOffset}`,
+      queryParams
     );
 
     const [countRows] = await pool.execute(
@@ -400,7 +400,7 @@ exports.getLikedList = async (req, res, next) => {
     res.json({
       code: 200,
       message: '获取成功',
-      data: { list: records, total, page: pageNum, pageSize: limit },
+      data: { list: records, total, page: pageNum, pageSize: safeLimit },
     });
   } catch (error) {
     next(error);

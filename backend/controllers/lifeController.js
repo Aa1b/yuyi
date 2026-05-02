@@ -4,7 +4,28 @@ const { validateRecordCreate, validateRecordUpdate, validateComment } = require(
 
 /** 发布/编辑时校验：分类在字典中且启用；已存在的禁用标签不可选用 */
 async function assertPublishCategoryAndTags(category, tags, options = {}) {
-  const { skipCategory = false, skipTags = false } = options;
+  const { skipCategory = false, skipTags = false, updateRecordId = null } = options;
+
+  let previousCategory = null;
+  let existingTagNames = new Set();
+  if (updateRecordId != null) {
+    const [rows] = await pool.execute(
+      'SELECT category FROM life_records WHERE id = ? AND status = 1',
+      [updateRecordId]
+    );
+    if (rows.length > 0) previousCategory = rows[0].category;
+    try {
+      const [tagRows] = await pool.execute(
+        `SELECT t.name FROM life_record_tags rrt
+         INNER JOIN life_tags t ON rrt.tag_id = t.id
+         WHERE rrt.record_id = ?`,
+        [updateRecordId]
+      );
+      existingTagNames = new Set(tagRows.map((r) => String(r.name)));
+    } catch (e) {
+      if (e.code !== 'ER_NO_SUCH_TABLE') throw e;
+    }
+  }
 
   let hasCategoryDict = false;
   try {
@@ -17,24 +38,34 @@ async function assertPublishCategoryAndTags(category, tags, options = {}) {
   if (!skipCategory && hasCategoryDict) {
     const trimmed = category != null && String(category).trim() !== '' ? String(category).trim() : '';
     if (trimmed) {
-      const [ok] = await pool.execute(
-        'SELECT id FROM life_categories WHERE name = ? AND is_enabled = 1',
-        [trimmed]
-      );
-      if (ok.length === 0) {
-        const err = new Error('分类不可用或已禁用，请重新选择');
-        err.statusCode = 400;
-        throw err;
+      const unchanged =
+        previousCategory != null &&
+        String(previousCategory).trim() === trimmed;
+      if (!unchanged) {
+        const [ok] = await pool.execute(
+          'SELECT id FROM life_categories WHERE name = ? AND is_enabled = 1',
+          [trimmed]
+        );
+        if (ok.length === 0) {
+          const err = new Error('分类不可用或已禁用，请重新选择');
+          err.statusCode = 400;
+          throw err;
+        }
       }
     }
   }
 
   if (!skipTags && tags && tags.length > 0) {
     for (const tagName of tags) {
+      const name = String(tagName).trim();
+      if (!name) continue;
       try {
-        const [rows] = await pool.execute('SELECT id, is_enabled FROM life_tags WHERE name = ?', [tagName]);
+        const [rows] = await pool.execute('SELECT id, is_enabled FROM life_tags WHERE name = ?', [name]);
         if (rows.length > 0 && Number(rows[0].is_enabled) === 0) {
-          const err = new Error(`标签「${tagName}」已禁用，无法选用`);
+          if (updateRecordId != null && existingTagNames.has(name)) {
+            continue;
+          }
+          const err = new Error(`标签「${name}」已禁用，无法选用`);
           err.statusCode = 400;
           throw err;
         }
@@ -759,7 +790,11 @@ exports.updateRecord = async (req, res, next) => {
       await assertPublishCategoryAndTags(
         category !== undefined ? category : undefined,
         tags !== undefined ? tags : undefined,
-        { skipCategory: category === undefined, skipTags: tags === undefined }
+        {
+          skipCategory: category === undefined,
+          skipTags: tags === undefined,
+          updateRecordId: id,
+        }
       );
     } catch (e) {
       if (e.statusCode === 400) {

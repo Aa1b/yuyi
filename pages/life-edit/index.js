@@ -484,11 +484,15 @@ Page({
     } catch (error) {
       wx.hideLoading();
       console.error('更新失败', error);
+      const msg =
+        (error && error.message) ||
+        (error && error.data && error.data.message) ||
+        '更新失败，请重试';
       Message.error({
         context: this,
         offset: [120, 32],
-        duration: 2000,
-        content: '更新失败，请重试',
+        duration: 2500,
+        content: msg !== '请求失败' ? msg : '更新失败，请重试',
       });
     }
   },

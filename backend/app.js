@@ -7,6 +7,12 @@ const rateLimit = require('express-rate-limit');
 
 const app = express();
 
+// 经 Nginx/Caddy 等反向代理时务必设为 TRUST_PROXY=1，否则 req.ip 可能是代理地址，
+// 所有用户会共用同一条限流计数，极易在短时间内触发 429。
+if (process.env.TRUST_PROXY === '1') {
+  app.set('trust proxy', 1);
+}
+
 // 导入路由
 const authRoutes = require('./routes/auth');
 const lifeRoutes = require('./routes/life');
@@ -40,11 +46,16 @@ if (process.env.NODE_ENV !== 'production') {
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// 速率限制
+// 速率限制（可通过环境变量调整；生产若前有代理务必配合 TRUST_PROXY=1）
+const rateLimitEnabled = process.env.RATE_LIMIT_ENABLED !== 'false';
+const rateLimitMax = Math.max(1, parseInt(process.env.RATE_LIMIT_MAX || '800', 10));
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15分钟
-  max: 100, // 限制每个IP最多100次请求
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || String(15 * 60 * 1000), 10),
+  max: rateLimitMax,
   message: '请求过于频繁，请稍后再试',
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: () => !rateLimitEnabled,
 });
 app.use('/api/', limiter);
 

@@ -75,7 +75,7 @@ const checkRecordPermission = async (recordId, userId = null) => {
     return { allowed: true, record };
   }
 
-  // 好友可见，需要检查关注关系
+  // friends：互相关注的用户可见（两条 user_follows：彼此关注）
   if (record.privacy === 'friends') {
     if (!userId) {
       return { allowed: false, record };
@@ -86,13 +86,16 @@ const checkRecordPermission = async (recordId, userId = null) => {
       return { allowed: true, record };
     }
 
-    // 检查是否互相关注
-    const [follows] = await pool.execute(
+    const [ab] = await pool.execute(
       'SELECT id FROM user_follows WHERE follower_id = ? AND following_id = ?',
       [userId, record.user_id]
     );
+    const [ba] = await pool.execute(
+      'SELECT id FROM user_follows WHERE follower_id = ? AND following_id = ?',
+      [record.user_id, userId]
+    );
 
-    if (follows.length > 0) {
+    if (ab.length > 0 && ba.length > 0) {
       return { allowed: true, record };
     }
 
@@ -153,9 +156,11 @@ exports.getList = async (req, res, next) => {
       if (parseInt(userId) === currentUserId) {
         // 自己的记录，显示所有
       } else {
-        // 他人的记录，只显示公开和好友可见（如果已关注）
-        whereConditions.push('(r.privacy = "public" OR (r.privacy = "friends" AND EXISTS (SELECT 1 FROM user_follows WHERE follower_id = ? AND following_id = r.user_id)))');
-        queryParams.push(currentUserId || 0);
+        // 他人的记录：仅公开；friends 档仅当与作者互相关注时可见
+        whereConditions.push(
+          '(r.privacy = "public" OR (r.privacy = "friends" AND EXISTS (SELECT 1 FROM user_follows WHERE follower_id = ? AND following_id = r.user_id) AND EXISTS (SELECT 1 FROM user_follows WHERE follower_id = r.user_id AND following_id = ?)))'
+        );
+        queryParams.push(currentUserId || 0, currentUserId || 0);
       }
     } else if (privacy === 'all' && !userId && currentUserId) {
       // 默认：当前用户的记录，显示所有

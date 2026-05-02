@@ -20,6 +20,7 @@
             size="32rpx"
             color="#999"
           />
+          <text class="life-detail-privacy-text">{{record.privacyLabel}}</text>
         </view>
       </view>
 
@@ -96,10 +97,19 @@
       <view wx:else class="life-detail-comments-list">
         <view wx:for="{{comments}}" wx:key="id" wx:for-item="comment" id="comment-{{comment.id}}" class="life-detail-comment-block">
           <view class="life-detail-comment">
-            <t-avatar image="{{comment.avatar}}" size="small" />
+            <t-avatar
+              image="{{comment.avatar}}"
+              size="small"
+              catchtap="goToUserProfile"
+              data-user-id="{{comment.userId}}"
+            />
             <view class="life-detail-comment-content">
               <view class="life-detail-comment-header">
-                <text class="life-detail-comment-username">{{comment.userName}}</text>
+                <text
+                  class="life-detail-comment-username"
+                  catchtap="goToUserProfile"
+                  data-user-id="{{comment.userId}}"
+                >{{comment.userName}}</text>
                 <text class="life-detail-comment-time">{{comment.displayTime}}</text>
                 <text class="life-detail-comment-reply-btn" data-id="{{comment.id}}" data-name="{{comment.userName}}" bindtap="onReplyTap">回复</text>
               </view>
@@ -108,9 +118,24 @@
           </view>
           <view wx:if="{{comment.replies && comment.replies.length}}" class="life-detail-replies">
             <view wx:for="{{comment.replies}}" wx:key="id" wx:for-item="reply" id="comment-{{reply.id}}" class="life-detail-reply">
-              <text class="life-detail-reply-label">回复 {{reply.replyToUserName}}：</text>
-              <text class="life-detail-reply-text">{{reply.content}}</text>
-              <text class="life-detail-reply-time">{{reply.displayTime}}</text>
+              <t-avatar
+                image="{{reply.avatar}}"
+                size="small"
+                catchtap="goToUserProfile"
+                data-user-id="{{reply.userId}}"
+              />
+              <view class="life-detail-reply-main">
+                <view class="life-detail-reply-meta">
+                  <text
+                    class="life-detail-reply-author"
+                    catchtap="goToUserProfile"
+                    data-user-id="{{reply.userId}}"
+                  >{{reply.userName}}</text>
+                  <text class="life-detail-reply-label"> 回复 {{reply.replyToUserName}}：</text>
+                </view>
+                <text class="life-detail-reply-text">{{reply.content}}</text>
+                <text class="life-detail-reply-time">{{reply.displayTime}}</text>
+              </view>
             </view>
           </view>
         </view>

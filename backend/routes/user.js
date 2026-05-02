@@ -32,6 +32,13 @@ router.get('/following', authenticate, userController.getFollowing);
 router.get('/followers', authenticate, userController.getFollowers);
 
 /**
+ * @route GET /api/user/mutual
+ * @desc 互关列表（可选 userId 查看他人）
+ * @access Private
+ */
+router.get('/mutual', authenticate, userController.getMutual);
+
+/**
  * @route GET /api/user/profile/:userId
  * @desc 获取用户信息（个人主页）
  * @access Public

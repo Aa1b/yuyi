@@ -1,6 +1,7 @@
 import request from '~/api/request';
 import config from '~/config';
 import { areaList } from '~/utils/areaData.js';
+import { getCitiesOfProvince, createInitialProvinceCityState } from '~/utils/areaPickerHelpers';
 import resolveMediaUrl from '~/utils/resolveMediaUrl';
 import { formatBirthDate } from '~/utils/time';
 
@@ -88,21 +89,8 @@ Page({
     }
   },
 
-  getAreaOptions(data, filter) {
-    const res = Object.keys(data).map((key) => ({ value: key, label: data[key] }));
-    return typeof filter === 'function' ? res.filter(filter) : res;
-  },
-
-  getCities(provinceValue) {
-    return this.getAreaOptions(
-      areaList.cities,
-      (city) => `${city.value}`.slice(0, 2) === `${provinceValue}`.slice(0, 2),
-    );
-  },
-
   initAreaData() {
-    const provinces = this.getAreaOptions(areaList.provinces);
-    const cities = this.getCities(provinces[0].value);
+    const { provinces, cities } = createInitialProvinceCityState();
     this.setData({ provinces, cities });
   },
 
@@ -112,7 +100,7 @@ Page({
 
     // 更改省份则更新城市列表
     if (column === 0) {
-      const cities = this.getCities(provinces[index].value);
+      const cities = getCitiesOfProvince(provinces[index].value);
       this.setData({ cities });
     }
   },
@@ -123,7 +111,7 @@ Page({
       [`${mode}Visible`]: true,
     });
     if (mode === 'address') {
-      const cities = this.getCities(this.data.personInfo.address[0]);
+      const cities = getCitiesOfProvince(this.data.personInfo.address[0]);
       this.setData({ cities });
     }
   },

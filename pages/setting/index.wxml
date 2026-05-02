@@ -1,82 +1,38 @@
 <t-navbar title="设置" left-arrow />
 <view class="setting">
-  <view class="setting-group">
-    <view class="setting-row">
-      <view class="setting-row-left">
-        <t-icon name="image" size="40rpx" />
-        <text class="setting-title">深色模式</text>
-      </view>
-      <switch checked="{{darkMode}}" bindchange="onDarkModeChange" />
-    </view>
-    <view class="setting-cell" bindtap="onFontSizeTap">
-      <view class="setting-row-left">
-        <t-icon name="chart" size="40rpx" />
-        <text class="setting-title">字体大小</text>
-      </view>
-      <text class="setting-note">{{fontSizeLabel}}</text>
-      <t-icon name="chevron-right" size="32rpx" class="setting-arrow" />
-    </view>
-    <view class="setting-cell" bindtap="onPlayTap">
-      <view class="setting-row-left">
-        <t-icon name="sound" size="40rpx" />
-        <text class="setting-title">播放设置</text>
-      </view>
-      <text class="setting-note">{{videoPlayLabel}}</text>
-      <t-icon name="chevron-right" size="32rpx" class="setting-arrow" />
-    </view>
-    <view class="setting-row">
-      <view class="setting-row-left">
-        <t-icon name="sound" size="40rpx" />
-        <text class="setting-title">静音播放</text>
-      </view>
-      <switch checked="{{videoMute}}" bindchange="onVideoMuteChange" />
-    </view>
-  </view>
-
-  <view class="setting-group">
-    <view class="setting-row">
-      <view class="setting-row-left">
-        <t-icon name="thumb-up" size="40rpx" />
-        <text class="setting-title">接收点赞通知</text>
-      </view>
-      <switch checked="{{notifyLike}}" bindchange="onNotifyLikeChange" />
-    </view>
-    <view class="setting-row">
-      <view class="setting-row-left">
-        <t-icon name="chat" size="40rpx" />
-        <text class="setting-title">接收评论通知</text>
-      </view>
-      <switch checked="{{notifyComment}}" bindchange="onNotifyCommentChange" />
-    </view>
-    <view class="setting-row">
-      <view class="setting-row-left">
-        <t-icon name="user-add" size="40rpx" />
-        <text class="setting-title">接收关注通知</text>
-      </view>
-      <switch checked="{{notifyFollow}}" bindchange="onNotifyFollowChange" />
-    </view>
-  </view>
-
-  <view class="setting-group-title">隐私设置</view>
+  <view class="setting-group-title">发布</view>
   <t-cell-group theme="card" t-class="cell-group-class">
-    <t-cell title="新记录默认隐私" left-icon="lock-on" note="{{defaultPrivacyLabel}}" hover bindtap="onPrivacyTap" arrow />
+    <t-cell
+      title="新记录默认隐私"
+      note="{{defaultPrivacyLabel}}"
+      hover
+      bindtap="onPrivacyTap"
+      arrow
+    />
+  </t-cell-group>
+
+  <view class="setting-group-title">账号与安全</view>
+  <t-cell-group theme="card" t-class="cell-group-class">
+    <t-cell title="修改密码" hover bindtap="onChangePassword" arrow />
+  </t-cell-group>
+
+  <view class="setting-group-title">存储</view>
+  <t-cell-group theme="card" t-class="cell-group-class">
+    <t-cell
+      title="清除缓存"
+      note="保留登录态删除临时数据"
+      hover
+      bindtap="onClearCache"
+      arrow
+    />
   </t-cell-group>
 
   <view class="setting-group-title">协议与关于</view>
   <t-cell-group theme="card" t-class="cell-group-class">
-    <t-cell title="用户协议" left-icon="file-paste" hover bindtap="onUserAgreement" arrow />
-    <t-cell title="隐私政策" left-icon="shield" hover bindtap="onPrivacyPolicy" arrow />
-    <t-cell title="关于我们" left-icon="info-circle" hover bindtap="onAbout" arrow />
+    <t-cell title="用户协议" hover bindtap="onUserAgreement" arrow />
+    <t-cell title="隐私政策" hover bindtap="onPrivacyPolicy" arrow />
+    <t-cell title="关于我们" hover bindtap="onAbout" arrow />
   </t-cell-group>
-
-  <t-cell-group theme="card" t-class="cell-group-class">
-    <t-cell title="清除缓存" left-icon="delete" note="清除本地缓存数据" hover bindtap="onClearCache" arrow />
-    <t-cell title="修改密码" left-icon="lock" hover bindtap="onChangePassword" arrow />
-  </t-cell-group>
-
-  <view class="logout-wrap">
-    <t-button theme="danger" variant="outline" block bindtap="onLogout">退出登录</t-button>
-  </view>
 </view>
 
 <t-toast id="t-toast" />

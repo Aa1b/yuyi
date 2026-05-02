@@ -16,6 +16,7 @@
           <t-radio wx:for="{{privacyOptions}}" wx:key="value" value="{{item.value}}" label="{{item.label}}" />
         </t-radio-group>
       </view>
+      <view class="release-privacy-hint">{{privacyHint}}</view>
     </view>
 
     <!-- 图片上传 -->
@@ -130,23 +131,43 @@
       </view>
     </view>
 
-    <!-- 位置信息 -->
+    <!-- 位置：地图选点 + 与个人信息相同的手动选省市（兜底，便于同城含城市名） -->
     <view class="location box">
+      <view class="location-tip">优先从地图选点；若不想用地图，可选手动省/市，与「我的-编辑资料-地址」一致。保存内容需含城市名，「同城」才能匹配。</view>
       <t-cell
-        title="所在位置"
+        title="地图选点"
         hover
         arrow
         leftIcon="location"
-        value="{{location || '点击选择或下方输入（可选）'}}"
-        bindtap="onLocationTap"
+        note="{{mapLocationNote || '点击从地图选择（推荐）'}}"
+        bind:click="onLocationTap"
       />
-      <t-input
-        class="location-input"
-        placeholder="或在此输入位置（可选）"
-        value="{{location}}"
-        bind:change="onLocationInput"
-        bind:blur="onLocationInput"
+      <t-cell
+        title="选择城市"
+        hover
+        arrow
+        note="{{manualCityLabel || '地图不可用时，在此选省/市'}}"
+        bind:click="showCityPicker"
       />
+      <t-picker
+        mode="address"
+        title="选择省、市"
+        value="{{cityPickValue}}"
+        visible="{{cityPickVisible}}"
+        cancelBtn="取消"
+        confirmBtn="确定"
+        bind:cancel="hideCityPicker"
+        bind:change="onCityPickChange"
+        bind:close="hideCityPicker"
+        bind:pick="onCityPickColumnChange"
+      >
+        <t-picker-item options="{{provinces}}" />
+        <t-picker-item options="{{cities}}" />
+      </t-picker>
+      <view wx:if="{{location}}" class="location-footer">
+        <text class="location-summary">当前保存：{{location}}</text>
+        <text class="location-clear" catchtap="onClearLocation">清除</text>
+      </view>
     </view>
 
     <view class="btngroup-placeholder" />

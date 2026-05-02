@@ -230,10 +230,12 @@ Page({
     });
   },
   
-  // 编辑记录
+  // 编辑记录（t-button 触发的事件可能无 stopPropagation）
   editRecord(e) {
-    e.stopPropagation();
-    const { id } = e.currentTarget.dataset;
+    if (e && typeof e.stopPropagation === 'function') {
+      e.stopPropagation();
+    }
+    const { id } = (e && e.currentTarget && e.currentTarget.dataset) || {};
     if (id) {
       wx.navigateTo({
         url: `/pages/life-edit/index?id=${id}`,

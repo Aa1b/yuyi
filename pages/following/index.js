@@ -5,18 +5,35 @@ import resolveMediaUrl from '~/utils/resolveMediaUrl';
 
 Page({
   data: {
-    type: 'following', // following | followers
+    type: 'following', // following | followers | mutual
     userId: null, // 查看他人时传入
     list: [],
     loading: false,
     hasMore: true,
     page: 1,
     pageSize: 20,
+    emptyDesc: '还没有关注任何人',
+  },
+
+  syncEmptyDesc() {
+    const { type, userId } = this.data;
+    let emptyDesc = '还没有关注任何人';
+    if (type === 'followers') {
+      emptyDesc = '暂无粉丝';
+    } else if (type === 'mutual') {
+      emptyDesc = '暂无互关好友';
+    } else if (userId) {
+      emptyDesc = '暂无关注';
+    }
+    this.setData({ emptyDesc });
   },
 
   onLoad(options) {
     const { type = 'following', userId } = options || {};
-    this.setData({ type: type || 'following', userId: userId || null }, () => {
+    const validTypes = ['following', 'followers', 'mutual'];
+    const t = validTypes.includes(type) ? type : 'following';
+    this.setData({ type: t, userId: userId || null }, () => {
+      this.syncEmptyDesc();
       this.loadList(true);
     });
   },
@@ -25,7 +42,9 @@ Page({
     if (this.data.loading) return;
 
     const { type, userId, page, pageSize } = this.data;
-    const api = type === 'followers' ? '/user/followers' : '/user/following';
+    let api = '/user/following';
+    if (type === 'followers') api = '/user/followers';
+    else if (type === 'mutual') api = '/user/mutual';
     const params = { page: refresh ? 1 : page, pageSize };
     if (userId) params.userId = userId;
 
@@ -97,6 +116,7 @@ Page({
       const idx = list.findIndex(item => item.id == uid);
       if (idx >= 0) {
         list[idx].isFollowing = true;
+        list[idx].isMutual = true;
         this.setData({ list: [...list] });
       }
       Message.success({ context: this, offset: [120, 32], duration: 2000, content: '关注成功' });
@@ -108,7 +128,10 @@ Page({
   onTabChange(e) {
     const t = e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.type;
     if (t && t !== this.data.type) {
-      this.setData({ type: t, list: [], page: 1 }, () => this.loadList(true));
+      this.setData({ type: t, list: [], page: 1 }, () => {
+        this.syncEmptyDesc();
+        this.loadList(true);
+      });
     }
   },
 

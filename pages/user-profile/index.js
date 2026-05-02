@@ -103,7 +103,7 @@ Page({
         page: refresh ? 1 : page,
         pageSize,
         userId: String(userId),
-        // 未登录时只能看公开记录；登录后可看公开+（若已关注）好友可见
+        // 未登录仅公开；登录后可看公开 + 作者设为「好友可见」且与作者互相关注
         privacy: token ? 'all' : 'public',
       };
 

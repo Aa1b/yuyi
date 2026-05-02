@@ -50,6 +50,13 @@
       gap: 32rpx;
       flex-wrap: wrap;
     }
+
+    .release-privacy-hint {
+      font-size: 24rpx;
+      color: @text-color-placeholder;
+      line-height: 1.5;
+      padding-top: 8rpx;
+    }
   }
 
   .upload {
@@ -150,8 +157,35 @@
     font-weight: 600;
   }
 
-  .location-input {
-    padding: 16rpx 32rpx 24rpx;
+  .location-tip {
+    padding: 24rpx 32rpx 12rpx;
+    font-size: 24rpx;
+    color: @text-color-placeholder;
+    line-height: 1.5;
+    box-sizing: border-box;
+  }
+
+  .location-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16rpx;
+    padding: 12rpx 32rpx 24rpx;
+    box-sizing: border-box;
+  }
+
+  .location-summary {
+    flex: 1;
+    font-size: 24rpx;
+    color: @text-color-secondary;
+    line-height: 1.4;
+    word-break: break-all;
+  }
+
+  .location-clear {
+    flex-shrink: 0;
+    font-size: 26rpx;
+    color: @brand7-normal;
   }
 
   .btngroup-placeholder {

@@ -3,6 +3,12 @@ import config from '~/config';
 import request from '~/api/request';
 import Message from 'tdesign-miniprogram/message/index';
 import { getSetting, SETTING_KEYS } from '~/utils/settings';
+import { enrichAddressFromLocation, buildLocationLabel } from '~/utils/locationFromMap';
+import { LIFE_RECORD_PRIVACY_OPTIONS, LIFE_RECORD_PRIVACY_HINT } from '~/utils/privacyLabels';
+import {
+  createInitialProvinceCityState,
+  getCitiesOfProvince,
+} from '~/utils/areaPickerHelpers';
 
 Page({
   data: {
@@ -14,11 +20,8 @@ Page({
     title: '',
     content: '',
     privacy: getSetting(SETTING_KEYS.DEFAULT_PRIVACY) || 'public',
-    privacyOptions: [
-      { label: '公开', value: 'public', icon: 'globe' },
-      { label: '好友可见', value: 'friends', icon: 'user' },
-      { label: '私密', value: 'private', icon: 'lock-on' },
-    ],
+    privacyOptions: LIFE_RECORD_PRIVACY_OPTIONS,
+    privacyHint: LIFE_RECORD_PRIVACY_HINT,
     category: '',
     categoryList: ['日常', '旅行', '美食', '心情', '运动', '学习', '工作', '其他'],
     categoryIndex: 0,
@@ -27,9 +30,18 @@ Page({
     location: '',
     tagInput: '',
     isAdmin: false,
+    provinces: [],
+    cities: [],
+    cityPickVisible: false,
+    cityPickValue: [],
+    manualCityLabel: '',
+    /** 仅当地点来自地图选点时展示在「地图选点」行，与手动选城区分 */
+    mapLocationNote: '',
   },
 
   async onLoad() {
+    const { provinces, cities } = createInitialProvinceCityState();
+    this.setData({ provinces, cities });
     await this.loadCategories();
     await this.loadTags();
     await this.checkAdmin();
@@ -172,27 +184,84 @@ Page({
 
   onLocationTap() {
     if (typeof wx.chooseLocation !== 'function') {
-      Message.warning({ context: this, offset: [120, 32], duration: 2000, content: '请在下方的输入框中填写位置' });
+      Message.warning({
+        context: this,
+        offset: [120, 32],
+        duration: 2500,
+        content: '请使用真机，并从地图选择位置，保存的地址带城市信息，才能出现在「同城」',
+      });
       return;
     }
     wx.chooseLocation({
-      success: (res) => this.setData({ location: res.name || res.address || '' }),
+      success: async (res) => {
+        wx.showLoading({ title: '解析地址中…', mask: true });
+        try {
+          const enriched = await enrichAddressFromLocation(res.latitude, res.longitude);
+          const location = buildLocationLabel(res, enriched);
+          this.setData({
+            location,
+            mapLocationNote: location,
+            manualCityLabel: '',
+            cityPickValue: [],
+          });
+        } finally {
+          wx.hideLoading();
+        }
+      },
       fail: (err) => {
         if ((err && err.errMsg || '').includes('cancel')) return;
         Message.warning({
           context: this,
           offset: [120, 32],
           duration: 2500,
-          content: '选点失败（需真机或授权），请在下方的输入框中填写位置',
+          content: '打开地图失败，请检查定位权限后重试',
         });
       },
     });
   },
 
-  onLocationInput(e) {
-    const v = e.detail;
-    const location = (v && (v.value !== undefined ? v.value : v)) ?? '';
-    this.setData({ location: String(location).trim() });
+  onClearLocation() {
+    this.setData({
+      location: '',
+      mapLocationNote: '',
+      manualCityLabel: '',
+      cityPickValue: [],
+    });
+  },
+
+  showCityPicker() {
+    const { provinces, cityPickValue } = this.data;
+    const firstPv = provinces[0] && provinces[0].value;
+    let cities = firstPv ? getCitiesOfProvince(firstPv) : [];
+    if (cityPickValue && cityPickValue.length >= 1) {
+      cities = getCitiesOfProvince(cityPickValue[0]);
+    }
+    this.setData({ cityPickVisible: true, cities });
+  },
+
+  hideCityPicker() {
+    this.setData({ cityPickVisible: false });
+  },
+
+  onCityPickColumnChange(e) {
+    const { column, index } = e.detail;
+    const { provinces } = this.data;
+    if (column === 0 && provinces[index]) {
+      const cities = getCitiesOfProvince(provinces[index].value);
+      this.setData({ cities });
+    }
+  },
+
+  onCityPickChange(e) {
+    const { value, label } = e.detail;
+    const text = Array.isArray(label) ? label.join(' ') : '';
+    this.setData({
+      cityPickValue: value || [],
+      manualCityLabel: text,
+      location: text,
+      mapLocationNote: '',
+      cityPickVisible: false,
+    });
   },
 
   onTitleInput(e) {

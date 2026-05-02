@@ -3,6 +3,7 @@ import request from '~/api/request';
 import Message from 'tdesign-miniprogram/message/index';
 import { formatDateTime } from '~/utils/time';
 import resolveMediaUrl from '~/utils/resolveMediaUrl';
+import { getLifePrivacyLabel } from '~/utils/privacyLabels';
 
 Page({
   data: {
@@ -62,6 +63,7 @@ Page({
         };
       });
       record.displayTime = formatDateTime(record.createdAt);
+      record.privacyLabel = getLifePrivacyLabel(record.privacy);
       const commentTotal = comments.reduce((s, c) => s + 1 + (c.replies ? c.replies.length : 0), 0);
       this.setData({
         record,
@@ -201,7 +203,10 @@ Page({
 
     try {
       const res = await request('/life/comment', 'POST', payload);
-      const newComment = (res.data && res.data.id != null ? res.data : res.data?.data) || {};
+      const raw = (res.data && res.data.id != null ? res.data : res.data?.data) || {};
+      const newComment = { ...raw };
+      if (newComment.avatar) newComment.avatar = resolveMediaUrl(newComment.avatar);
+      if (newComment.createdAt) newComment.displayTime = formatDateTime(newComment.createdAt);
 
       if (replyingTo && replyingTo.id) {
         const list = (comments || []).map((c) => {

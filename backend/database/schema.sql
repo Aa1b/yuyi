@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS `life_records` (
   `title` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '' COMMENT '记录标题',
   `content` text COLLATE utf8mb4_unicode_ci COMMENT '内容描述',
   `type` enum('image','video') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'image' COMMENT '内容类型：image图片，video视频',
-  `privacy` enum('public','private','friends') COLLATE utf8mb4_unicode_ci DEFAULT 'public' COMMENT '隐私设置：public公开，private私密，friends好友可见',
+  `privacy` enum('public','private','friends') COLLATE utf8mb4_unicode_ci DEFAULT 'public' COMMENT '隐私：public公开 private私密 friends好友可见(互相关注)',
   `category` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '分类',
   `location` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '位置信息',
   `like_count` int DEFAULT '0' COMMENT '点赞数',

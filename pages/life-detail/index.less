@@ -55,6 +55,12 @@
 .life-detail-privacy {
   display: flex;
   align-items: center;
+  gap: 8rpx;
+}
+
+.life-detail-privacy-text {
+  font-size: 24rpx;
+  color: #999;
 }
 
 .life-detail-body {
@@ -226,9 +232,9 @@
 
 .life-detail-reply {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  margin-bottom: 12rpx;
+  align-items: flex-start;
+  gap: 12rpx;
+  margin-bottom: 16rpx;
   font-size: @font-size-small;
 
   &:last-child {
@@ -236,20 +242,37 @@
   }
 }
 
+.life-detail-reply-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.life-detail-reply-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  margin-bottom: 4rpx;
+}
+
+.life-detail-reply-author {
+  color: @text-color-primary;
+  font-weight: 500;
+}
+
 .life-detail-reply-label {
   color: @text-color-secondary;
-  margin-right: 8rpx;
 }
 
 .life-detail-reply-text {
+  display: block;
   color: @text-color-primary;
-  flex: 1;
+  line-height: 1.5;
   word-break: break-all;
 }
 
 .life-detail-reply-time {
-  width: 100%;
-  margin-top: 4rpx;
+  display: block;
+  margin-top: 6rpx;
   font-size: 24rpx;
   color: @text-color-placeholder;
 }

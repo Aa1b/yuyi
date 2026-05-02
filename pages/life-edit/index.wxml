@@ -49,17 +49,30 @@
     </view>
 
     <!-- 隐私设置 -->
-    <view class="privacy box">
-      <t-cell title="隐私设置">
-        <t-radio-group value="{{privacy}}" bind:change="onPrivacyChange" slot="note">
-          <t-radio wx:for="{{privacyOptions}}" wx:key="value" value="{{item.value}}" label="{{item.label}}" />
-        </t-radio-group>
-      </t-cell>
+    <view class="privacy box life-edit-block">
+      <view class="life-edit-block__title">隐私设置</view>
+      <t-radio-group value="{{privacy}}" bind:change="onPrivacyChange" class="life-edit-privacy-group">
+        <view class="life-edit-privacy-inner">
+          <t-radio
+            wx:for="{{privacyOptions}}"
+            wx:key="value"
+            value="{{item.value}}"
+            label="{{item.label}}"
+          />
+        </view>
+      </t-radio-group>
+      <view class="life-edit-privacy-hint">{{privacyHint}}</view>
     </view>
 
     <!-- 分类选择 -->
     <view class="category box">
-      <t-cell title="分类" arrow value="{{category || '请选择分类'}}" bindtap="showCategoryPicker" />
+      <t-cell
+        title="分类"
+        arrow
+        hover
+        note="{{category ? category : '请选择分类'}}"
+        bind:click="showCategoryPicker"
+      />
       <t-picker
         title="选择分类"
         value="{{categoryIndex}}"
@@ -72,36 +85,73 @@
       </t-picker>
     </view>
 
-    <!-- 标签选择 -->
+    <!-- 标签选择（与发布页一致：chip 高亮，选中态清晰） -->
     <view class="taggroup box">
-      <t-cell title="添加标签">
-        <view class="tag-list" slot="note">
-          <t-check-tag
-            wx:for="{{allTags}}"
-            wx:key="index"
-            wx:for-item="tag"
-            data-tag="{{tag}}"
-            t-class="tag-class"
-            size="medium"
-            checked="{{selectedTags.indexOf(tag) > -1}}"
-            variant="{{selectedTags.indexOf(tag) > -1 ? 'dark' : 'light'}}"
-            content="#{{tag}}"
-            bind:change="onTagToggle"
-          />
+      <view class="taggroup-header">
+        <text class="taggroup-title">添加标签</text>
+        <text class="taggroup-count">已选 {{selectedTags.length}}/5</text>
+      </view>
+      <view class="taggroup-hint">点击下方标签选中（高亮）；再次点击可取消</view>
+      <view class="tag-selected-row" wx:if="{{selectedTags.length > 0}}">
+        <view
+          wx:for="{{selectedTags}}"
+          wx:key="*this"
+          wx:for-item="t"
+          class="tag-selected-item"
+        >
+          <text>#{{t}}</text>
+          <text class="tag-selected-item-remove" data-tag="{{t}}" catchtap="onRemoveTag">×</text>
         </view>
-      </t-cell>
+      </view>
+      <view class="tag-list">
+        <view
+          wx:for="{{allTags}}"
+          wx:key="*this"
+          wx:for-item="tag"
+          class="tag-chip {{selectedTags.indexOf(tag) > -1 ? 'tag-chip--selected' : ''}}"
+          data-tag="{{tag}}"
+          bindtap="onTagTap"
+        >#{{tag}}</view>
+      </view>
     </view>
 
-    <!-- 位置信息 -->
+    <!-- 位置：地图选点 + 与个人信息相同的手动省/市（兜底） -->
     <view class="location box">
+      <view class="location-tip">优先从地图选点；若不用地图，可选手动省/市（与「我的-编辑资料-地址」一致）。保存内容需含城市名，「同城」才能匹配。</view>
       <t-cell
-        title="所在位置"
+        title="地图选点"
         hover
         arrow
         leftIcon="location"
-        value="{{location || '添加位置（可选）'}}"
-        bindtap="gotoMap"
+        note="{{mapLocationNote || '点击从地图选择（推荐）'}}"
+        bind:click="onLocationTap"
       />
+      <t-cell
+        title="选择城市"
+        hover
+        arrow
+        note="{{manualCityLabel || '地图不可用时，在此选省/市'}}"
+        bind:click="showCityPicker"
+      />
+      <t-picker
+        mode="address"
+        title="选择省、市"
+        value="{{cityPickValue}}"
+        visible="{{cityPickVisible}}"
+        cancelBtn="取消"
+        confirmBtn="确定"
+        bind:cancel="hideCityPicker"
+        bind:change="onCityPickChange"
+        bind:close="hideCityPicker"
+        bind:pick="onCityPickColumnChange"
+      >
+        <t-picker-item options="{{provinces}}" />
+        <t-picker-item options="{{cities}}" />
+      </t-picker>
+      <view wx:if="{{location}}" class="location-footer">
+        <text class="location-summary">当前保存：{{location}}</text>
+        <text class="location-clear" catchtap="onClearLocation">清除</text>
+      </view>
     </view>
 
     <!-- 操作按钮 -->

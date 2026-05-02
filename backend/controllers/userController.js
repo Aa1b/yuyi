@@ -122,8 +122,7 @@ exports.getFollowing = async (req, res, next) => {
       `SELECT 
         u.id,
         u.nickname,
-        u.avatar,
-        uf.created_at as followAt
+        u.avatar
       FROM user_follows uf
       LEFT JOIN users u ON uf.following_id = u.id
       WHERE uf.follower_id = ?
@@ -148,6 +147,22 @@ exports.getFollowing = async (req, res, next) => {
       follows.forEach((u) => {
         u.isFollowing = true;
       });
+    }
+
+    // 互关：列表主人关注的用户里，对方也关注了主人（与「好友可见」规则一致）
+    if (follows.length > 0) {
+      const ids = follows.map((f) => f.id).filter((id) => id != null);
+      if (ids.length > 0) {
+        const ph = ids.map(() => '?').join(',');
+        const [mutualRows] = await pool.execute(
+          `SELECT follower_id FROM user_follows WHERE following_id = ? AND follower_id IN (${ph})`,
+          [ownerId, ...ids]
+        );
+        const mutualSet = new Set(mutualRows.map((r) => r.follower_id));
+        follows.forEach((u) => {
+          u.isMutual = u.id != null && mutualSet.has(u.id);
+        });
+      }
     }
 
     const [countResult] = await pool.execute(
@@ -192,8 +207,7 @@ exports.getFollowers = async (req, res, next) => {
       `SELECT 
         u.id,
         u.nickname,
-        u.avatar,
-        uf.created_at as followAt
+        u.avatar
       FROM user_follows uf
       LEFT JOIN users u ON uf.follower_id = u.id
       WHERE uf.following_id = ?
@@ -212,6 +226,13 @@ exports.getFollowers = async (req, res, next) => {
         const followedSet = new Set(followed.map((r) => r.following_id));
         followers.forEach((u) => {
           u.isFollowing = u.id != null && followedSet.has(u.id);
+          // 粉丝列表：列表主人已回关对方即互关
+          u.isMutual = u.isFollowing === true;
+        });
+      } else {
+        followers.forEach((u) => {
+          u.isFollowing = false;
+          u.isMutual = false;
         });
       }
     }
@@ -227,6 +248,85 @@ exports.getFollowers = async (req, res, next) => {
       message: '获取成功',
       data: {
         list: followers,
+        total,
+        page: parseInt(page, 10) || 1,
+        pageSize: limit,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * 互关列表：与列表主人互相关注的用户（我与 Ta 同列为 follower→following 且反向也存在）
+ */
+exports.getMutual = async (req, res, next) => {
+  try {
+    const currentUserId = req.user?.id != null ? Number(req.user.id) : null;
+    if (currentUserId == null || !Number.isInteger(currentUserId)) {
+      return res.status(401).json({ code: 401, message: '请先登录' });
+    }
+    const { page = 1, pageSize = 20, userId: targetUserId } = req.query;
+    const ownerId = targetUserId ? parseInt(targetUserId, 10) : currentUserId;
+
+    const limit = Math.min(100, Math.max(1, parseInt(pageSize, 10) || 20));
+    const offset = Math.max(0, (parseInt(page, 10) || 1) - 1) * limit;
+    const limitNum = Math.floor(Number(limit)) || 20;
+    const offsetNum = Math.floor(Number(offset)) || 0;
+
+    const [rows] = await pool.execute(
+      `SELECT 
+        u.id,
+        u.nickname,
+        u.avatar
+      FROM user_follows uf1
+      INNER JOIN user_follows uf2
+        ON uf2.follower_id = uf1.following_id AND uf2.following_id = uf1.follower_id
+      LEFT JOIN users u ON u.id = uf1.following_id
+      WHERE uf1.follower_id = ?
+      ORDER BY uf1.created_at DESC
+      LIMIT ${limitNum} OFFSET ${offsetNum}`,
+      [ownerId]
+    );
+
+    const [countResult] = await pool.execute(
+      `SELECT COUNT(*) as total
+       FROM user_follows uf1
+       INNER JOIN user_follows uf2
+         ON uf2.follower_id = uf1.following_id AND uf2.following_id = uf1.follower_id
+       WHERE uf1.follower_id = ?`,
+      [ownerId]
+    );
+    const total = Number(countResult[0]?.total) || 0;
+
+    if (ownerId !== currentUserId && rows.length > 0) {
+      const ids = rows.map((f) => f.id).filter((id) => id != null).join(',');
+      if (ids) {
+        const [followed] = await pool.execute(
+          `SELECT following_id FROM user_follows WHERE follower_id = ? AND following_id IN (${ids})`,
+          [currentUserId]
+        );
+        const followedSet = new Set(followed.map((r) => r.following_id));
+        rows.forEach((u) => {
+          u.isFollowing = u.id != null && followedSet.has(u.id);
+        });
+      }
+    } else if (ownerId === currentUserId) {
+      rows.forEach((u) => {
+        u.isFollowing = true;
+      });
+    }
+
+    rows.forEach((u) => {
+      u.isMutual = true;
+    });
+
+    res.json({
+      code: 200,
+      message: '获取成功',
+      data: {
+        list: rows,
         total,
         page: parseInt(page, 10) || 1,
         pageSize: limit,

@@ -3,9 +3,12 @@ import config from '~/config';
 import request from '~/api/request';
 import Message from 'tdesign-miniprogram/message/index';
 import resolveMediaUrl from '~/utils/resolveMediaUrl';
-
-// 腾讯地图 WebService Key（与发布页保持一致）
-const TENCENT_MAP_KEY = 'LITBZ-IDMWA-5D3KD-CURMW-MHJ4J-2SFMX';
+import { enrichAddressFromLocation, buildLocationLabel } from '~/utils/locationFromMap';
+import { LIFE_RECORD_PRIVACY_OPTIONS, LIFE_RECORD_PRIVACY_HINT } from '~/utils/privacyLabels';
+import {
+  createInitialProvinceCityState,
+  getCitiesOfProvince,
+} from '~/utils/areaPickerHelpers';
 
 Page({
   data: {
@@ -30,11 +33,8 @@ Page({
     
     // 隐私设置
     privacy: 'public',
-    privacyOptions: [
-      { label: '公开', value: 'public', icon: 'globe' },
-      { label: '好友可见', value: 'friends', icon: 'user' },
-      { label: '私密', value: 'private', icon: 'lock-on' },
-    ],
+    privacyOptions: LIFE_RECORD_PRIVACY_OPTIONS,
+    privacyHint: LIFE_RECORD_PRIVACY_HINT,
     
     // 分类
     category: '',
@@ -50,6 +50,12 @@ Page({
     location: '',
     
     loading: false,
+    provinces: [],
+    cities: [],
+    cityPickVisible: false,
+    cityPickValue: [],
+    manualCityLabel: '',
+    mapLocationNote: '',
   },
   
   async onLoad(options) {
@@ -66,7 +72,9 @@ Page({
     }
     
     this.setData({ recordId: id });
-    
+    const { provinces, cities } = createInitialProvinceCityState();
+    this.setData({ provinces, cities });
+
     // 加载分类和标签数据
     await this.loadCategories();
     await this.loadTags();
@@ -89,11 +97,15 @@ Page({
             type: 'video',
           }
         : null;
+      const catStr = record.category || '';
+      const categories = this.data.categories || [];
+      const catIdx = categories.findIndex((c) => c && (c.value === catStr || c.label === catStr));
       // 填充表单数据（图片/视频用完整 URL 以便预览）
       this.setData({
         content: record.content || '',
         privacy: record.privacy || 'public',
-        category: record.category || '',
+        category: catStr,
+        categoryIndex: catIdx >= 0 ? [catIdx] : [],
         location: record.location || '',
         selectedTags: record.tags || [],
         mediaType: record.type || 'image',
@@ -202,26 +214,66 @@ Page({
     this.setData({ categoryVisible: false });
   },
   
-  // 选择分类
+  // 选择分类（兼容：detail.value 为单列索引数组，或直接为数字；选项也可能按文案匹配）
   onCategoryChange(e) {
-    const { value } = e.detail;
+    const detail = e.detail || {};
+    const raw = detail.value;
     const { categories } = this.data;
-    if (value && value[0] !== undefined) {
+    if (!categories || categories.length === 0) {
+      this.setData({ categoryVisible: false });
+      return;
+    }
+
+    let item = null;
+    let indexArr = [];
+
+    if (Array.isArray(raw) && raw.length > 0) {
+      const first = raw[0];
+      if (typeof first === 'number' && !Number.isNaN(first)) {
+        item = categories[first];
+        indexArr = [first];
+      } else if (typeof first === 'string' && /^\d+$/.test(first)) {
+        const i = parseInt(first, 10);
+        item = categories[i];
+        indexArr = [i];
+      } else if (first != null && first !== '') {
+        item = categories.find((c) => c && (c.value === first || c.label === first));
+        const idx = item ? categories.indexOf(item) : -1;
+        if (idx >= 0) indexArr = [idx];
+      }
+    } else if (typeof raw === 'number' && !Number.isNaN(raw)) {
+      item = categories[raw];
+      indexArr = [raw];
+    } else if (typeof raw === 'string') {
+      if (/^\d+$/.test(raw)) {
+        const i = parseInt(raw, 10);
+        item = categories[i];
+        indexArr = [i];
+      } else {
+        item = categories.find((c) => c && (c.value === raw || c.label === raw));
+        const idx = item ? categories.indexOf(item) : -1;
+        if (idx >= 0) indexArr = [idx];
+      }
+    }
+
+    if (item && (item.label != null || item.value != null)) {
       this.setData({
-        category: categories[value[0]].label,
-        categoryIndex: value,
+        category: item.label != null ? item.label : item.value,
+        categoryIndex: indexArr,
         categoryVisible: false,
       });
+    } else {
+      this.setData({ categoryVisible: false });
     }
   },
   
-  // 切换标签选择
-  onTagToggle(e) {
-    const { checked } = e.detail;
-    const { tag } = e.currentTarget.dataset;
+  // 切换标签（与发布页一致：点选高亮，再点取消）
+  onTagTap(e) {
+    const tag = e.currentTarget?.dataset?.tag;
+    if (tag == null) return;
     let { selectedTags } = this.data;
-    
-    if (checked) {
+    const idx = selectedTags.indexOf(tag);
+    if (idx === -1) {
       if (selectedTags.length >= 5) {
         Message.warning({
           context: this,
@@ -231,76 +283,98 @@ Page({
         });
         return;
       }
-      if (selectedTags.indexOf(tag) === -1) {
-        selectedTags.push(tag);
-      }
+      selectedTags = [...selectedTags, tag];
     } else {
-      const index = selectedTags.indexOf(tag);
-      if (index > -1) {
-        selectedTags.splice(index, 1);
-      }
+      selectedTags = selectedTags.filter((_, i) => i !== idx);
     }
-    
-    this.setData({ selectedTags: [...selectedTags] });
+    this.setData({ selectedTags });
+  },
+
+  onRemoveTag(e) {
+    const tag = e.currentTarget?.dataset?.tag;
+    if (tag == null) return;
+    this.setData({ selectedTags: this.data.selectedTags.filter((t) => t !== tag) });
   },
   
-  // 获取位置（腾讯地图逆地理编码 + 备用地图选点）
-  async gotoMap() {
-    const that = this;
-    try {
-      const locRes = await wx.getLocation({
-        type: 'gcj02',
+  onLocationTap() {
+    if (typeof wx.chooseLocation !== 'function') {
+      Message.warning({
+        context: this,
+        offset: [120, 32],
+        duration: 2500,
+        content: '请使用真机，并从地图选择位置，保存的地址带城市信息，才能出现在「同城」',
       });
-      const { latitude, longitude } = locRes;
-
-      wx.request({
-        url: 'https://apis.map.qq.com/ws/geocoder/v1/',
-        method: 'GET',
-        data: {
-          location: `${latitude},${longitude}`,
-          key: TENCENT_MAP_KEY,
-          get_poi: 1,
-        },
-        success(res) {
-          if (res.data && res.data.status === 0) {
-            const result = res.data.result;
-            const recommend = result.formatted_addresses
-              ? (result.formatted_addresses.recommend || result.address)
-              : result.address;
-
-            that.setData({
-              location: recommend,
-            });
-          } else {
-            that.useChooseLocationFallback();
-          }
-        },
-        fail() {
-          that.useChooseLocationFallback();
-        },
-      });
-    } catch (error) {
-      if (error.errMsg && error.errMsg.includes('auth deny')) {
+      return;
+    }
+    wx.chooseLocation({
+      success: async (res) => {
+        wx.showLoading({ title: '解析地址中…', mask: true });
+        try {
+          const enriched = await enrichAddressFromLocation(res.latitude, res.longitude);
+          const location = buildLocationLabel(res, enriched);
+          this.setData({
+            location,
+            mapLocationNote: location,
+            manualCityLabel: '',
+            cityPickValue: [],
+          });
+        } finally {
+          wx.hideLoading();
+        }
+      },
+      fail: (err) => {
+        if ((err && err.errMsg || '').includes('cancel')) return;
         Message.warning({
           context: this,
           offset: [120, 32],
-          duration: 2000,
-          content: '请在设置中打开定位权限',
+          duration: 2500,
+          content: '打开地图失败，请检查定位权限后重试',
         });
-      } else {
-        this.useChooseLocationFallback();
-      }
+      },
+    });
+  },
+
+  onClearLocation() {
+    this.setData({
+      location: '',
+      mapLocationNote: '',
+      manualCityLabel: '',
+      cityPickValue: [],
+    });
+  },
+
+  showCityPicker() {
+    const { provinces, cityPickValue } = this.data;
+    const firstPv = provinces[0] && provinces[0].value;
+    let cities = firstPv ? getCitiesOfProvince(firstPv) : [];
+    if (cityPickValue && cityPickValue.length >= 1) {
+      cities = getCitiesOfProvince(cityPickValue[0]);
+    }
+    this.setData({ cityPickVisible: true, cities });
+  },
+
+  hideCityPicker() {
+    this.setData({ cityPickVisible: false });
+  },
+
+  onCityPickColumnChange(e) {
+    const { column, index } = e.detail;
+    const { provinces } = this.data;
+    if (column === 0 && provinces[index]) {
+      const cities = getCitiesOfProvince(provinces[index].value);
+      this.setData({ cities });
     }
   },
 
-  // 微信内置地图选点备用方案
-  useChooseLocationFallback() {
-    wx.chooseLocation({
-      success: (result) => {
-        this.setData({
-          location: result.name || result.address,
-        });
-      },
+  onCityPickChange(e) {
+    const { value, label } = e.detail;
+    const text = Array.isArray(label) ? label.join(' ') : '';
+    this.setData({
+      cityPickValue: value || [],
+      manualCityLabel: text,
+      location: text,
+      mapLocationNote: '',
+      cityPickVisible: false,
     });
   },
   

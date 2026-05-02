@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `birth` date DEFAULT NULL COMMENT '生日（YYYY-MM-DD）',
   `address` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '地址（JSON: [provinceCode, cityCode]）',
   `introduction` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '个人简介',
+  `ip_region` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '最近访问时 IP 解析城市（腾讯地图，供他人主页展示）',
   `phone` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '手机号',
   `email` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '邮箱（邮箱注册时使用）',
   `password` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '密码(bcrypt)',

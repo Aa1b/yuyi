@@ -33,9 +33,13 @@
               <text class="my-info__stat-label">获赞</text>
             </view>
           </view>
-          <view class="my-info__tags">
-            <t-tag class="tag" variant="light" icon="discount">{{personalInfo.star}}</t-tag>
-            <t-tag class="tag" variant="light" icon="location">{{personalInfo.city}}</t-tag>
+          <view class="my-info__tags" wx:if="{{personalInfo.zodiac || personalInfo.homeCity}}">
+            <t-tag wx:if="{{personalInfo.zodiac}}" class="tag" variant="light" icon="star">
+              星座 {{personalInfo.zodiac}}
+            </t-tag>
+            <t-tag wx:if="{{personalInfo.homeCity}}" class="tag" variant="light" icon="location">
+              所在地 {{personalInfo.homeCity}}
+            </t-tag>
           </view>
         </view>
         <t-icon slot="right-icon" name="edit" size="40rpx" color="#000000e6" bindtap="onNavigateTo" />

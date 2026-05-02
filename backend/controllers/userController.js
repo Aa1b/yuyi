@@ -252,11 +252,32 @@ exports.getUserProfile = async (req, res, next) => {
       });
     }
 
-    // 查询用户信息
-    const [users] = await pool.execute(
-      'SELECT id, nickname, avatar, gender, created_at FROM users WHERE id = ?',
-      [userId]
-    );
+    // 查询用户信息（生日/地址用于前端星座与所在地；ip_region 为 Ta 最近访问时 IP 解析城市）
+    let users;
+    try {
+      const [rows] = await pool.execute(
+        `SELECT id, nickname, avatar, gender,
+          DATE_FORMAT(birth, '%Y-%m-%d') AS birth,
+          address,
+          ip_region,
+          created_at
+         FROM users WHERE id = ?`,
+        [userId]
+      );
+      users = rows;
+    } catch (e) {
+      const missingCol = e && (e.code === 'ER_BAD_FIELD_ERROR' || e.errno === 1054);
+      if (!missingCol) throw e;
+      const [rows] = await pool.execute(
+        `SELECT id, nickname, avatar, gender,
+          DATE_FORMAT(birth, '%Y-%m-%d') AS birth,
+          address,
+          created_at
+         FROM users WHERE id = ?`,
+        [userId]
+      );
+      users = rows.map((u) => ({ ...u, ip_region: null }));
+    }
 
     if (users.length === 0) {
       return res.status(404).json({
@@ -265,7 +286,17 @@ exports.getUserProfile = async (req, res, next) => {
       });
     }
 
-    const user = users[0];
+    const row = users[0];
+    const user = {
+      id: row.id,
+      nickname: row.nickname,
+      avatar: row.avatar,
+      gender: row.gender,
+      birth: row.birth || null,
+      address: row.address || null,
+      created_at: row.created_at,
+      cityFromIp: row.ip_region || null,
+    };
 
     // 查询统计信息
     const [recordCount] = await pool.execute(

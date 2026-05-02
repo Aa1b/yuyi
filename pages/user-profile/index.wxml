@@ -10,6 +10,20 @@
       <t-avatar image="{{userInfo.avatar}}" size="large" />
       <view class="user-profile-info">
         <text class="user-profile-name">{{userInfo.nickname}}</text>
+        <view
+          class="user-profile-meta-tags"
+          wx:if="{{userInfo.displayZodiac || userInfo.displayHomeCity || userInfo.cityFromIp}}"
+        >
+          <t-tag wx:if="{{userInfo.displayZodiac}}" variant="light" size="small" icon="star">
+            星座 {{userInfo.displayZodiac}}
+          </t-tag>
+          <t-tag wx:if="{{userInfo.displayHomeCity}}" variant="light" size="small" icon="location">
+            所在地 {{userInfo.displayHomeCity}}
+          </t-tag>
+          <t-tag wx:if="{{userInfo.cityFromIp}}" variant="light" size="small" icon="wifi">
+            IP归属 {{userInfo.cityFromIp}}
+          </t-tag>
+        </view>
         <view class="user-profile-stats">
           <view class="stat-item" bindtap="viewRecords">
             <text class="stat-value">{{userInfo.recordCount || 0}}</text>

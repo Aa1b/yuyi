@@ -403,10 +403,22 @@ exports.getProfile = async (req, res, next) => {
     user.role = user.is_admin === 1 ? 'admin' : 'user';
     user.isAdmin = !!user.is_admin;
 
-    // 根据 IP 解析城市（前端显示为当前城市）
+    // 根据 IP 解析城市（前端「我的」显示为当前城市）；并持久化供他人主页展示
     try {
       const cityFromIp = await getCityByIp(rawIp);
       user.cityFromIp = cityFromIp || null;
+      if (cityFromIp && userId) {
+        try {
+          await pool.execute('UPDATE users SET ip_region = ? WHERE id = ?', [cityFromIp, userId]);
+        } catch (e) {
+          // 未执行 migrations/003_users_ip_region.sql 时会失败，不影响登录与 cityFromIp 展示
+          if (e && (e.code === 'ER_BAD_FIELD_ERROR' || e.errno === 1054)) {
+            /* skip */
+          } else {
+            throw e;
+          }
+        }
+      }
     } catch {
       user.cityFromIp = null;
     }

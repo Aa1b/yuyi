@@ -1,6 +1,8 @@
 import request from '~/api/request';
 import useToastBehavior from '~/behaviors/useToast';
 import resolveMediaUrl from '~/utils/resolveMediaUrl';
+import { getWesternZodiacFromBirth } from '~/utils/zodiac';
+import { formatHomeRegionFromAddress } from '~/utils/profileRegion';
 
 Page({
   behaviors: [useToastBehavior],
@@ -78,8 +80,10 @@ Page({
       const base = {
         name: p.nickname || '用户',
         image: p.avatar ? resolveMediaUrl(p.avatar) : '',
-        star: p.star || '',
-        city: p.city || '',
+        /** 由生日推算的星座（接口无 star 字段时仍可展示） */
+        zodiac: getWesternZodiacFromBirth(p.birth),
+        /** 资料里选择的省市（与顶部「当前城市」IP 归属不同） */
+        homeCity: formatHomeRegionFromAddress(p.address),
         isAdmin: p.role === 'admin' || !!p.isAdmin || p.is_admin === 1,
         id: p.id,
         // 优先显示 IP 解析出的城市，无则不再显示

@@ -1,6 +1,6 @@
 import request from '~/api/request';
 import config from '~/config';
-import { areaList } from './areaData.js';
+import { areaList } from '~/utils/areaData.js';
 import resolveMediaUrl from '~/utils/resolveMediaUrl';
 import { formatBirthDate } from '~/utils/time';
 

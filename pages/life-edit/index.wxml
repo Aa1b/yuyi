@@ -19,34 +19,31 @@
       />
     </view>
 
-    <!-- 图片展示（只读） -->
-    <view wx:if="{{mediaType === 'image' && imageFiles.length > 0}}" class="upload box">
-      <view class="image-list">
-        <view wx:for="{{imageFiles}}" wx:key="index" class="image-item">
-          <t-image src="{{item.url}}" mode="aspectFill" class="image-preview" />
-          <view class="image-remove" data-index="{{index}}" bindtap="handleImageRemove">
-            <t-icon name="close" size="32rpx" color="#fff" />
-          </view>
-        </view>
-      </view>
-      <view class="upload-tip">编辑模式下可删除图片，暂不支持新增</view>
+    <!-- 图片：与发布页一致，可增删（保存时提交完整列表） -->
+    <view wx:if="{{mediaType === 'image'}}" class="upload box">
+      <t-upload
+        t-class="upload-class"
+        media-type="{{['image']}}"
+        files="{{imageFiles}}"
+        gridConfig="{{imageGridConfig}}"
+        bind:success="handleImageSuccess"
+        bind:remove="handleImageRemove"
+        max="{{imageConfig.count}}"
+      />
+      <view class="upload-tip">最多 9 张，可删除或继续添加</view>
     </view>
 
-    <!-- 视频展示（只读） -->
-    <view wx:if="{{mediaType === 'video' && videoFile}}" class="upload box">
-      <view class="video-preview">
-        <video
-          src="{{videoFile.url}}"
-          poster="{{videoFile.cover || videoFile.thumb}}"
-          object-fit="contain"
-          controls
-          class="video-player"
-        />
-        <view class="video-remove" bindtap="handleVideoRemove">
-          <t-icon name="close" size="32rpx" color="#fff" />
-        </view>
-      </view>
-      <view class="upload-tip">编辑模式下暂不支持更换视频</view>
+    <!-- 视频：可更换 -->
+    <view wx:if="{{mediaType === 'video'}}" class="upload box">
+      <t-upload
+        t-class="upload-class"
+        media-type="{{['video']}}"
+        files="{{videoFile ? [videoFile] : []}}"
+        bind:success="handleVideoSuccess"
+        bind:remove="handleVideoRemove"
+        max="1"
+      />
+      <view class="upload-tip">删除后可重新选择视频并保存</view>
     </view>
 
     <!-- 隐私设置 -->

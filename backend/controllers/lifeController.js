@@ -754,7 +754,7 @@ exports.createRecord = async (req, res, next) => {
 exports.updateRecord = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { id, content, privacy, category, tags, location } = req.body;
+    const { id, content, privacy, category, tags, location, images, video } = req.body;
 
     if (!id) {
       return res.status(400).json({
@@ -765,7 +765,7 @@ exports.updateRecord = async (req, res, next) => {
 
     // 检查记录是否存在且属于当前用户
     const [records] = await pool.execute(
-      'SELECT user_id FROM life_records WHERE id = ? AND status = 1',
+      'SELECT user_id, type FROM life_records WHERE id = ? AND status = 1',
       [id]
     );
 
@@ -783,8 +783,17 @@ exports.updateRecord = async (req, res, next) => {
       });
     }
 
+    const recordType = records[0].type;
+
     const err = validateRecordUpdate(req.body);
     if (err) return res.status(400).json(err);
+
+    if (images !== undefined && video !== undefined) {
+      return res.status(400).json({
+        code: 400,
+        message: '不能同时修改图片列表与视频',
+      });
+    }
 
     try {
       await assertPublishCategoryAndTags(
@@ -865,6 +874,55 @@ exports.updateRecord = async (req, res, next) => {
           );
         }
       }
+    }
+
+    // 更新媒体：图文整组替换 / 视频整条替换（与创建时 life_media 结构一致）
+    if (images !== undefined) {
+      if (recordType !== 'image') {
+        return res.status(400).json({
+          code: 400,
+          message: '该记录不是图文类型，无法修改图片',
+        });
+      }
+      await pool.execute('DELETE FROM life_media WHERE record_id = ?', [id]);
+      const mediaValues = images.map((url, index) => [
+        id,
+        'image',
+        String(url).trim(),
+        null,
+        null,
+        index,
+      ]);
+      await pool.query(
+        `INSERT INTO life_media (record_id, media_type, url, thumbnail_url, duration, sort_order) VALUES ?`,
+        [mediaValues]
+      );
+    }
+
+    if (video !== undefined) {
+      if (recordType !== 'video') {
+        return res.status(400).json({
+          code: 400,
+          message: '该记录不是视频类型，无法修改视频',
+        });
+      }
+      if (!video || typeof video !== 'object' || !String(video.url || '').trim()) {
+        return res.status(400).json({
+          code: 400,
+          message: '请提供有效的视频',
+        });
+      }
+      await pool.execute('DELETE FROM life_media WHERE record_id = ?', [id]);
+      await pool.execute(
+        `INSERT INTO life_media (record_id, media_type, url, thumbnail_url, duration) VALUES (?, ?, ?, ?, ?)`,
+        [
+          id,
+          'video',
+          String(video.url).trim(),
+          video.cover != null && String(video.cover).trim() !== '' ? String(video.cover).trim() : null,
+          video.duration != null && video.duration !== '' ? Number(video.duration) : null,
+        ]
+      );
     }
 
     res.json({

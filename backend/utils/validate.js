@@ -65,7 +65,7 @@ function validateRecordCreate(body) {
  * 更新生活记录校验（仅校验传入的字段）
  */
 function validateRecordUpdate(body) {
-  const { content, category, location, tags } = body || {};
+  const { content, category, location, tags, images } = body || {};
   if (content !== undefined) {
     const c = String(content).trim();
     if (c.length > LIMIT.recordContent) {
@@ -89,6 +89,23 @@ function validateRecordUpdate(body) {
       const tag = String(tags[i]).trim();
       if (tag.length > LIMIT.recordTag) {
         return { code: 400, message: `单个标签不能超过${LIMIT.recordTag}字`, field: 'tags' };
+      }
+    }
+  }
+  if (images !== undefined) {
+    if (!Array.isArray(images)) {
+      return { code: 400, message: '图片列表格式无效', field: 'images' };
+    }
+    if (images.length === 0 || images.length > 9) {
+      return { code: 400, message: '图片须为 1～9 张', field: 'images' };
+    }
+    for (let i = 0; i < images.length; i++) {
+      const u = String(images[i] || '').trim();
+      if (!u) {
+        return { code: 400, message: '图片地址无效', field: 'images' };
+      }
+      if (u.length > 800) {
+        return { code: 400, message: '图片地址过长', field: 'images' };
       }
     }
   }

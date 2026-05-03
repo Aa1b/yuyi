@@ -161,28 +161,29 @@ Page({
     });
   },
   
+  isHttpUrl(s) {
+    return /^https?:\/\//i.test(String(s || '').trim());
+  },
+
   // 图片上传成功
   handleImageSuccess(e) {
-    const { files } = e.detail;
-    this.setData({ imageFiles: files });
+    this.setData({ imageFiles: e.detail.files || [] });
   },
-  
+
   // 移除图片
   handleImageRemove(e) {
     const { index } = e.detail;
     const { imageFiles } = this.data;
     imageFiles.splice(index, 1);
-    this.setData({ imageFiles: [...imageFiles] });
+    this.setData({ imageFiles });
   },
-  
+
   // 视频上传成功
   handleVideoSuccess(e) {
-    const { files } = e.detail;
-    if (files && files.length > 0) {
-      this.setData({ videoFile: files[0] });
-    }
+    const files = e.detail.files;
+    this.setData({ videoFile: files && files.length > 0 ? files[0] : null });
   },
-  
+
   // 移除视频
   handleVideoRemove() {
     this.setData({ videoFile: null });
@@ -425,14 +426,29 @@ Page({
     return true;
   },
   
+  /** 将本地/待上传文件走接口，与发布页一致，得到最终图片 URL 列表 */
+  async resolveImageUrls(imageFiles) {
+    const out = [];
+    for (const file of imageFiles) {
+      const u = file.url || '';
+      if (file.tempFilePath || !this.isHttpUrl(u)) {
+        const uploaded = await this.uploadImages([file]);
+        if (uploaded[0]) out.push(uploaded[0]);
+      } else {
+        out.push(u);
+      }
+    }
+    return out;
+  },
+
   // 更新记录
   async updateRecord() {
     if (!this.validateForm()) {
       return;
     }
-    
+
     const { recordId, content, mediaType, imageFiles, videoFile, privacy, category, selectedTags, location } = this.data;
-    
+
     const recordData = {
       id: recordId,
       content: content.trim(),
@@ -441,20 +457,24 @@ Page({
       tags: selectedTags,
       location: location || null,
     };
-    
+
     try {
       wx.showLoading({ title: '更新中...', mask: true });
-      
-      // 如果有新上传的媒体文件需要上传
-      if (mediaType === 'image' && imageFiles.some(f => f.tempFilePath || !f.url)) {
-        const newImages = await this.uploadNewImages(imageFiles.filter(f => f.tempFilePath || !f.url));
-        recordData.images = [...imageFiles.filter(f => f.url && !f.tempFilePath).map(f => f.url), ...newImages];
-      } else if (mediaType === 'video' && videoFile && (videoFile.tempFilePath || !videoFile.url)) {
-        const uploadedVideo = await this.uploadVideo(videoFile);
-        recordData.video = uploadedVideo;
+
+      if (mediaType === 'image') {
+        recordData.images = await this.resolveImageUrls(imageFiles);
+      } else if (mediaType === 'video' && videoFile) {
+        if (videoFile.tempFilePath || !this.isHttpUrl(videoFile.url || '')) {
+          recordData.video = await this.uploadVideo(videoFile);
+        } else {
+          recordData.video = {
+            url: videoFile.url,
+            cover: videoFile.cover || videoFile.thumb || videoFile.url,
+            duration: videoFile.duration != null ? videoFile.duration : 0,
+          };
+        }
       }
-      
-      // 提交到服务器
+
       await request('/life/record', 'PUT', recordData);
       
       wx.hideLoading();
@@ -496,20 +516,83 @@ Page({
       });
     }
   },
-  
-  // 上传新图片
-  async uploadNewImages(files) {
-    // TODO: 实际项目中需要使用 wx.cloud.uploadFile 上传到云存储
-    return files.map(file => file.url || file.tempFilePath);
+
+  /** 将本地图片上传到服务器，返回 URL 数组（与发布页一致） */
+  async uploadImages(files) {
+    const token = wx.getStorageSync('access_token');
+    const baseUrl = (config.baseUrl || '').replace(/\/+$/, '');
+    const urls = [];
+    for (const file of files) {
+      const filePath = file.tempFilePath || file.url;
+      if (!filePath) continue;
+      const res = await new Promise((resolve, reject) => {
+        wx.uploadFile({
+          url: `${baseUrl}/upload/image`,
+          filePath,
+          name: 'image',
+          header: token ? { Authorization: `Bearer ${token}` } : {},
+          success: resolve,
+          fail: reject,
+        });
+      });
+      if (res.statusCode !== 200) {
+        let errMsg = '图片上传失败';
+        try {
+          const data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+          if (data && data.message) errMsg = data.message;
+        } catch (_) {}
+        throw new Error(errMsg);
+      }
+      let data;
+      try {
+        data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+      } catch (_) {
+        throw new Error('图片上传响应异常');
+      }
+      if (data.code !== 200 || !data.data || !data.data.url) {
+        throw new Error((data && data.message) || '图片上传失败');
+      }
+      urls.push(data.data.url);
+    }
+    return urls;
   },
-  
-  // 上传视频
+
   async uploadVideo(file) {
-    // TODO: 实际项目中需要使用 wx.cloud.uploadFile 上传到云存储
+    const token = wx.getStorageSync('access_token');
+    const baseUrl = (config.baseUrl || '').replace(/\/+$/, '');
+    const filePath = file.tempFilePath || file.url;
+    if (!filePath) throw new Error('请先选择视频');
+    const res = await new Promise((resolve, reject) => {
+      wx.uploadFile({
+        url: `${baseUrl}/upload/video`,
+        filePath,
+        name: 'video',
+        header: token ? { Authorization: `Bearer ${token}` } : {},
+        success: resolve,
+        fail: reject,
+      });
+    });
+    if (res.statusCode !== 200) {
+      let errMsg = '视频上传失败';
+      try {
+        const data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+        if (data && data.message) errMsg = data.message;
+      } catch (_) {}
+      throw new Error(errMsg);
+    }
+    let data;
+    try {
+      data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+    } catch (_) {
+      throw new Error('视频上传响应异常');
+    }
+    if (data.code !== 200 || !data.data || !data.data.url) {
+      throw new Error((data && data.message) || '视频上传失败');
+    }
     return {
-      url: file.url || file.tempFilePath,
-      cover: file.thumb || file.url || file.tempFilePath,
-      duration: file.duration || 0,
+      url: data.data.url,
+      cover: data.data.cover || data.data.url,
+      duration: data.data.duration != null ? data.data.duration : (file.duration || 0),
     };
   },
 });

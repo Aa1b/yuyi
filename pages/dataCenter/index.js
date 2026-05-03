@@ -65,8 +65,16 @@ Page({
     const trend = trendRes?.data || null;
     const rawCategory = categoryRes?.data?.list || null;
     const colors = ['#0052d9', '#00a870', '#ed7b2f', '#e34d59', '#8b5cf6', '#0ea5e9', '#52c41a', '#faad14'];
+    let catTotal = 0;
+    if (Array.isArray(rawCategory)) {
+      catTotal = rawCategory.reduce((s, x) => s + (Number(x.value) || 0), 0);
+    }
     const category = Array.isArray(rawCategory)
-      ? rawCategory.map((item, i) => ({ ...item, color: colors[i % colors.length] }))
+      ? rawCategory.map((item, i) => ({
+          ...item,
+          color: colors[i % colors.length],
+          percent: catTotal > 0 ? Math.round(((Number(item.value) || 0) / catTotal) * 1000) / 10 : 0,
+        }))
       : null;
 
     const sys = wx.getSystemInfoSync();
@@ -211,7 +219,7 @@ Page({
           ctx.moveTo(cx, cy);
           ctx.arc(cx, cy, r, start, end);
           ctx.closePath();
-          ctx.fillStyle = colors[i % colors.length];
+          ctx.fillStyle = item.color || colors[i % colors.length];
           ctx.fill();
           ctx.strokeStyle = '#fff';
           ctx.lineWidth = 2;

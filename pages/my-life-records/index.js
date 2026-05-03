@@ -229,7 +229,88 @@ Page({
       },
     });
   },
-  
+
+  /** 草稿提交审核（与普通用户发布页「发布」一致 → pending） */
+  publishDraftSubmit(e) {
+    if (e && typeof e.stopPropagation === 'function') {
+      e.stopPropagation();
+    }
+    const { id } = (e && e.currentTarget && e.currentTarget.dataset) || {};
+    if (!id) return;
+    wx.showModal({
+      title: '提交审核',
+      content: '确定提交审核吗？通过后将在首页展示。',
+      success: async (res) => {
+        if (!res.confirm) return;
+        try {
+          wx.showLoading({ title: '提交中...', mask: true });
+          await request('/life/record', 'PUT', { id, publishStatus: 'pending' });
+          wx.hideLoading();
+          Message.success({
+            context: this,
+            offset: [120, 32],
+            duration: 2000,
+            content: '已提交审核',
+          });
+          this.loadMyRecords(true);
+        } catch (error) {
+          wx.hideLoading();
+          const msg =
+            (error && error.message) ||
+            (error && error.data && error.data.message) ||
+            '提交失败，请重试';
+          Message.error({
+            context: this,
+            offset: [120, 32],
+            duration: 2500,
+            content: msg,
+          });
+        }
+      },
+    });
+  },
+
+  /** 管理员：草稿直接上线（与发布页「直接发布」一致） */
+  publishDraftDirect(e) {
+    if (!this.data.isAdmin) return;
+    if (e && typeof e.stopPropagation === 'function') {
+      e.stopPropagation();
+    }
+    const { id } = (e && e.currentTarget && e.currentTarget.dataset) || {};
+    if (!id) return;
+    wx.showModal({
+      title: '直接发布',
+      content: '确定直接发布该草稿吗？将立即在首页展示。',
+      success: async (res) => {
+        if (!res.confirm) return;
+        try {
+          wx.showLoading({ title: '发布中...', mask: true });
+          await request('/life/record', 'PUT', { id, publishStatus: 'published' });
+          wx.hideLoading();
+          Message.success({
+            context: this,
+            offset: [120, 32],
+            duration: 2000,
+            content: '已发布',
+          });
+          this.loadMyRecords(true);
+        } catch (error) {
+          wx.hideLoading();
+          const msg =
+            (error && error.message) ||
+            (error && error.data && error.data.message) ||
+            '发布失败，请重试';
+          Message.error({
+            context: this,
+            offset: [120, 32],
+            duration: 2500,
+            content: msg,
+          });
+        }
+      },
+    });
+  },
+
   // 编辑记录（t-button 触发的事件可能无 stopPropagation）
   editRecord(e) {
     if (e && typeof e.stopPropagation === 'function') {

@@ -60,6 +60,28 @@
           驳回
         </t-button>
 
+        <!-- 草稿：提交审核 / 管理员直接发布 -->
+        <t-button
+          wx:if="{{filter === 'draft'}}"
+          theme="primary"
+          size="small"
+          variant="outline"
+          data-id="{{record.id}}"
+          bindtap="publishDraftSubmit"
+        >
+          提交审核
+        </t-button>
+        <t-button
+          wx:if="{{filter === 'draft' && isAdmin}}"
+          theme="success"
+          size="small"
+          variant="outline"
+          data-id="{{record.id}}"
+          bindtap="publishDraftDirect"
+        >
+          直接发布
+        </t-button>
+
         <!-- 编辑/删除：默认操作 -->
         <t-button
           theme="light"
@@ -97,7 +119,7 @@
   <view wx:if="{{!loading && records.length === 0}}" class="my-life-records-empty">
     <t-empty
       icon="file-image"
-      description="还没有发布任何记录"
+      description="{{filter === 'draft' ? '暂无草稿' : '还没有记录'}}"
     >
       <t-button
         theme="primary"

@@ -65,7 +65,7 @@ function validateRecordCreate(body) {
  * 更新生活记录校验（仅校验传入的字段）
  */
 function validateRecordUpdate(body) {
-  const { content, category, location, tags, images } = body || {};
+  const { content, category, location, tags, images, publishStatus } = body || {};
   if (content !== undefined) {
     const c = String(content).trim();
     if (c.length > LIMIT.recordContent) {
@@ -90,6 +90,12 @@ function validateRecordUpdate(body) {
       if (tag.length > LIMIT.recordTag) {
         return { code: 400, message: `单个标签不能超过${LIMIT.recordTag}字`, field: 'tags' };
       }
+    }
+  }
+  if (publishStatus !== undefined && publishStatus !== null && String(publishStatus).trim() !== '') {
+    const p = String(publishStatus).trim();
+    if (!['pending', 'published'].includes(p)) {
+      return { code: 400, message: 'publishStatus 仅可为 pending 或 published', field: 'publishStatus' };
     }
   }
   if (images !== undefined) {

@@ -136,6 +136,39 @@ const checkRecordPermission = async (recordId, userId = null) => {
   return { allowed: false, record };
 };
 
+/** 草稿提交审核/发布前：标题或正文、分类、与类型匹配的媒体 */
+async function assertRecordPublishableFromDraft(recordId, row) {
+  const hasText =
+    (row.title != null && String(row.title).trim() !== '') ||
+    (row.content != null && String(row.content).trim() !== '');
+  if (!hasText) {
+    const err = new Error('请填写标题或正文后再发布（可到编辑页补充）');
+    err.statusCode = 400;
+    throw err;
+  }
+  if (!row.category || String(row.category).trim() === '') {
+    const err = new Error('请先选择分类后再发布（可到编辑页保存）');
+    err.statusCode = 400;
+    throw err;
+  }
+  const [[mc]] = await pool.execute(
+    'SELECT COUNT(*) as c FROM life_media WHERE record_id = ?',
+    [recordId]
+  );
+  const mediaCnt = mc.c || 0;
+  const type = row.type;
+  if (type === 'image' && mediaCnt < 1) {
+    const err = new Error('图文记录至少需要一张图片');
+    err.statusCode = 400;
+    throw err;
+  }
+  if (type === 'video' && mediaCnt < 1) {
+    const err = new Error('请先上传视频后再发布');
+    err.statusCode = 400;
+    throw err;
+  }
+}
+
 /**
  * 获取生活记录列表
  */
@@ -754,7 +787,17 @@ exports.createRecord = async (req, res, next) => {
 exports.updateRecord = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { id, content, privacy, category, tags, location, images, video } = req.body;
+    const {
+      id,
+      content,
+      privacy,
+      category,
+      tags,
+      location,
+      images,
+      video,
+      publishStatus: bodyPublishStatus,
+    } = req.body;
 
     if (!id) {
       return res.status(400).json({
@@ -765,7 +808,7 @@ exports.updateRecord = async (req, res, next) => {
 
     // 检查记录是否存在且属于当前用户
     const [records] = await pool.execute(
-      'SELECT user_id, type FROM life_records WHERE id = ? AND status = 1',
+      'SELECT user_id, type, publish_status, title, content, category FROM life_records WHERE id = ? AND status = 1',
       [id]
     );
 
@@ -922,6 +965,70 @@ exports.updateRecord = async (req, res, next) => {
           video.cover != null && String(video.cover).trim() !== '' ? String(video.cover).trim() : null,
           video.duration != null && video.duration !== '' ? Number(video.duration) : null,
         ]
+      );
+    }
+
+    // 从草稿提交审核 / 直接发布（与发布页「发布」「直接发布」一致）
+    if (
+      bodyPublishStatus !== undefined &&
+      bodyPublishStatus !== null &&
+      String(bodyPublishStatus).trim() !== ''
+    ) {
+      const target = String(bodyPublishStatus).trim();
+      if (!['pending', 'published'].includes(target)) {
+        return res.status(400).json({
+          code: 400,
+          message: '无效的发布状态',
+        });
+      }
+      if (target === 'published' && !req.user.isAdmin) {
+        return res.status(403).json({
+          code: 403,
+          message: '仅管理员可直接发布，请使用提交审核',
+        });
+      }
+      const [freshRows] = await pool.execute(
+        'SELECT type, publish_status, title, content, category FROM life_records WHERE id = ? AND status = 1',
+        [id]
+      );
+      const fresh = freshRows && freshRows[0];
+      if (!fresh) {
+        return res.status(404).json({ code: 404, message: '记录不存在' });
+      }
+      if (fresh.publish_status !== 'draft') {
+        return res.status(400).json({
+          code: 400,
+          message: '仅草稿可提交审核或发布',
+        });
+      }
+      const [tagRows] = await pool.execute(
+        `SELECT t.name AS name FROM life_record_tags rrt LEFT JOIN life_tags t ON rrt.tag_id = t.id WHERE rrt.record_id = ?`,
+        [id]
+      );
+      const tagNames = tagRows.map((r) => r.name).filter((n) => n != null && String(n).trim() !== '');
+      try {
+        await assertPublishCategoryAndTags(fresh.category, tagNames, {
+          skipCategory: false,
+          skipTags: tagNames.length === 0,
+          updateRecordId: id,
+        });
+      } catch (e) {
+        if (e.statusCode === 400) {
+          return res.status(400).json({ code: 400, message: e.message });
+        }
+        throw e;
+      }
+      try {
+        await assertRecordPublishableFromDraft(id, fresh);
+      } catch (e) {
+        if (e.statusCode === 400) {
+          return res.status(400).json({ code: 400, message: e.message });
+        }
+        throw e;
+      }
+      await pool.execute(
+        'UPDATE life_records SET publish_status = ?, rejected_reason = NULL WHERE id = ?',
+        [target, id]
       );
     }
 

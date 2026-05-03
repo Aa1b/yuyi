@@ -1,5 +1,9 @@
 import request from '~/api/request';
 
+/** 本地搜索历史（baseUrl 已含 /api，勿再请求 /api/searchHistory 以免路径变成 /api/api/...） */
+const HISTORY_STORAGE_KEY = 'life_search_history';
+const MAX_HISTORY_LEN = 30;
+
 Page({
   data: {
     historyWords: [],
@@ -21,44 +25,49 @@ Page({
     this.queryPopular();
   },
 
-  /**
-   * 查询历史记录
-   * @returns {Promise<void>}
-   */
-  async queryHistory() {
-    request('/api/searchHistory').then((res) => {
-      const { code, data } = res;
-
-      if (code === 200) {
-        const { historyWords = [] } = data;
-        this.setData({
-          historyWords,
-        });
-      }
-    });
+  persistHistory(words) {
+    try {
+      wx.setStorageSync(HISTORY_STORAGE_KEY, words.slice(0, MAX_HISTORY_LEN));
+    } catch (e) {
+      console.warn('persistHistory', e);
+    }
   },
 
   /**
-   * 查询热门搜索
-   * @returns {Promise<void>}
+   * 搜索历史（本地存储）
+   */
+  queryHistory() {
+    try {
+      const raw = wx.getStorageSync(HISTORY_STORAGE_KEY);
+      const historyWords = Array.isArray(raw) ? raw : [];
+      this.setData({ historyWords });
+    } catch (e) {
+      this.setData({ historyWords: [] });
+    }
+  },
+
+  /**
+   * 热门：用语义已有的标签接口（后端未单独提供 searchPopular）
    */
   async queryPopular() {
-    request('/api/searchPopular').then((res) => {
-      const { code, data } = res;
-
-      if (code === 200) {
-        const { popularWords = [] } = data;
-        this.setData({
-          popularWords,
-        });
-      }
-    });
+    try {
+      const res = await request('/life/tags');
+      const raw = res.data || [];
+      const list = Array.isArray(raw) ? raw : [];
+      const popularWords = list
+        .map((item) => (item && item.name) || item)
+        .filter(Boolean)
+        .slice(0, 16);
+      this.setData({ popularWords });
+    } catch (e) {
+      this.setData({ popularWords: [] });
+    }
   },
 
   setHistoryWords(searchValue) {
     if (!searchValue) return;
 
-    const { historyWords } = this.data;
+    const historyWords = [...this.data.historyWords];
     const index = historyWords.indexOf(searchValue);
 
     if (index !== -1) {
@@ -66,22 +75,14 @@ Page({
     }
     historyWords.unshift(searchValue);
 
+    const trimmed = historyWords.slice(0, MAX_HISTORY_LEN);
     this.setData({
       searchValue,
-      historyWords,
+      historyWords: trimmed,
     });
-    // if (searchValue) {
-    //     wx.navigateTo({
-    //         url: `/pages/goods/result/index?searchValue=${searchValue}`,
-    //     });
-    // }
+    this.persistHistory(trimmed);
   },
 
-  /**
-   * 清空历史记录的再次确认框
-   * 后期可能需要增加一个向后端请求的接口
-   * @returns {Promise<void>}
-   */
   confirm() {
     const { historyWords } = this.data;
     const { deleteType, deleteIndex } = this;
@@ -92,23 +93,17 @@ Page({
         historyWords,
         dialogShow: false,
       });
+      this.persistHistory(historyWords);
     } else {
       this.setData({ historyWords: [], dialogShow: false });
+      this.persistHistory([]);
     }
   },
 
-  /**
-   * 取消清空历史记录
-   * @returns {Promise<void>}
-   */
   close() {
     this.setData({ dialogShow: false });
   },
 
-  /**
-   * 点击清空历史记录
-   * @returns {Promise<void>}
-   */
   handleClearHistory() {
     const { dialog } = this.data;
     this.deleteType = 1;
@@ -135,46 +130,39 @@ Page({
     });
   },
 
-  /**
-   * 点击关键词跳转搜索
-   * 后期需要增加跳转和后端请求接口
-   * @returns {Promise<void>}
-   */
   handleHistoryTap(e) {
     const { historyWords } = this.data;
     const { index } = e.currentTarget.dataset;
     const searchValue = historyWords[index || 0] || '';
-
+    if (!searchValue) return;
     this.setHistoryWords(searchValue);
+    wx.navigateTo({
+      url: `/pages/search-result/index?keyword=${encodeURIComponent(searchValue)}`,
+    });
   },
 
   handlePopularTap(e) {
     const { popularWords } = this.data;
     const { index } = e.currentTarget.dataset;
     const searchValue = popularWords[index || 0] || '';
-
+    if (!searchValue) return;
     this.setHistoryWords(searchValue);
+    wx.navigateTo({
+      url: `/pages/search-result/index?keyword=${encodeURIComponent(searchValue)}`,
+    });
   },
 
-  /**
-   * 提交搜索框内容
-   */
   async handleSubmit(e) {
     const { value } = e.detail;
     if (value.length === 0) return;
 
     this.setHistoryWords(value);
-    
-    // 跳转到搜索结果页面
+
     wx.navigateTo({
       url: `/pages/search-result/index?keyword=${encodeURIComponent(value)}`,
     });
   },
 
-  /**
-   * 点击取消回到主页
-   * @returns {Promise<void>}
-   */
   actionHandle() {
     this.setData({
       searchValue: '',

@@ -126,6 +126,8 @@ exports.uploadVideo = async (req, res, next) => {
       fs.mkdirSync(thumbnailDir, { recursive: true });
     }
     const coverPath = path.join(thumbnailDir, `${nameWithoutExt}.jpg`);
+    /** ffmpeg 抽帧先写到这里，再用 sharp 写出最终封面，禁止对同一路径读写完覆盖（易花屏/畸形） */
+    const frameRawPath = path.join(thumbnailDir, `${nameWithoutExt}_frame.jpg`);
 
     let duration = 0;
     let coverUrl = '';
@@ -133,28 +135,48 @@ exports.uploadVideo = async (req, res, next) => {
     try {
       // 使用 ffmpeg 提取视频封面和时长
       const { execSync } = require('child_process');
-      
-      // 提取视频第一帧作为封面
+
+      const tryExtractFrame = (seconds) => {
+        try {
+          execSync(
+            `ffmpeg -y -ss ${seconds} -i "${videoPath}" -vframes 1 -q:v 2 "${frameRawPath}"`,
+            {
+              stdio: 'ignore',
+              timeout: 15000,
+            }
+          );
+          return fs.existsSync(frameRawPath) && fs.statSync(frameRawPath).size > 80;
+        } catch {
+          return false;
+        }
+      };
+
+      // 优先第 1 秒（避开头黑场）；失败则 0.3 秒；再失败取尽量靠前的帧（短视频避免 -ss 超出时长）
       try {
-        execSync(`ffmpeg -i "${videoPath}" -ss 00:00:01 -vframes 1 -q:v 2 "${coverPath}"`, {
-          stdio: 'ignore',
-          timeout: 10000,
-        });
-        
-        // 压缩封面图
-        await sharp(coverPath)
-          .resize(800, 450, {
-            fit: 'inside',
-            withoutEnlargement: true,
-          })
-          .jpeg({ quality: 85 })
-          .toFile(coverPath);
-        
-        coverUrl = `/uploads/videos/thumbnails/${path.basename(coverPath)}`;
+        const ok =
+          tryExtractFrame(1) || tryExtractFrame(0.3) || tryExtractFrame(0);
+        if (ok) {
+          const buf = await sharp(frameRawPath)
+            .resize(800, 450, {
+              fit: 'cover',
+              position: 'centre',
+            })
+            .jpeg({ quality: 88 })
+            .toBuffer();
+          await fs.promises.writeFile(coverPath, buf);
+          coverUrl = `/uploads/videos/thumbnails/${path.basename(coverPath)}`;
+        } else {
+          coverUrl = `/uploads/videos/thumbnails/default.jpg`;
+        }
+        try {
+          fs.unlinkSync(frameRawPath);
+        } catch (_) {}
       } catch (error) {
-        console.warn('提取视频封面失败（可能需要安装ffmpeg）:', error.message);
-        // 如果提取失败，使用默认封面
+        console.warn('提取视频封面失败（可能需要安装 ffmpeg）:', error.message);
         coverUrl = `/uploads/videos/thumbnails/default.jpg`;
+        try {
+          fs.unlinkSync(frameRawPath);
+        } catch (_) {}
       }
 
       // 获取视频时长

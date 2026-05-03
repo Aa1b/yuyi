@@ -2,6 +2,21 @@
 import request from '~/api/request';
 import Message from 'tdesign-miniprogram/message/index';
 
+/** 兼容路由参数一次或二次 encodeURIComponent */
+function normalizeKeyword(raw) {
+  let s = String(raw || '');
+  for (let i = 0; i < 2; i += 1) {
+    try {
+      const next = decodeURIComponent(s);
+      if (next === s) break;
+      s = next;
+    } catch (_) {
+      break;
+    }
+  }
+  return s.trim();
+}
+
 Page({
   data: {
     keyword: '',
@@ -16,7 +31,7 @@ Page({
   },
   
   onLoad(options) {
-    const { keyword } = options;
+    const keyword = normalizeKeyword(options.keyword);
     if (!keyword) {
       Message.warning({
         context: this,
@@ -27,7 +42,7 @@ Page({
       wx.navigateBack();
       return;
     }
-    
+
     this.setData({ keyword });
     this.loadCategories();
     this.searchRecords(true);

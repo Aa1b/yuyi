@@ -1340,28 +1340,33 @@ exports.search = async (req, res, next) => {
     } = req.query;
 
     const currentUserId = req.user?.id || null;
-    const limit = parseInt(pageSize);
-    const offset = (parseInt(page) - 1) * limit;
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const pageSizeNum = Math.min(100, Math.max(1, parseInt(pageSize, 10) || 10));
+    const limitNum = Math.floor(Number(pageSizeNum)) || 10;
+    const offsetNum = Math.max(0, Math.floor((pageNum - 1) * limitNum));
 
-    if (!keyword.trim()) {
+    const kw = String(keyword || '').trim();
+    if (!kw) {
       return res.status(400).json({
         code: 400,
         message: '搜索关键词不能为空',
       });
     }
 
-    // 构建查询条件
-    let whereConditions = ['r.status = 1', 'r.privacy = "public"'];
+    // 构建查询条件（与首页列表一致：仅已上线且公开）
+    let whereConditions = [
+      'r.status = 1',
+      'r.privacy = "public"',
+      "r.publish_status = 'published'",
+    ];
     const queryParams = [];
 
     // 关键词搜索（内容、标签）
-    if (keyword) {
-      whereConditions.push(
-        '(r.content LIKE ? OR EXISTS (SELECT 1 FROM life_record_tags rrt LEFT JOIN life_tags t ON rrt.tag_id = t.id WHERE rrt.record_id = r.id AND t.name LIKE ?))'
-      );
-      const keywordPattern = `%${keyword}%`;
-      queryParams.push(keywordPattern, keywordPattern);
-    }
+    whereConditions.push(
+      '(r.content LIKE ? OR EXISTS (SELECT 1 FROM life_record_tags rrt LEFT JOIN life_tags t ON rrt.tag_id = t.id WHERE rrt.record_id = r.id AND t.name LIKE ?))'
+    );
+    const keywordPattern = `%${kw}%`;
+    queryParams.push(keywordPattern, keywordPattern);
 
     // 分类筛选
     if (category) {
@@ -1377,7 +1382,7 @@ exports.search = async (req, res, next) => {
 
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
 
-    // 查询记录列表
+    // 查询记录列表（LIMIT/OFFSET 与 getList 相同方式拼接，避免驱动层对占位符/types 报错）
     const [records] = await pool.execute(
       `SELECT 
         r.id,
@@ -1396,8 +1401,8 @@ exports.search = async (req, res, next) => {
       LEFT JOIN users u ON r.user_id = u.id
       ${whereClause}
       ORDER BY r.created_at DESC
-      LIMIT ? OFFSET ?`,
-      [...queryParams, limit, offset]
+      LIMIT ${limitNum} OFFSET ${offsetNum}`,
+      queryParams
     );
 
     // 查询总数
@@ -1436,22 +1441,29 @@ exports.search = async (req, res, next) => {
            WHERE record_id IN (${placeholders}) AND user_id = ?`,
           [...recordIds, currentUserId]
         );
-        likes = likesData.map(l => l.record_id);
+        likes = likesData.map((l) => Number(l.record_id));
       }
 
       // 组装数据
-      records.forEach(record => {
-        record.images = media.filter(m => m.record_id === record.id && m.type === 'image').map(m => m.url);
-        const videoMedia = media.find(m => m.record_id === record.id && m.type === 'video');
-        record.video = videoMedia ? {
-          url: videoMedia.url,
-          cover: videoMedia.cover,
-          duration: videoMedia.duration,
-        } : null;
-        record.tags = tags.filter(t => t.record_id === record.id).map(t => t.name);
-        record.isLiked = likes.includes(record.id);
+      records.forEach((record) => {
+        const rid = Number(record.id);
+        record.images = media.filter((m) => Number(m.record_id) === rid && m.type === 'image').map((m) => m.url);
+        const videoMedia = media.find((m) => Number(m.record_id) === rid && m.type === 'video');
+        record.video = videoMedia
+          ? {
+              url: videoMedia.url,
+              cover: videoMedia.cover,
+              duration: videoMedia.duration,
+            }
+          : null;
+        record.tags = tags.filter((t) => Number(t.record_id) === rid).map((t) => t.name);
+        record.isLiked = likes.includes(rid);
       });
     }
+
+    records.forEach((record) => {
+      if (!Array.isArray(record.images)) record.images = [];
+    });
 
     res.json({
       code: 200,
@@ -1459,9 +1471,9 @@ exports.search = async (req, res, next) => {
       data: {
         list: records,
         total,
-        page: parseInt(page),
-        pageSize: limit,
-        keyword,
+        page: pageNum,
+        pageSize: limitNum,
+        keyword: kw,
       },
     });
   } catch (error) {

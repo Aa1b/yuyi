@@ -38,6 +38,7 @@
         id="life-video-{{record.id}}"
         src="{{displayVideo.url}}"
         poster="{{displayVideo.cover}}"
+        object-fit="cover"
         controls="{{false}}"
         class="life-record-card__video"
       />

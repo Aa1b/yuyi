@@ -37,7 +37,8 @@
       <view class="video-preview">
         <video
           src="{{videoFile.url}}"
-          poster="{{videoFile.cover}}"
+          poster="{{videoFile.cover || videoFile.thumb}}"
+          object-fit="contain"
           controls
           class="video-player"
         />

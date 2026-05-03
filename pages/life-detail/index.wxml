@@ -51,6 +51,7 @@
             id="life-detail-video"
             src="{{record.video.url}}"
             poster="{{record.video.cover}}"
+            object-fit="contain"
             controls
             enable-progress-gesture="true"
             show-center-play-btn="true"

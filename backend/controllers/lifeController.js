@@ -227,9 +227,13 @@ exports.getList = async (req, res, next) => {
         queryParams.push(currentUserId || 0, currentUserId || 0);
       }
     } else if (privacy === 'all' && !userId && currentUserId) {
-      // 默认：当前用户的记录，显示所有
-      // 但管理员在审核视角（pending）需要看到所有待审核记录
-      if (!(status === 'pending' && req.user && req.user.isAdmin)) {
+      // 默认：仅当前用户自己的记录。「我的记录」走这里。
+      // 全站待审核队列仅当显式 moderation=1 且为管理员时启用（内容审核页），避免管理员在「审核中」看到自己 + 他人混杂。
+      const moderationQueue =
+        String(req.query.moderation || '') === '1' || String(req.query.scope || '') === 'moderation';
+      const showAllPendingModeration =
+        status === 'pending' && req.user && req.user.isAdmin && moderationQueue;
+      if (!showAllPendingModeration) {
         whereConditions.push('r.user_id = ?');
         queryParams.push(currentUserId);
       }
@@ -1178,11 +1182,28 @@ exports.like = async (req, res, next) => {
       });
     }
 
-    // 添加点赞（触发器会自动更新点赞数和创建通知）
+    // 添加点赞（触发器若存在会更新 like_count；通知在应用层写入，避免线上未部署触发器时收不到「点赞」通知）
     await pool.execute(
       'INSERT INTO life_likes (record_id, user_id) VALUES (?, ?)',
       [recordId, userId]
     );
+
+    const [[recMeta]] = await pool.execute('SELECT user_id FROM life_records WHERE id = ?', [recordId]);
+    const ownerId = recMeta && recMeta.user_id != null ? Number(recMeta.user_id) : null;
+    if (ownerId != null && ownerId !== Number(userId)) {
+      try {
+        const [nu] = await pool.execute('SELECT nickname FROM users WHERE id = ?', [userId]);
+        const fromName = (nu[0] && nu[0].nickname) ? String(nu[0].nickname).trim() : '';
+        const msg = fromName ? `${fromName} 赞了你的记录` : '有人赞了你的记录';
+        await pool.execute(
+          `INSERT INTO notifications (user_id, type, record_id, from_user_id, content)
+           VALUES (?, 'like', ?, ?, ?)`,
+          [ownerId, recordId, userId, msg]
+        );
+      } catch (notifyErr) {
+        console.warn('点赞通知写入失败（不影响点赞结果）:', notifyErr.message || notifyErr);
+      }
+    }
 
     // 查询更新后的点赞数
     const [countResult] = await pool.execute(

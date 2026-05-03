@@ -185,51 +185,6 @@ Page({
     });
   },
 
-  // 审核记录（通过 / 驳回）
-  async reviewRecord(e) {
-    if (!this.data.isAdmin) return;
-    const { id, action } = e.currentTarget.dataset;
-    const actionText = action === 'approve' ? '通过' : '驳回';
-
-    wx.showModal({
-      title: `确认${actionText}`,
-      content: `确定要${actionText}这条记录吗？`,
-      success: async (res) => {
-        if (!res.confirm) return;
-        try {
-          wx.showLoading({ title: `${actionText}中...`, mask: true });
-          await request('/life/review', 'POST', { id, action });
-          wx.hideLoading();
-
-          // 从列表中移除
-          const { records } = this.data;
-          const index = records.findIndex(item => item.id === id);
-          if (index > -1) {
-            records.splice(index, 1);
-            this.setData({
-              records: [...records],
-            });
-          }
-
-          Message.success({
-            context: this,
-            offset: [120, 32],
-            duration: 2000,
-            content: `${actionText}成功`,
-          });
-        } catch (error) {
-          wx.hideLoading();
-          Message.error({
-            context: this,
-            offset: [120, 32],
-            duration: 2000,
-            content: `${actionText}失败，请重试`,
-          });
-        }
-      },
-    });
-  },
-
   /** 草稿提交审核（与普通用户发布页「发布」一致 → pending） */
   publishDraftSubmit(e) {
     if (e && typeof e.stopPropagation === 'function') {

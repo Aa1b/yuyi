@@ -36,29 +36,7 @@
       </view>
       <!-- 操作按钮 -->
       <view class="my-life-records-actions">
-        <!-- 审核入口：仅在“审核中”视图展示 -->
-        <t-button
-          wx:if="{{filter === 'pending' && isAdmin}}"
-          theme="primary"
-          size="small"
-          variant="outline"
-          data-id="{{record.id}}"
-          data-action="approve"
-          bindtap="reviewRecord"
-        >
-          通过
-        </t-button>
-        <t-button
-          wx:if="{{filter === 'pending' && isAdmin}}"
-          theme="danger"
-          size="small"
-          variant="outline"
-          data-id="{{record.id}}"
-          data-action="reject"
-          bindtap="reviewRecord"
-        >
-          驳回
-        </t-button>
+        <!-- 通过/驳回仅在「内容审核」页操作，避免与「我的记录」职责重叠 -->
 
         <!-- 草稿：提交审核 / 管理员直接发布 -->
         <t-button

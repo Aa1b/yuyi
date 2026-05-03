@@ -287,20 +287,8 @@ BEGIN
 END$$
 DELIMITER ;
 
--- 13. 触发器：创建点赞通知
-DELIMITER $$
-CREATE TRIGGER create_like_notification
-AFTER INSERT ON life_likes
-FOR EACH ROW
-BEGIN
-  DECLARE record_owner_id INT;
-  SELECT user_id INTO record_owner_id FROM life_records WHERE id = NEW.record_id;
-  IF record_owner_id != NEW.user_id THEN
-    INSERT INTO notifications (user_id, type, record_id, from_user_id, content)
-    VALUES (record_owner_id, 'like', NEW.record_id, NEW.user_id, '点赞了你的记录');
-  END IF;
-END$$
-DELIMITER ;
+-- 13. 点赞通知：由应用层 lifeController.like 写入 notifications（不依赖本触发器，避免库未部署触发器时无通知）
+-- 若历史库曾创建 create_like_notification，请执行 database/migrations/drop_like_notification_trigger.sql 以免与应用层重复插入
 
 -- 14. 触发器：创建评论通知
 DELIMITER $$

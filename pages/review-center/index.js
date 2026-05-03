@@ -41,6 +41,8 @@ Page({
         pageSize,
         privacy: 'all',
         status: 'pending',
+        /** 全站待审核队列（仅管理员有效；见 life/list） */
+        moderation: 1,
       };
 
       const queryString = Object.keys(params)

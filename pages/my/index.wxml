@@ -66,7 +66,7 @@
         class="grid-item {{gridItem.type === 'all' ? 'split-line' : ''}}"
         data-data="{{gridItem}}"
         bindclick="onEleClick"
-        wx:if="{{(gridItem.type !== 'reviewCenter' && gridItem.type !== 'dataCenter' && gridItem.type !== 'adminCenter') || isAdmin}}"
+        wx:if="{{((gridItem.type !== 'reviewCenter' && gridItem.type !== 'dataCenter' && gridItem.type !== 'adminCenter') || isAdmin) && !(isAdmin && gridItem.type === 'pending')}}"
       />
     </t-grid>
   </view>

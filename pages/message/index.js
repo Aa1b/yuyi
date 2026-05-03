@@ -2,7 +2,7 @@
 import request from '~/api/request';
 import Message from 'tdesign-miniprogram/message/index';
 import { formatDateTime } from '~/utils/time';
-import resolveMediaUrl from '~/utils/resolveMediaUrl';
+import { resolveAvatarDisplayUrl } from '~/utils/resolveMediaUrl';
 
 const VALID_TYPES = ['all', 'like', 'comment', 'follow', 'guestbook'];
 
@@ -76,7 +76,7 @@ Page({
         ...n,
         displayTime: formatDateTime(n.createdAt),
         // 与后端 notification 字段一致：fromUserAvatar（勿用 userAvatar，会拿不到图）
-        fromUserAvatar: n.fromUserAvatar ? resolveMediaUrl(n.fromUserAvatar) : n.fromUserAvatar,
+        fromUserAvatar: resolveAvatarDisplayUrl(n.fromUserAvatar),
       }));
 
       if (refresh) {
@@ -174,7 +174,7 @@ Page({
       const list = (res.data?.list ?? []).map((item) => ({
         ...item,
         displayTime: formatDateTime(item.lastTime),
-        userAvatar: item.userAvatar ? resolveMediaUrl(item.userAvatar) : item.userAvatar,
+        userAvatar: resolveAvatarDisplayUrl(item.userAvatar),
       }));
       this.setData({ guestbookList: list, loadingGuestbook: false });
     } catch (err) {

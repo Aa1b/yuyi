@@ -2,7 +2,7 @@
 import request from '~/api/request';
 import Message from 'tdesign-miniprogram/message/index';
 import { formatDateTime } from '~/utils/time';
-import resolveMediaUrl from '~/utils/resolveMediaUrl';
+import resolveMediaUrl, { resolveAvatarDisplayUrl } from '~/utils/resolveMediaUrl';
 import { getLifePrivacyLabel } from '~/utils/privacyLabels';
 
 Page({
@@ -36,9 +36,7 @@ Page({
       const res = await request(`/life/detail?id=${this.data.recordId}`);
       const raw = res.data || {};
       const record = { ...raw };
-      if (record.avatar) {
-        record.avatar = resolveMediaUrl(record.avatar);
-      }
+      record.avatar = resolveAvatarDisplayUrl(record.avatar);
       if (record.images && record.images.length) {
         record.images = record.images.map(resolveMediaUrl);
       }
@@ -52,12 +50,12 @@ Page({
       const comments = (record.comments || []).map((c) => {
         const replies = (c.replies || []).map((r) => ({
           ...r,
-          avatar: r.avatar ? resolveMediaUrl(r.avatar) : r.avatar,
+          avatar: resolveAvatarDisplayUrl(r.avatar),
           displayTime: formatDateTime(r.createdAt),
         }));
         return {
           ...c,
-          avatar: c.avatar ? resolveMediaUrl(c.avatar) : c.avatar,
+          avatar: resolveAvatarDisplayUrl(c.avatar),
           displayTime: formatDateTime(c.createdAt),
           replies,
         };
@@ -205,7 +203,7 @@ Page({
       const res = await request('/life/comment', 'POST', payload);
       const raw = (res.data && res.data.id != null ? res.data : res.data?.data) || {};
       const newComment = { ...raw };
-      if (newComment.avatar) newComment.avatar = resolveMediaUrl(newComment.avatar);
+      newComment.avatar = resolveAvatarDisplayUrl(newComment.avatar);
       if (newComment.createdAt) newComment.displayTime = formatDateTime(newComment.createdAt);
 
       if (replyingTo && replyingTo.id) {

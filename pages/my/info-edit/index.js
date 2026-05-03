@@ -2,7 +2,7 @@ import request from '~/api/request';
 import config from '~/config';
 import { areaList } from '~/utils/areaData.js';
 import { getCitiesOfProvince, createInitialProvinceCityState } from '~/utils/areaPickerHelpers';
-import resolveMediaUrl from '~/utils/resolveMediaUrl';
+import { resolveAvatarDisplayUrl } from '~/utils/resolveMediaUrl';
 import { formatBirthDate } from '~/utils/time';
 
 Page({
@@ -78,7 +78,7 @@ Page({
         address,
         introduction: data.introduction || '',
       };
-      this.setData({ personInfo, displayAvatarUrl: avatar ? resolveMediaUrl(avatar) : '' });
+      this.setData({ personInfo, displayAvatarUrl: resolveAvatarDisplayUrl(avatar) });
       if (personInfo.address && Array.isArray(personInfo.address) && personInfo.address.length >= 2) {
         this.setData({
           addressText: `${areaList.provinces[personInfo.address[0]] || ''} ${areaList.cities[personInfo.address[1]] || ''}`,
@@ -209,7 +209,7 @@ Page({
       // 写入用户资料
       await request('/auth/profile', 'PUT', { avatar: avatarUrl });
 
-      const resolved = resolveMediaUrl(avatarUrl);
+      const resolved = resolveAvatarDisplayUrl(avatarUrl);
       this.setData({ 'personInfo.avatar': avatarUrl, displayAvatarUrl: resolved });
 
       // 同步更新本地缓存的 user_info，确保首页/留言等处头像立即生效

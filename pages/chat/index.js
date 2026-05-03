@@ -1,6 +1,6 @@
 import request from '~/api/request';
 import Message from 'tdesign-miniprogram/message/index';
-import resolveMediaUrl from '~/utils/resolveMediaUrl';
+import { resolveAvatarDisplayUrl } from '~/utils/resolveMediaUrl';
 
 Page({
   data: {
@@ -31,8 +31,8 @@ Page({
     this.setData({
       userId,
       name: decodeURIComponent(name || ''),
-      avatar: resolveMediaUrl(decodeURIComponent(avatar || '')),
-      myAvatar: resolveMediaUrl(myAvatarRaw),
+      avatar: resolveAvatarDisplayUrl(decodeURIComponent(avatar || '')),
+      myAvatar: resolveAvatarDisplayUrl(myAvatarRaw),
     });
     this.loadUserAndConversation();
   },
@@ -45,7 +45,7 @@ Page({
         const u = res.data || {};
         this.setData({
           name: u.nickname || name || '留言',
-          avatar: resolveMediaUrl(u.avatar || ''),
+          avatar: resolveAvatarDisplayUrl(u.avatar),
         });
       } catch (_) {}
     }

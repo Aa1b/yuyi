@@ -1,7 +1,7 @@
 import request from '~/api/request';
 import Message from 'tdesign-miniprogram/message/index';
 import { formatDateTime } from '~/utils/time';
-import resolveMediaUrl from '~/utils/resolveMediaUrl';
+import resolveMediaUrl, { resolveAvatarDisplayUrl } from '~/utils/resolveMediaUrl';
 
 Component({
   properties: {
@@ -39,8 +39,7 @@ Component({
       const currentKey = keyParts.join('|');
       if (this._lastRecordKey === currentKey) return;
       this._lastRecordKey = currentKey;
-      const rawAvatar = record.avatar && String(record.avatar).trim();
-      const displayAvatarUrl = rawAvatar ? resolveMediaUrl(rawAvatar) : '/static/chat/avatar.png';
+      const displayAvatarUrl = resolveAvatarDisplayUrl(record.avatar);
       const images = (record.images || []).map(resolveMediaUrl);
       const displayImageUrl = images[0] || '';
       const displayTime = formatDateTime(record.createdAt);

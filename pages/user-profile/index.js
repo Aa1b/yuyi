@@ -1,7 +1,7 @@
 // pages/user-profile/index.js
 import request from '~/api/request';
 import Message from 'tdesign-miniprogram/message/index';
-import resolveMediaUrl from '~/utils/resolveMediaUrl';
+import { resolveAvatarDisplayUrl } from '~/utils/resolveMediaUrl';
 import { getWesternZodiacFromBirth } from '~/utils/zodiac';
 import { formatHomeRegionFromAddress } from '~/utils/profileRegion';
 
@@ -65,9 +65,7 @@ Page({
         this.setData({ loading: false });
         return;
       }
-      if (userInfo.avatar) {
-        userInfo.avatar = resolveMediaUrl(userInfo.avatar);
-      }
+      userInfo.avatar = resolveAvatarDisplayUrl(userInfo.avatar);
       userInfo.displayZodiac = getWesternZodiacFromBirth(userInfo.birth);
       userInfo.displayHomeCity = formatHomeRegionFromAddress(userInfo.address);
       const isSelf = userInfo.isSelf || false;

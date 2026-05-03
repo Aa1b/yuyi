@@ -1,7 +1,7 @@
 // pages/following/index.js
 import request from '~/api/request';
 import Message from 'tdesign-miniprogram/message/index';
-import resolveMediaUrl from '~/utils/resolveMediaUrl';
+import { resolveAvatarDisplayUrl } from '~/utils/resolveMediaUrl';
 
 Page({
   data: {
@@ -59,7 +59,7 @@ Page({
       const { list: rawList = [], total = 0 } = res.data || {};
       const list = rawList.map((u) => ({
         ...u,
-        avatar: u.avatar ? resolveMediaUrl(u.avatar) : u.avatar,
+        avatar: resolveAvatarDisplayUrl(u.avatar),
       }));
 
       if (refresh) {

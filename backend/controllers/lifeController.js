@@ -793,6 +793,7 @@ exports.updateRecord = async (req, res, next) => {
     const userId = req.user.id;
     const {
       id,
+      title,
       content,
       privacy,
       category,
@@ -863,6 +864,10 @@ exports.updateRecord = async (req, res, next) => {
     const updateFields = [];
     const updateValues = [];
 
+    if (title !== undefined) {
+      updateFields.push('title = ?');
+      updateValues.push(title != null ? String(title).trim() : '');
+    }
     if (content !== undefined) {
       updateFields.push('content = ?');
       updateValues.push(String(content).trim());

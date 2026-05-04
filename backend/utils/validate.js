@@ -65,7 +65,13 @@ function validateRecordCreate(body) {
  * 更新生活记录校验（仅校验传入的字段）
  */
 function validateRecordUpdate(body) {
-  const { content, category, location, tags, images, publishStatus } = body || {};
+  const { title, content, category, location, tags, images, publishStatus } = body || {};
+  if (title !== undefined && String(title).trim() !== '') {
+    const t = String(title).trim();
+    if (t.length > LIMIT.recordTitle) {
+      return { code: 400, message: `标题不能超过${LIMIT.recordTitle}字`, field: 'title' };
+    }
+  }
   if (content !== undefined) {
     const c = String(content).trim();
     if (c.length > LIMIT.recordContent) {

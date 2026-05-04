@@ -56,6 +56,10 @@ Page({
     cityPickValue: [],
     manualCityLabel: '',
     mapLocationNote: '',
+    /** 加载时文案是否仅来自 title（发布页常把一句话写在标题里），保存时需清空 title 否则列表仍显示旧标题 */
+    editHeadlineFromTitleOnly: false,
+    /** 进入编辑页时标题与正文是否均非空（用于保存时是否清空 title） */
+    hadTitleAndBody: false,
   },
   
   async onLoad(options) {
@@ -88,7 +92,7 @@ Page({
     try {
       this.setData({ loading: true });
       const res = await request(`/life/detail?id=${this.data.recordId}`);
-      const record = res.data || res.data?.data || {};
+      const record = res.data != null ? res.data : {};
       const images = (record.images || []).map(resolveMediaUrl);
       const video = record.video
         ? {
@@ -100,9 +104,25 @@ Page({
       const catStr = record.category || '';
       const categories = this.data.categories || [];
       const catIdx = categories.findIndex((c) => c && (c.value === catStr || c.label === catStr));
+      const t = record.title != null ? String(record.title).trim() : '';
+      const c = record.content != null ? String(record.content).trim() : '';
+      let headline = '';
+      let fromTitleOnly = false;
+      let hadTitleAndBody = false;
+      if (t && c) {
+        headline = `${t}\n\n${c}`;
+        hadTitleAndBody = true;
+      } else if (t) {
+        headline = t;
+        fromTitleOnly = true;
+      } else {
+        headline = c;
+      }
       // 填充表单数据（图片/视频用完整 URL 以便预览）
       this.setData({
-        content: record.content || '',
+        content: headline,
+        editHeadlineFromTitleOnly: fromTitleOnly,
+        hadTitleAndBody,
         privacy: record.privacy || 'public',
         category: catStr,
         categoryIndex: catIdx >= 0 ? [catIdx] : [],
@@ -449,14 +469,28 @@ Page({
 
     const { recordId, content, mediaType, imageFiles, videoFile, privacy, category, selectedTags, location } = this.data;
 
+    const trimmed = content.trim();
     const recordData = {
       id: recordId,
-      content: content.trim(),
       privacy,
       category,
       tags: selectedTags,
       location: location || null,
     };
+    const { editHeadlineFromTitleOnly, hadTitleAndBody } = this.data;
+    if (editHeadlineFromTitleOnly) {
+      recordData.title = '';
+      recordData.content = trimmed;
+    } else if (trimmed.includes('\n\n')) {
+      const parts = trimmed.split(/\n{2,}/);
+      recordData.title = (parts[0] || '').trim();
+      recordData.content = parts.length > 1 ? parts.slice(1).join('\n\n').trim() : '';
+    } else if (hadTitleAndBody) {
+      recordData.title = '';
+      recordData.content = trimmed;
+    } else {
+      recordData.content = trimmed;
+    }
 
     try {
       wx.showLoading({ title: '更新中...', mask: true });

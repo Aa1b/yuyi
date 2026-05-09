@@ -1,4 +1,4 @@
-<t-navbar title="管理看板" left-arrow />
+<t-navbar title="管理看板" left-arrow placeholder />
 <view class="data-center" wx:if="{{isAdmin}}">
   <view wx:if="{{loading}}" class="data-center-loading">
     <t-loading theme="circular" size="40rpx" text="加载中..." />

@@ -1,4 +1,4 @@
-<t-navbar title="设置" left-arrow />
+<t-navbar title="设置" left-arrow placeholder />
 <view class="setting">
   <view class="setting-group-title">发布</view>
   <t-cell-group theme="card" t-class="cell-group-class">

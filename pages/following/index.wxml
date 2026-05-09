@@ -1,4 +1,4 @@
-<t-navbar title="{{type === 'followers' ? '粉丝' : type === 'mutual' ? '互关' : '关注'}}" left-arrow />
+<t-navbar title="{{type === 'followers' ? '粉丝' : type === 'mutual' ? '互关' : '关注'}}" left-arrow placeholder />
 <view class="following-container">
   <view class="following-tabs">
     <view
@@ -29,7 +29,7 @@
   <view wx:else class="following-list">
     <view wx:for="{{list}}" wx:key="id" wx:for-item="user" class="following-item">
       <view class="following-user" bindtap="goToUserProfile" data-user-id="{{user.id}}">
-        <t-avatar image="{{user.avatar}}" size="medium" />
+        <t-avatar image="{{user.avatar || defaultAvatarUrl}}" size="medium" />
         <view class="following-user-info">
           <text class="following-username">{{user.nickname}}</text>
           <view class="following-meta">

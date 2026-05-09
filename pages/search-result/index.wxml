@@ -1,9 +1,9 @@
-<t-navbar title="搜索结果" left-arrow />
+<t-navbar title="搜索结果" left-arrow placeholder />
 <view class="search-result-container">
   <!-- 搜索关键词 -->
   <view class="search-result-keyword" wx:if="{{keyword}}">
     <text>搜索"{{keyword}}"</text>
-    <text class="result-count" wx:if="{{!loading && records.length > 0}}">共找到 {{records.length}} 条结果</text>
+    <text class="result-count" wx:if="{{!loading && total > 0}}">共找到 {{total}} 条结果</text>
   </view>
 
   <!-- 筛选栏 -->
@@ -29,15 +29,6 @@
         data-value="{{category}}"
         bind:change="onCategoryChange"
       />
-    </view>
-    
-    <!-- 类型筛选 -->
-    <view class="filter-section">
-      <t-radio-group value="{{selectedType}}" bind:change="onTypeChange">
-        <t-radio value="all" label="全部" />
-        <t-radio value="image" label="图文" />
-        <t-radio value="video" label="视频" />
-      </t-radio-group>
     </view>
   </view>
 

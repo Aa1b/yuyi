@@ -1,4 +1,4 @@
-<t-navbar title="发布生活记录" left-arrow />
+<t-navbar title="发布生活记录" left-arrow placeholder />
 <view class="page">
   <view class="release-container">
     <!-- 内容类型 + 隐私设置（单行紧凑） -->

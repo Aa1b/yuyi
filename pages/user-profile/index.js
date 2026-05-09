@@ -1,12 +1,13 @@
 // pages/user-profile/index.js
 import request from '~/api/request';
 import Message from 'tdesign-miniprogram/message/index';
-import { resolveAvatarDisplayUrl } from '~/utils/resolveMediaUrl';
+import { resolveAvatarDisplayUrl, DEFAULT_AVATAR_URL } from '~/utils/resolveMediaUrl';
 import { getWesternZodiacFromBirth } from '~/utils/zodiac';
 import { formatHomeRegionFromAddress } from '~/utils/profileRegion';
 
 Page({
   data: {
+    defaultAvatarUrl: DEFAULT_AVATAR_URL,
     userId: null,
     userInfo: null,
     records: [],

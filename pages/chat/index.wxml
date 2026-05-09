@@ -1,5 +1,5 @@
 <wxs src="./index.wxs" module="utils" />
-<t-navbar class="nav-bar" title="{{ name }}" left-arrow />
+<t-navbar class="nav-bar" title="{{ name }}" left-arrow placeholder />
 
 <view class="chat-container">
   <scroll-view class="content" scroll-y scroll-into-view="{{ anchor }}" scroll-with-animation>
@@ -12,10 +12,10 @@
           <view class="message self">
             <text space="nbsp">{{ item.content }}</text>
           </view>
-          <t-avatar image="{{ myAvatar }}" size="small" />
+          <t-avatar image="{{ myAvatar || defaultAvatarUrl }}" size="small" />
         </view>
         <view wx:else class="message-area">
-          <t-avatar image="{{ avatar }}" size="small" />
+          <t-avatar image="{{ avatar || defaultAvatarUrl }}" size="small" />
           <view class="message other">
             <text space="nbsp">{{ item.content }}</text>
           </view>

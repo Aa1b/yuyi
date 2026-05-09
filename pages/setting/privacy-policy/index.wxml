@@ -1,4 +1,4 @@
-<t-navbar title="隐私政策" left-arrow />
+<t-navbar title="隐私政策" left-arrow placeholder />
 <scroll-view scroll-y class="agreement-scroll" enhanced show-scrollbar="{{false}}">
   <view class="agreement-content">
     <text class="agreement-text">{{content}}</text>

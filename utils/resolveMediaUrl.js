@@ -83,13 +83,16 @@ export function resolveMediaUrl(url) {
 /**
  * 头像展示用：解析为可加载 URL，空或无效时使用本地默认图（避免 t-avatar 白块）
  * @param {string|null|undefined} url
- * @returns {string}
+ * @returns {string} 恒为非空，且为可展示的本地路径或已解析的 https URL
  */
 export function resolveAvatarDisplayUrl(url) {
-  const raw = url != null && url !== '' ? String(url).trim() : '';
-  if (!raw) return DEFAULT_AVATAR_URL;
-  const out = resolveMediaUrl(raw);
-  return out && String(out).trim() ? out : DEFAULT_AVATAR_URL;
+  if (url == null || url === '') return DEFAULT_AVATAR_URL;
+  const s0 = String(url).trim();
+  if (!s0 || s0 === 'null' || s0 === 'undefined') return DEFAULT_AVATAR_URL;
+  const out = resolveMediaUrl(s0);
+  const s1 = out != null && out !== '' ? String(out).trim() : '';
+  if (!s1) return DEFAULT_AVATAR_URL;
+  return s1;
 }
 
 export default resolveMediaUrl;

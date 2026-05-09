@@ -1,5 +1,5 @@
 <view class="home-navbar">
-  <t-navbar title="{{ navType === 'search' ? '' : titleText }}">
+  <t-navbar placeholder title="{{ navType === 'search' ? '' : titleText }}">
     <view slot="left">
       <view class="home-navbar__left">
         <t-icon class="home-navbar__icon" bind:tap="openDrawer" name="view-list" size="48rpx" />

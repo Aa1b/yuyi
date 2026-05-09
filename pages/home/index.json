@@ -11,6 +11,7 @@
     "t-check-tag": "tdesign-miniprogram/check-tag/check-tag",
     "t-loading": "tdesign-miniprogram/loading/loading",
     "t-empty": "tdesign-miniprogram/empty/empty",
+    "t-icon": "tdesign-miniprogram/icon/icon",
     "nav": "/components/nav",
     "card": "/components/card",
     "life-record-card": "/components/life-record-card"

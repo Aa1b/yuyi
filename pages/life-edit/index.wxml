@@ -1,21 +1,34 @@
-<t-navbar title="编辑生活记录" left-arrow />
+<t-navbar title="编辑生活记录" left-arrow placeholder />
 <view class="life-edit-container">
   <view wx:if="{{loading}}" class="life-edit-loading">
     <t-loading theme="circular" size="40rpx" text="加载中..." />
   </view>
 
   <view wx:else class="life-edit-content">
-    <!-- 内容描述 -->
+    <!-- 标题（与发布页一致：原生 input） -->
+    <view class="title box">
+      <view class="title-label">标题</view>
+      <input
+        class="title-input"
+        placeholder-class="title-input-placeholder"
+        placeholder="给这条记录起个标题"
+        value="{{title}}"
+        maxlength="100"
+        bindinput="onTitleInput"
+      />
+    </view>
+
+    <!-- 正文：原生 textarea，避免 TDesign textarea 在部分页面 value 与 data 不同步（同 life-detail 评论框） -->
     <view class="desc box">
-      <view class="desc-label">添加描述</view>
-      <t-textarea
-        t-class="desc-class"
-        placeholder="分享你此刻的想法..."
-        maxlength="500"
+      <view class="desc-label">开始记录</view>
+      <textarea
+        class="desc-textarea"
+        placeholder="写下此刻的想法或故事..."
+        maxlength="2000"
         value="{{content}}"
-        bind:input="onContentInput"
-        disableDefaultPadding="{{true}}"
-        indicator
+        bindinput="onContentInput"
+        auto-height
+        show-confirm-bar="{{false}}"
       />
     </view>
 

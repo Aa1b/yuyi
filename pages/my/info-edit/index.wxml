@@ -1,11 +1,18 @@
-<t-navbar left-arrow title="个人信息" />
+<t-navbar left-arrow placeholder title="个人信息" />
 <view class="info-edit">
   <t-cell class="info-edit__cell" title="头像" arrow bind:click="onChangeAvatar">
-    <t-avatar
-      slot="note"
-      image="{{displayAvatarUrl}}"
-      size="large"
-    />
+    <view slot="note" class="info-edit__avatar-row">
+      <t-avatar image="{{displayAvatarUrl}}" size="large" />
+      <button
+        class="info-edit__wechat-avatar-btn"
+        hover-class="none"
+        open-type="chooseAvatar"
+        catchtap="stopAvatarBtnBubble"
+        bindchooseavatar="onChooseWechatAvatar"
+      >
+        微信头像
+      </button>
+    </view>
   </t-cell>
   <t-cell class="info-edit__cell" title="用户名">
     <t-input bind:change="onNameChange" borderless placeholder="请输入用户名" slot="note" value="{{personInfo.name}}" />

@@ -6,7 +6,7 @@
   <view class="my-info">
     <t-cell-group>
       <t-cell wx:if="{{isLoad && isLoggedIn}}" bordered="{{false}}">
-        <t-avatar image="{{personalInfo.image}}" slot="left-icon" size="large" />
+        <t-avatar image="{{personalInfo.image || defaultAvatarUrl}}" slot="left-icon" size="large" />
         <view class="my-info__person" slot="description">
           <view class="my-info__name-row">
             <text class="name">{{personalInfo.name}}</text>

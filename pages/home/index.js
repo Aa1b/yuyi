@@ -2,6 +2,13 @@ import Message from 'tdesign-miniprogram/message/index';
 import request from '~/api/request';
 
 const TENCENT_MAP_KEY = 'LITBZ-IDMWA-5D3KD-CURMW-MHJ4J-2SFMX';
+const HOME_SAME_CITY_KEY = 'home_same_city';
+
+/** 无本地缓存时默认同城：湖南长沙（行政码供 region picker 回显） */
+const DEFAULT_SAME_CITY = {
+  city: '长沙市',
+  codes: ['430000', '430100', '430102'],
+};
 
 Page({
   data: {
@@ -16,6 +23,8 @@ Page({
     selectedCategory: '',
     // 位置筛选 / 同城
     locationCity: '',
+    /** 省市区行政码，供 picker mode=region 回显 */
+    sameCityRegionCodes: [],
     useLocationFilter: false,
     sameCityReady: true,
     // 分页
@@ -44,9 +53,8 @@ Page({
     }
   },
   
-  // 生命周期
-  async onReady() {
-    await this.loadInitialData();
+  onReady() {
+    void this.loadInitialData();
   },
   
   // 加载初始数据
@@ -154,7 +162,7 @@ Page({
     if (value === 'follow') {
       this.loadFollowRecords();
     } else if (value === 'sameCity') {
-      this.fetchCurrentCityAndFilter();
+      this.applySameCityFromStorageOrReset();
     } else {
       // recommend（最新）或 hot（最热）
       this.loadLifeRecords(true);
@@ -246,74 +254,126 @@ Page({
           if (res.data && res.data.status === 0) {
             const comp = res.data.result.address_component || {};
             const city = comp.city || comp.district || '';
-            that.setData({
-              locationCity: city,
-              useLocationFilter: true,
-              sameCityReady: !!city,
-              lifeRecords: [],
-              page: 1,
-              hasMore: true,
-            });
             if (!city) {
-              Message.warning({ context: that, offset: [120, 32], duration: 2500, content: '未获取到城市信息，请稍后重试' });
+              Message.warning({
+                context: that,
+                offset: [120, 32],
+                duration: 2500,
+                content: '未获取到城市信息，请用手动选择或稍后重试',
+              });
               return;
             }
-          } else {
-            // 逆地理编码失败，不启用同城筛选
+            try {
+              wx.setStorageSync(HOME_SAME_CITY_KEY, { city, codes: [] });
+            } catch (_) {}
             that.setData({
-              useLocationFilter: false,
-              sameCityReady: false,
-              locationCity: '',
+              locationCity: city,
+              sameCityRegionCodes: [],
+              useLocationFilter: true,
+              sameCityReady: true,
               lifeRecords: [],
               page: 1,
               hasMore: true,
             });
-            Message.warning({ context: that, offset: [120, 32], duration: 2500, content: '获取城市失败，请开启定位后重试' });
+            that.loadLifeRecords(true);
+            return;
           }
-          // 仅在拿到城市时加载列表
-          that.loadLifeRecords(true);
+          Message.warning({
+            context: that,
+            offset: [120, 32],
+            duration: 2500,
+            content: '获取城市失败，请改用上方选择城市',
+          });
         },
         fail() {
-          // 地图请求失败，降级为不按城市筛选
-          that.setData({
-            useLocationFilter: false,
-            sameCityReady: false,
-            locationCity: '',
-            lifeRecords: [],
-            page: 1,
-            hasMore: true,
+          Message.warning({
+            context: that,
+            offset: [120, 32],
+            duration: 2500,
+            content: '网络异常，请稍后重试或使用上方选择城市',
           });
-          Message.warning({ context: that, offset: [120, 32], duration: 2500, content: '获取城市失败，请稍后重试' });
         },
       });
     } catch (e) {
-      // 获取定位失败，降级为不按城市筛选
-      this.setData({
-        useLocationFilter: false,
-        sameCityReady: false,
-        locationCity: '',
-        lifeRecords: [],
-        page: 1,
-        hasMore: true,
+      Message.warning({
+        context: this,
+        offset: [120, 32],
+        duration: 2500,
+        content: '请开启定位权限，或使用上方选择城市',
       });
-      Message.warning({ context: this, offset: [120, 32], duration: 2500, content: '请开启定位权限以查看同城内容' });
     }
   },
 
-  // 点击位置筛选按钮：开启或关闭按当前位置筛选
-  async onLocationFilterTap() {
-    const { useLocationFilter } = this.data;
-    if (!useLocationFilter) {
-      await this.fetchCurrentCityAndFilter();
-    } else {
-      this.setData({
-        useLocationFilter: false,
-        lifeRecords: [],
-        page: 1,
-        hasMore: true,
-      });
-      this.loadLifeRecords(true);
+  /**
+   * 进入同城 Tab：优先用本机缓存的城市（含上次手动选择或定位）；无缓存则默认湖南长沙
+   */
+  applySameCityFromStorageOrReset() {
+    let saved;
+    try {
+      saved = wx.getStorageSync(HOME_SAME_CITY_KEY);
+    } catch (_) {
+      saved = null;
     }
+    let city = saved && saved.city ? String(saved.city).trim() : '';
+    let codes = saved && Array.isArray(saved.codes) && saved.codes.length === 3 ? saved.codes : [];
+    if (!city) {
+      city = DEFAULT_SAME_CITY.city;
+      codes = DEFAULT_SAME_CITY.codes.slice();
+      try {
+        wx.setStorageSync(HOME_SAME_CITY_KEY, { city, codes });
+      } catch (_) {}
+    }
+    this.setData({
+      locationCity: city,
+      sameCityRegionCodes: codes,
+      useLocationFilter: true,
+      sameCityReady: true,
+      lifeRecords: [],
+      page: 1,
+      hasMore: true,
+    });
+    this.loadLifeRecords(true);
+  },
+
+  /** 微信内置省市区选择器，选中的市名用于同城筛选 */
+  onSameCityRegionChange(e) {
+    const d = e.detail || {};
+    const names = d.value;
+    const codes = d.code;
+    let city = '';
+    if (Array.isArray(names) && names.length >= 2) {
+      city = String(names[1]).trim();
+    }
+    if (!city) {
+      Message.warning({
+        context: this,
+        offset: [120, 32],
+        duration: 2000,
+        content: '请完整选择省、市、区',
+      });
+      return;
+    }
+    try {
+      wx.setStorageSync(HOME_SAME_CITY_KEY, {
+        city,
+        codes: Array.isArray(codes) && codes.length === 3 ? codes : [],
+      });
+    } catch (_) {}
+    this.setData({
+      locationCity: city,
+      sameCityRegionCodes: Array.isArray(codes) && codes.length === 3 ? codes : [],
+      useLocationFilter: true,
+      sameCityReady: true,
+      lifeRecords: [],
+      page: 1,
+      hasMore: true,
+    });
+    this.loadLifeRecords(true);
+  },
+
+  /** 用定位自动填充城市（与手动选择二选一，会覆盖为当前逆地理城市名） */
+  onSameCityLocateTap() {
+    this.fetchCurrentCityAndFilter();
   },
   
   // 下拉刷新

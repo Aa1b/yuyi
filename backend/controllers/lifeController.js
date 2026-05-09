@@ -1552,12 +1552,12 @@ exports.search = async (req, res, next) => {
     ];
     const queryParams = [];
 
-    // 关键词搜索（内容、标签）
+    // 关键词搜索：标题、正文、标签名（与发布页「标题+正文」习惯一致，避免只写了标题却搜不到）
     whereConditions.push(
-      '(r.content LIKE ? OR EXISTS (SELECT 1 FROM life_record_tags rrt LEFT JOIN life_tags t ON rrt.tag_id = t.id WHERE rrt.record_id = r.id AND t.name LIKE ?))'
+      '(r.title LIKE ? OR r.content LIKE ? OR EXISTS (SELECT 1 FROM life_record_tags rrt LEFT JOIN life_tags t ON rrt.tag_id = t.id WHERE rrt.record_id = r.id AND t.name LIKE ?))'
     );
     const keywordPattern = `%${kw}%`;
-    queryParams.push(keywordPattern, keywordPattern);
+    queryParams.push(keywordPattern, keywordPattern, keywordPattern);
 
     // 分类筛选
     if (category) {
@@ -1580,6 +1580,7 @@ exports.search = async (req, res, next) => {
         r.user_id as userId,
         u.nickname as userName,
         u.avatar,
+        r.title,
         r.content,
         r.type,
         r.privacy,

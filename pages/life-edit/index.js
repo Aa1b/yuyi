@@ -28,7 +28,7 @@ Page({
       count: 9,
     },
     
-    // 内容
+    title: '',
     content: '',
     
     // 隐私设置
@@ -56,13 +56,9 @@ Page({
     cityPickValue: [],
     manualCityLabel: '',
     mapLocationNote: '',
-    /** 加载时文案是否仅来自 title（发布页常把一句话写在标题里），保存时需清空 title 否则列表仍显示旧标题 */
-    editHeadlineFromTitleOnly: false,
-    /** 进入编辑页时标题与正文是否均非空（用于保存时是否清空 title） */
-    hadTitleAndBody: false,
   },
   
-  async onLoad(options) {
+  onLoad(options) {
     const { id } = options;
     if (!id) {
       Message.error({
@@ -74,16 +70,16 @@ Page({
       wx.navigateBack();
       return;
     }
-    
+
     this.setData({ recordId: id });
     const { provinces, cities } = createInitialProvinceCityState();
     this.setData({ provinces, cities });
+    void this.initEditPage();
+  },
 
-    // 加载分类和标签数据
+  async initEditPage() {
     await this.loadCategories();
     await this.loadTags();
-    
-    // 加载记录详情
     await this.loadRecordDetail();
   },
   
@@ -104,25 +100,10 @@ Page({
       const catStr = record.category || '';
       const categories = this.data.categories || [];
       const catIdx = categories.findIndex((c) => c && (c.value === catStr || c.label === catStr));
-      const t = record.title != null ? String(record.title).trim() : '';
-      const c = record.content != null ? String(record.content).trim() : '';
-      let headline = '';
-      let fromTitleOnly = false;
-      let hadTitleAndBody = false;
-      if (t && c) {
-        headline = `${t}\n\n${c}`;
-        hadTitleAndBody = true;
-      } else if (t) {
-        headline = t;
-        fromTitleOnly = true;
-      } else {
-        headline = c;
-      }
       // 填充表单数据（图片/视频用完整 URL 以便预览）
       this.setData({
-        content: headline,
-        editHeadlineFromTitleOnly: fromTitleOnly,
-        hadTitleAndBody,
+        title: record.title != null ? String(record.title) : '',
+        content: record.content != null ? String(record.content) : '',
         privacy: record.privacy || 'public',
         category: catStr,
         categoryIndex: catIdx >= 0 ? [catIdx] : [],
@@ -209,9 +190,17 @@ Page({
     this.setData({ videoFile: null });
   },
   
-  // 内容输入
+  onTitleInput(e) {
+    this.setData({ title: e.detail.value != null ? String(e.detail.value) : '' });
+  },
+
+  // 内容输入（原生 textarea：detail.value；TDesign 部分版本为 detail.value 或 detail）
   onContentInput(e) {
-    this.setData({ content: e.detail.value });
+    const v =
+      e.detail && e.detail.value !== undefined && e.detail.value !== null
+        ? e.detail.value
+        : e.detail;
+    this.setData({ content: v != null ? String(v) : '' });
   },
   
   // 选择隐私设置
@@ -399,16 +388,17 @@ Page({
     });
   },
   
-  // 验证表单
+  // 验证表单（与发布页一致：标题或内容至少填一项）
   validateForm() {
-    const { content, mediaType, imageFiles, videoFile, category } = this.data;
-    
-    if (!content.trim()) {
+    const { title, content, mediaType, imageFiles, videoFile, category } = this.data;
+    const hasTitle = title && String(title).trim();
+    const hasContent = content && String(content).trim();
+    if (!hasTitle && !hasContent) {
       Message.warning({
         context: this,
         offset: [120, 32],
         duration: 2000,
-        content: '请输入内容描述',
+        content: '请填写标题或内容',
       });
       return false;
     }
@@ -467,30 +457,18 @@ Page({
       return;
     }
 
-    const { recordId, content, mediaType, imageFiles, videoFile, privacy, category, selectedTags, location } = this.data;
+    const { recordId, title, content, mediaType, imageFiles, videoFile, privacy, category, selectedTags, location } =
+      this.data;
 
-    const trimmed = content.trim();
     const recordData = {
       id: recordId,
+      title: title != null ? String(title).trim() : '',
+      content: content != null ? String(content).trim() : '',
       privacy,
       category,
       tags: selectedTags,
       location: location || null,
     };
-    const { editHeadlineFromTitleOnly, hadTitleAndBody } = this.data;
-    if (editHeadlineFromTitleOnly) {
-      recordData.title = '';
-      recordData.content = trimmed;
-    } else if (trimmed.includes('\n\n')) {
-      const parts = trimmed.split(/\n{2,}/);
-      recordData.title = (parts[0] || '').trim();
-      recordData.content = parts.length > 1 ? parts.slice(1).join('\n\n').trim() : '';
-    } else if (hadTitleAndBody) {
-      recordData.title = '';
-      recordData.content = trimmed;
-    } else {
-      recordData.content = trimmed;
-    }
 
     try {
       wx.showLoading({ title: '更新中...', mask: true });

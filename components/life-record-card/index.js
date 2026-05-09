@@ -1,7 +1,7 @@
 import request from '~/api/request';
 import Message from 'tdesign-miniprogram/message/index';
 import { formatDateTime } from '~/utils/time';
-import resolveMediaUrl, { resolveAvatarDisplayUrl } from '~/utils/resolveMediaUrl';
+import resolveMediaUrl, { resolveAvatarDisplayUrl, DEFAULT_AVATAR_URL } from '~/utils/resolveMediaUrl';
 
 Component({
   properties: {
@@ -16,7 +16,8 @@ Component({
     },
   },
   data: {
-    displayAvatarUrl: '',
+    defaultAvatarUrl: DEFAULT_AVATAR_URL,
+    displayAvatarUrl: DEFAULT_AVATAR_URL,
     displayImageUrl: '',
     displayVideo: null,
     displayTime: '',
@@ -26,7 +27,12 @@ Component({
     record(record) {
       if (!record || !record.id) {
         this._lastRecordKey = null;
-        this.setData({ displayAvatarUrl: '', displayImageUrl: '', displayVideo: null, displayTime: '' });
+        this.setData({
+          displayAvatarUrl: resolveAvatarDisplayUrl(''),
+          displayImageUrl: '',
+          displayVideo: null,
+          displayTime: '',
+        });
         return;
       }
       const keyParts = [

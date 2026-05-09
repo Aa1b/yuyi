@@ -1,11 +1,10 @@
 // app.js
 import config from './config';
-import Mock from './mock/index';
 import createBus from './utils/eventBus';
-import { connectSocket } from './mock/chat';
 
+// Mock 勿顶层 import，否则会整套打进主包；仅 isMock 时再加载
 if (config.isMock) {
-  Mock();
+  require('./mock/index')();
 }
 
 App({
@@ -42,6 +41,10 @@ App({
 
   /** 初始化WebSocket */
   connect() {
+    if (!config.isMock) {
+      return;
+    }
+    const { connectSocket } = require('./mock/chat');
     const socket = connectSocket();
     socket.onMessage((data) => {
       data = JSON.parse(data);

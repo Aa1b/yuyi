@@ -2,7 +2,7 @@
   <!-- 用户信息 -->
   <view class="life-record-card__header">
     <t-avatar
-      image="{{displayAvatarUrl}}"
+      image="{{displayAvatarUrl || defaultAvatarUrl}}"
       size="small"
     />
     <view class="life-record-card__user-info">

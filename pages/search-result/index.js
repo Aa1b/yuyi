@@ -21,13 +21,13 @@ Page({
   data: {
     keyword: '',
     records: [],
+    total: 0,
     loading: false,
     hasMore: true,
     page: 1,
     pageSize: 10,
     categories: [],
     selectedCategory: '',
-    selectedType: 'all',
   },
   
   onLoad(options) {
@@ -67,13 +67,12 @@ Page({
     try {
       this.setData({ loading: true });
       
-      const { keyword, page, pageSize, selectedCategory, selectedType } = this.data;
+      const { keyword, page, pageSize, selectedCategory } = this.data;
       const params = {
         keyword,
         page: refresh ? 1 : page,
         pageSize,
         category: selectedCategory || '',
-        type: selectedType || 'all',
       };
       
       const queryString = Object.keys(params)
@@ -83,19 +82,22 @@ Page({
       const res = await request(`/life/search?${queryString}`);
       const result = res.data || {};
       const { list = [], total = 0 } = result;
-      
+      const nextLen = refresh ? list.length : this.data.records.length + list.length;
+
       if (refresh) {
         this.setData({
           records: list,
+          total,
           page: 1,
-          hasMore: list.length < total,
+          hasMore: nextLen < total,
           loading: false,
         });
       } else {
         this.setData({
           records: [...this.data.records, ...list],
+          total,
           page: page + 1,
-          hasMore: this.data.records.length + list.length < total,
+          hasMore: nextLen < total,
           loading: false,
         });
       }
@@ -131,17 +133,6 @@ Page({
     const newCategory = value === 'all' ? '' : value;
     this.setData({
       selectedCategory: newCategory,
-      records: [],
-      page: 1,
-    });
-    this.searchRecords(true);
-  },
-  
-  // 类型筛选
-  onTypeChange(e) {
-    const { value } = e.detail;
-    this.setData({
-      selectedType: value,
       records: [],
       page: 1,
     });

@@ -5,8 +5,9 @@
 .home-container {
   height: calc(100vh - @tab-bar-height);
 
+  /* 导航已在 t-navbar placeholder 中占位，勿再减固定高度，否则会双重留白或布局错位 */
   .home-content {
-    height: calc(100% - @nav-bar-height);
+    height: 100%;
   }
 
   .t-tabs {
@@ -53,6 +54,58 @@
   margin: 0 24rpx 24rpx;
   border-radius: 16rpx;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+}
+
+.home-same-city-bar {
+  display: flex;
+  align-items: center;
+  padding: 24rpx;
+  margin: 0 24rpx 24rpx;
+  background: @bg-color-white;
+  border-radius: 16rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+}
+
+.home-same-city-side {
+  flex: 1;
+  min-width: 0;
+}
+
+.home-same-city-side--right {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.home-same-city-picker-col {
+  flex-shrink: 0;
+  max-width: 72%;
+  display: flex;
+  justify-content: center;
+}
+
+.home-same-city-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 16rpx 28rpx;
+  background: #f3f6ff;
+  border-radius: 999rpx;
+  max-width: 420rpx;
+}
+
+.home-same-city-label {
+  font-size: 28rpx;
+  color: rgba(0, 0, 0, 0.85);
+  max-width: 280rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-same-city-locate {
+  font-size: 26rpx;
+  color: #0052d9;
+  padding: 12rpx 8rpx;
 }
 
 .home-life-records {

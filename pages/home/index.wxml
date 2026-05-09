@@ -61,10 +61,7 @@
               <text>没有更多了</text>
             </view>
             <view wx:if="{{!loading && lifeRecords.length === 0}}" class="home-empty">
-              <t-empty
-                icon="image"
-                description="{{sameCityReady ? '暂无内容' : '请开启定位后查看同城内容'}}"
-              />
+              <t-empty icon="image" description="暂无内容" />
             </view>
           </view>
         </t-pull-down-refresh>
@@ -126,27 +123,21 @@
           loadingTexts="{{['下拉刷新', '松手刷新', '正在刷新', '刷新完成']}}"
         >
           <view class="home-content-wrapper">
-            <!-- 同城分类筛选 -->
-            <view class="home-category-filter">
-              <t-check-tag
-                checked="{{selectedCategory === ''}}"
-                size="medium"
-                variant="{{selectedCategory === '' ? 'dark' : 'light'}}"
-                content="全部"
-                data-value="all"
-                bind:change="onCategoryChange"
-              />
-              <t-check-tag
-                wx:for="{{categories}}"
-                wx:key="index"
-                wx:for-item="category"
-                checked="{{selectedCategory === category}}"
-                size="medium"
-                variant="{{selectedCategory === category ? 'dark' : 'light'}}"
-                content="{{category}}"
-                data-value="{{category}}"
-                bind:change="onCategoryChange"
-              />
+            <!-- 同城：居中城市选择（代替分类标签） -->
+            <view class="home-same-city-bar">
+              <view class="home-same-city-side" />
+              <view class="home-same-city-picker-col">
+                <picker mode="region" bindchange="onSameCityRegionChange" value="{{sameCityRegionCodes}}">
+                  <view class="home-same-city-picker">
+                    <t-icon name="location" size="40rpx" color="#0052d9" />
+                    <text class="home-same-city-label">{{locationCity || '选择城市'}}</text>
+                    <t-icon name="chevron-down" size="36rpx" color="#999" />
+                  </view>
+                </picker>
+              </view>
+              <view class="home-same-city-side home-same-city-side--right">
+                <text class="home-same-city-locate" bindtap="onSameCityLocateTap">定位</text>
+              </view>
             </view>
 
             <!-- 同城生活记录列表 -->
@@ -167,7 +158,10 @@
               <text>没有更多了</text>
             </view>
             <view wx:if="{{!loading && lifeRecords.length === 0}}" class="home-empty">
-              <t-empty icon="image" description="暂无内容" />
+              <t-empty
+                icon="image"
+                description="{{locationCity ? '暂无同城动态' : '请先在上方选择城市或使用定位'}}"
+              />
             </view>
           </view>
         </t-pull-down-refresh>

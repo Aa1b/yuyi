@@ -1,7 +1,16 @@
 @import '/variable.less';
 
-.message-container {
+/* 顶部 nav + navbar placeholder 已占位，内容区用 flex 填满剩余高度 */
+page {
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.message-container {
+  flex: 1;
+  min-height: 0;
   background: @bg-color;
   padding-bottom: 32rpx;
 }

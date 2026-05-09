@@ -2,11 +2,12 @@
 import request from '~/api/request';
 import Message from 'tdesign-miniprogram/message/index';
 import { formatDateTime } from '~/utils/time';
-import resolveMediaUrl, { resolveAvatarDisplayUrl } from '~/utils/resolveMediaUrl';
+import resolveMediaUrl, { resolveAvatarDisplayUrl, DEFAULT_AVATAR_URL } from '~/utils/resolveMediaUrl';
 import { getLifePrivacyLabel } from '~/utils/privacyLabels';
 
 Page({
   data: {
+    defaultAvatarUrl: DEFAULT_AVATAR_URL,
     recordId: null,
     record: null,
     comments: [],

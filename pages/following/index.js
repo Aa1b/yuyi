@@ -1,10 +1,11 @@
 // pages/following/index.js
 import request from '~/api/request';
 import Message from 'tdesign-miniprogram/message/index';
-import { resolveAvatarDisplayUrl } from '~/utils/resolveMediaUrl';
+import { resolveAvatarDisplayUrl, DEFAULT_AVATAR_URL } from '~/utils/resolveMediaUrl';
 
 Page({
   data: {
+    defaultAvatarUrl: DEFAULT_AVATAR_URL,
     type: 'following', // following | followers | mutual
     userId: null, // 查看他人时传入
     list: [],

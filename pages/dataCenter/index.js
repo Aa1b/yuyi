@@ -19,7 +19,11 @@ Page({
     pieSize: 280,
   },
 
-  async onLoad() {
+  onLoad() {
+    void this.initDataCenter();
+  },
+
+  async initDataCenter() {
     const token = wx.getStorageSync('access_token');
     if (!token) {
       wx.redirectTo({ url: '/pages/my/index' });

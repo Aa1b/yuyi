@@ -1,4 +1,4 @@
-<t-navbar title="系统管理" left-arrow />
+<t-navbar title="系统管理" left-arrow placeholder />
 <view class="admin-page">
   <t-tabs value="{{mainTab}}" bind:change="onMainTabChange">
     <t-tab-panel label="分类" value="cat" />

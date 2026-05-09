@@ -1,4 +1,5 @@
 import request from '~/api/request';
+import { saveUserInfoToCache } from '~/utils/userInfoCache';
 
 function isValidEmail(str) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(str).trim());
@@ -68,7 +69,7 @@ Page({
       });
       if (res.code === 200 && res.data && res.data.token) {
         wx.setStorageSync('access_token', res.data.token);
-        if (res.data.user) wx.setStorageSync('user_info', res.data.user);
+        if (res.data.user) saveUserInfoToCache(res.data.user);
         wx.showToast({ title: '注册成功', icon: 'success' });
         wx.switchTab({ url: '/pages/my/index' });
       } else {

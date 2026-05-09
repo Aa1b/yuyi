@@ -1,4 +1,4 @@
-<t-navbar left-arrow />
+<t-navbar left-arrow placeholder />
 <view class="page login">
   <view class="login__title">欢迎使用愈忆</view>
   <view class="login__content">

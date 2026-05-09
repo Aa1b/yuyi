@@ -112,3 +112,11 @@ project.private.config.json
 
 # 个人本地 Markdown（如论文摘要草稿），不纳入版本库
 毕业论文摘要.md
+
+# 论文/PPT 解压与临时产物（体积大，非运行所需）
+_docx_plain.txt
+_docx_temp/
+_ppt_extract/
+_thesis_docx_extract/
+_thesis.zip
+_thesis_edit.zip

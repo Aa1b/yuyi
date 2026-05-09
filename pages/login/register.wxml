@@ -1,4 +1,4 @@
-<t-navbar title="注册" left-arrow bind:go-back="onGoBack" />
+<t-navbar title="注册" left-arrow placeholder bind:go-back="onGoBack" />
 <view class="page register">
   <view class="register__form">
     <t-input

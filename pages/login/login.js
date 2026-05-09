@@ -1,4 +1,5 @@
 import request from '~/api/request';
+import { saveUserInfoToCache } from '~/utils/userInfoCache';
 
 function isValidEmail(str) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(str).trim());
@@ -96,7 +97,7 @@ Page({
         wx.setStorageSync('access_token', token);
         let loginUser = res && res.data && res.data.user ? res.data.user : res.data?.user;
         if (loginUser) {
-          wx.setStorageSync('user_info', loginUser);
+          saveUserInfoToCache(loginUser);
         }
 
         // 如果这次登录拿到了 userInfo，但服务器返回的用户头像还是空，则再调用一次资料更新接口补写头像/昵称
@@ -115,13 +116,27 @@ Page({
                 avatar: updated.avatar ?? (loginUser && loginUser.avatar),
                 gender: updated.gender ?? (loginUser && loginUser.gender),
               };
-              wx.setStorageSync('user_info', merged);
+              saveUserInfoToCache(merged);
+              loginUser = merged;
             }
           } catch (e) {
             // 更新资料失败不影响登录流程，静默忽略
           }
         }
+
+        // 高版本基础库下 getUserProfile 常不再返回真实头像 URL，与 downloadFile 域名无关
+        const cachedAfter = wx.getStorageSync('user_info') || loginUser || {};
+        const hasAvatar = !!(cachedAfter && cachedAfter.avatar && String(cachedAfter.avatar).trim());
         wx.showToast({ title: '登录成功', icon: 'success' });
+        if (!hasAvatar) {
+          setTimeout(() => {
+            wx.showToast({
+              title: '未同步到微信头像，请在「我的-个人信息」点「微信头像」或相册上传',
+              icon: 'none',
+              duration: 4000,
+            });
+          }, 1800);
+        }
         wx.switchTab({ url: '/pages/my/index' });
       } else {
         wx.showToast({ title: (res && res.message) || '微信登录失败', icon: 'none' });
@@ -162,7 +177,7 @@ Page({
       if (res.code === 200 && res.data && res.data.token) {
         wx.setStorageSync('access_token', res.data.token);
         if (res.data.user) {
-          wx.setStorageSync('user_info', res.data.user);
+          saveUserInfoToCache(res.data.user);
         }
         wx.showToast({ title: '登录成功', icon: 'success' });
         wx.switchTab({ url: '/pages/my/index' });

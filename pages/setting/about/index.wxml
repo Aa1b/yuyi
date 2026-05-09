@@ -1,4 +1,4 @@
-<t-navbar title="关于我们" left-arrow />
+<t-navbar title="关于我们" left-arrow placeholder />
 <view class="about-page">
   <view class="about-logo">
     <t-icon name="image" size="120rpx" color="#0052d9" />

@@ -1,6 +1,6 @@
 import request from '~/api/request';
 import useToastBehavior from '~/behaviors/useToast';
-import { resolveAvatarDisplayUrl } from '~/utils/resolveMediaUrl';
+import { resolveAvatarDisplayUrl, DEFAULT_AVATAR_URL } from '~/utils/resolveMediaUrl';
 import { getWesternZodiacFromBirth } from '~/utils/zodiac';
 import { formatHomeRegionFromAddress } from '~/utils/profileRegion';
 
@@ -8,9 +8,10 @@ Page({
   behaviors: [useToastBehavior],
 
   data: {
+    defaultAvatarUrl: DEFAULT_AVATAR_URL,
     isLoad: false,
     isLoggedIn: false,
-    personalInfo: {},
+    personalInfo: { image: DEFAULT_AVATAR_URL },
     userIp: '',
     isAdmin: false,
     gridList: [
@@ -31,13 +32,17 @@ Page({
 
   onLoad() {},
 
-  async onShow() {
+  onShow() {
+    void this.refreshMyPage();
+  },
+
+  async refreshMyPage() {
     const token = wx.getStorageSync('access_token');
     if (!token) {
       this.setData({
         isLoad: true,
         isLoggedIn: false,
-        personalInfo: {},
+        personalInfo: { image: DEFAULT_AVATAR_URL },
         userIp: '',
         isAdmin: false,
         settingList: [
@@ -79,7 +84,7 @@ Page({
 
       const base = {
         name: p.nickname || '用户',
-        image: resolveAvatarDisplayUrl(p.avatar),
+        image: resolveAvatarDisplayUrl(p != null ? p.avatar : ''),
         /** 由生日推算的星座（接口无 star 字段时仍可展示） */
         zodiac: getWesternZodiacFromBirth(p.birth),
         /** 资料里选择的省市（与顶部「当前城市」IP 归属不同） */

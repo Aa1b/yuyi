@@ -1,7 +1,52 @@
 {
   "description": "项目配置文件，详见文档：https://developers.weixin.qq.com/miniprogram/dev/devtools/projectconfig.html",
   "packOptions": {
-    "ignore": [],
+    "ignore": [
+      {
+        "type": "folder",
+        "value": "mock"
+      },
+      {
+        "type": "folder",
+        "value": "_ppt_extract"
+      },
+      {
+        "type": "folder",
+        "value": "_docx_temp"
+      },
+      {
+        "type": "folder",
+        "value": "_thesis_docx_extract"
+      },
+      {
+        "type": "folder",
+        "value": "backend"
+      },
+      {
+        "type": "folder",
+        "value": "scripts"
+      },
+      {
+        "type": "folder",
+        "value": ".github"
+      },
+      {
+        "type": "suffix",
+        "value": ".map"
+      },
+      {
+        "type": "glob",
+        "value": "**/.DS_Store"
+      },
+      {
+        "type": "file",
+        "value": "_docx_plain.txt"
+      },
+      {
+        "type": "suffix",
+        "value": ".md"
+      }
+    ],
     "include": []
   },
   "setting": {

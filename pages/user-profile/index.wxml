@@ -1,4 +1,4 @@
-<t-navbar title="个人主页" left-arrow />
+<t-navbar title="个人主页" left-arrow placeholder />
 <view class="user-profile-container">
   <view wx:if="{{loading && !userInfo}}" class="user-profile-loading">
     <t-loading theme="circular" size="40rpx" text="加载中..." />
@@ -7,7 +7,7 @@
   <view wx:else class="user-profile-content">
     <!-- 用户信息卡片 -->
     <view class="user-profile-header">
-      <t-avatar image="{{userInfo.avatar}}" size="large" />
+      <t-avatar image="{{userInfo.avatar || defaultAvatarUrl}}" size="large" />
       <view class="user-profile-info">
         <text class="user-profile-name">{{userInfo.nickname}}</text>
         <view

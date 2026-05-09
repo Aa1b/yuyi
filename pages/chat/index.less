@@ -1,9 +1,18 @@
 /* pages/chat/index.wxss */
+/* 顶部已有 t-navbar placeholder，勿再用 100vh 撑满，否则会超出可视区域 */
+page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  box-sizing: border-box;
+}
+
 .chat-container {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  height: 100vh;
+  flex: 1;
+  min-height: 0;
   font-size: 32rpx;
   background-color: #fff;
 }

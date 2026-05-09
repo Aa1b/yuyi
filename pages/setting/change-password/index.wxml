@@ -1,4 +1,4 @@
-<t-navbar title="修改密码" left-arrow />
+<t-navbar title="修改密码" left-arrow placeholder />
 <view class="change-password">
   <view class="form">
     <view class="form-item">

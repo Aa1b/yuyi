@@ -39,9 +39,13 @@ Page({
     mapLocationNote: '',
   },
 
-  async onLoad() {
+  onLoad() {
     const { provinces, cities } = createInitialProvinceCityState();
     this.setData({ provinces, cities });
+    void this.initAfterLoad();
+  },
+
+  async initAfterLoad() {
     await this.loadCategories();
     await this.loadTags();
     await this.checkAdmin();

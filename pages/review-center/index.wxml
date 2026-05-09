@@ -1,4 +1,4 @@
-<t-navbar title="内容审核" left-arrow />
+<t-navbar title="内容审核" left-arrow placeholder />
 <view class="review-center-container">
   <!-- 待审核列表 -->
   <view class="review-center-list">

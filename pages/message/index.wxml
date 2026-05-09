@@ -42,7 +42,7 @@
         data-avatar="{{item.userAvatar}}"
         bindtap="onGuestbookConversationTap"
       >
-        <t-avatar image="{{item.userAvatar}}" size="medium" />
+        <t-avatar image="{{item.userAvatar || defaultAvatarUrl}}" size="medium" />
         <view class="guestbook-info">
           <view class="guestbook-name-row">
             <text class="guestbook-name">{{item.userName}}</text>
@@ -86,7 +86,7 @@
       >
         <view class="notification-content">
           <t-avatar
-            image="{{notification.fromUserAvatar}}"
+            image="{{notification.fromUserAvatar || defaultAvatarUrl}}"
             size="small"
             catchtap="goToUserProfile"
             data-user-id="{{notification.fromUserId}}"

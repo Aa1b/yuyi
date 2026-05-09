@@ -2,7 +2,8 @@ import request from '~/api/request';
 import config from '~/config';
 import { areaList } from '~/utils/areaData.js';
 import { getCitiesOfProvince, createInitialProvinceCityState } from '~/utils/areaPickerHelpers';
-import { resolveAvatarDisplayUrl } from '~/utils/resolveMediaUrl';
+import { resolveAvatarDisplayUrl, DEFAULT_AVATAR_URL } from '~/utils/resolveMediaUrl';
+import { saveUserInfoToCache } from '~/utils/userInfoCache';
 import { formatBirthDate } from '~/utils/time';
 
 Page({
@@ -16,7 +17,7 @@ Page({
       introduction: '',
       photos: [],
     },
-    displayAvatarUrl: '',
+    displayAvatarUrl: DEFAULT_AVATAR_URL,
     genderOptions: [
       {
         label: '男',
@@ -156,31 +157,27 @@ Page({
     this.personInfoFieldChange('introduction', e);
   },
 
-  async onChangeAvatar() {
+  /** 阻止「微信头像」按钮点击冒泡到 t-cell，避免同时触发相册选图 */
+  stopAvatarBtnBubble() {},
+
+  /**
+   * 使用微信「头像昵称填写能力」：基础库 2.21.2+，比 getUserProfile 更可靠
+   * @see https://developers.weixin.qq.com/miniprogram/dev/component/button.html
+   */
+  async onChooseWechatAvatar(e) {
+    const path = e.detail && e.detail.avatarUrl;
+    if (!path) return;
     try {
-      const choose = async () => {
-        if (typeof wx.chooseMedia === 'function') {
-          const res = await wx.chooseMedia({
-            count: 1,
-            mediaType: ['image'],
-            sourceType: ['album', 'camera'],
-            sizeType: ['compressed'],
-          });
-          const file = res && res.tempFiles && res.tempFiles[0];
-          return file && file.tempFilePath ? file.tempFilePath : '';
-        }
-        const res = await wx.chooseImage({
-          count: 1,
-          sourceType: ['album', 'camera'],
-          sizeType: ['compressed'],
-        });
-        return (res && res.tempFilePaths && res.tempFilePaths[0]) || '';
-      };
+      await this.uploadAvatarFromPath(path);
+    } catch (err) {
+      wx.showToast({ title: (err && err.message) || '头像更新失败', icon: 'none' });
+    }
+  },
 
-      const filePath = await choose();
-      if (!filePath) return;
-
-      wx.showLoading({ title: '上传中...', mask: true });
+  async uploadAvatarFromPath(filePath) {
+    if (!filePath) return;
+    wx.showLoading({ title: '上传中...', mask: true });
+    try {
       const token = wx.getStorageSync('access_token');
       const baseUrl = (config.baseUrl || '').replace(/\/+$/, '');
       const uploadRes = await new Promise((resolve, reject) => {
@@ -204,22 +201,49 @@ Page({
         throw new Error('头像上传响应异常');
       }
       const avatarUrl = parsed && parsed.data && parsed.data.url ? parsed.data.url : '';
-      if (!avatarUrl) throw new Error((parsed && parsed.message) || '头像上传失败');
+      if (!avatarUrl) {
+        throw new Error((parsed && parsed.message) || '头像上传失败');
+      }
 
-      // 写入用户资料
       await request('/auth/profile', 'PUT', { avatar: avatarUrl });
 
       const resolved = resolveAvatarDisplayUrl(avatarUrl);
       this.setData({ 'personInfo.avatar': avatarUrl, displayAvatarUrl: resolved });
 
-      // 同步更新本地缓存的 user_info，确保首页/留言等处头像立即生效
       try {
         const cached = wx.getStorageSync('user_info') || {};
-        const nextUser = { ...cached, avatar: avatarUrl, image: resolved };
-        wx.setStorageSync('user_info', nextUser);
+        saveUserInfoToCache({ ...cached, avatar: avatarUrl });
       } catch (_) {}
-      wx.hideLoading();
       wx.showToast({ title: '头像已更新', icon: 'success' });
+    } finally {
+      wx.hideLoading();
+    }
+  },
+
+  async onChangeAvatar() {
+    try {
+      const choose = async () => {
+        if (typeof wx.chooseMedia === 'function') {
+          const res = await wx.chooseMedia({
+            count: 1,
+            mediaType: ['image'],
+            sourceType: ['album', 'camera'],
+            sizeType: ['compressed'],
+          });
+          const file = res && res.tempFiles && res.tempFiles[0];
+          return file && file.tempFilePath ? file.tempFilePath : '';
+        }
+        const res = await wx.chooseImage({
+          count: 1,
+          sourceType: ['album', 'camera'],
+          sizeType: ['compressed'],
+        });
+        return (res && res.tempFilePaths && res.tempFilePaths[0]) || '';
+      };
+
+      const filePath = await choose();
+      if (!filePath) return;
+      await this.uploadAvatarFromPath(filePath);
     } catch (e) {
       wx.hideLoading();
       wx.showToast({ title: e?.message || '头像更新失败', icon: 'none' });

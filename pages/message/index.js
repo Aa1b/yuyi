@@ -2,12 +2,13 @@
 import request from '~/api/request';
 import Message from 'tdesign-miniprogram/message/index';
 import { formatDateTime } from '~/utils/time';
-import { resolveAvatarDisplayUrl } from '~/utils/resolveMediaUrl';
+import { resolveAvatarDisplayUrl, DEFAULT_AVATAR_URL } from '~/utils/resolveMediaUrl';
 
 const VALID_TYPES = ['all', 'like', 'comment', 'follow', 'guestbook'];
 
 Page({
   data: {
+    defaultAvatarUrl: DEFAULT_AVATAR_URL,
     notifications: [],
     loading: false,
     hasMore: true,
